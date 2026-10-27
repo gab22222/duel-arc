@@ -264,7 +264,7 @@ const G = 3.4;                 // gravité (8,5 réduite de 60 % : peu de chute)
 const VMIN = 36, VMAX = 84;    // vitesse de la flèche selon la tension
 const DRAW_T = 0.8 / 1.3 / 1.2; // temps pour bander l'arc à fond (≈ 0,51 s)
 const RELOAD = 0.75;
-const BULLET_V = VMAX * 2;     // carabine : balle sans chute, deux fois plus rapide qu'une flèche à fond
+const BULLET_V = VMAX * 2;     // carabine : balle sans chute ; seule sa direction compte, elle arrive instantanément
 const RIFLE_AIM_T = 0.25;      // temps pour épauler et passer dans la lunette
 const SCOPE_X = 3;             // grossissement de la lunette
 const ARROW_STEP = 0.05;       // pas de collision des flèches (m) : assez fin pour ne pas sauter le bord d'un tronc
@@ -1073,8 +1073,9 @@ function fire() {
     if (Math.abs(e2) < Math.abs(e)) { v.copy(v2); e = e2; dist = d2; k = 1; } else k *= 0.5;
   }
   const id = ++shotSeq;
-  spawnArrow('me', o, v, id, kind);
+  // le tir part avant d'être résolu : une balle touche dans la foulée, les autres doivent recevoir le tir avant la touche
   if (mode === 'online' && nroom) nroom.emit('shot', { g: net.started, id, k: KIND_CODE[kind], o: [r3(o.x), r3(o.y), r3(o.z)], v: [r3(v.x), r3(v.y), r3(v.z)] }).catch(() => {});
+  spawnArrow('me', o, v, id, kind);
   me.reload = RELOAD; sfx(kind === 'bullet' ? 'bang' : 'twang');
 }
 // ---------- batte : le coup part au relâcher, il touche ~0,1 s plus tard l'adversaire le plus proche devant soi
@@ -1293,6 +1294,7 @@ function spawnArrow(owner, p, v, id = 0, kind = 'arrow') {
   const a = { owner, id, kind, g: bullet ? 0 : G, tail: bullet ? 0.05 : kind === 'bolt' ? 0.9 * BOLT_LEN : 0.9, kill: kind === 'bolt', sid: ++arrowSerial, p, v, m, flying: true, pending: 0, life: 0, botSeen: false };
   orient(a); arrows.push(a);
   if (owner !== 'me' && !bullet) sfx('whoosh', 0.7);
+  if (bullet) flyNow(a);
   const stuck = arrows.filter(x => !x.flying);
   while (stuck.length > 30) { const old = stuck.shift(); if (old.m.parent) old.m.parent.remove(old.m); arrows.splice(arrows.indexOf(old), 1); }
 }
@@ -1399,6 +1401,21 @@ function collide(a) {
     }
   } else if (p.y < 0) { p.y = 0; stopArrow(a); a.m.position.copy(p); }
 }
+function stepArrow(a, h) {
+  a.v.y -= a.g * h; a.p.addScaledVector(a.v, h); collide(a);
+  a.smokeD = (a.smokeD || 0) + a.v.length() * h;
+  // plusieurs bouffées par sous-pas, réparties en arrière le long du trajet
+  while (a.flying && a.smokeD >= SMOKE_STEP) { a.smokeD -= SMOKE_STEP; emitSmoke(a, a.smokeD); }
+}
+// balle de carabine : pas de temps de vol, tout le trajet est parcouru d'un coup (jusqu'à 150 m du centre)
+function flyNow(a) {
+  const h = ARROW_STEP / a.v.length();
+  for (let i = 0; a.flying && i < 5000; i++) {
+    stepArrow(a, h);
+    if (a.flying && a.p.x * a.p.x + a.p.z * a.p.z > 22500) { stopArrow(a); a.gone = true; a.m.visible = false; }
+  }
+  if (a.flying) { stopArrow(a); a.gone = true; a.m.visible = false; }
+}
 function updateArrows(dt) {
   for (let i = arrows.length - 1; i >= 0; i--) {
     const a = arrows[i];
@@ -1409,12 +1426,7 @@ function updateArrows(dt) {
     }
     a.life += dt;
     const n = Math.max(1, Math.ceil(a.v.length() * dt / ARROW_STEP)), h = dt / n;
-    for (let s = 0; s < n && a.flying; s++) {
-      a.v.y -= a.g * h; a.p.addScaledVector(a.v, h); collide(a);
-      a.smokeD = (a.smokeD || 0) + a.v.length() * h;
-      // plusieurs bouffées par sous-pas, réparties en arrière le long du trajet
-      while (a.flying && a.smokeD >= SMOKE_STEP) { a.smokeD -= SMOKE_STEP; emitSmoke(a, a.smokeD); }
-    }
+    for (let s = 0; s < n && a.flying; s++) stepArrow(a, h);
     if (a.flying) {
       a.m.position.copy(a.p); orient(a);
       if (a.p.y < -85 || a.life > 6) { scene.remove(a.m); arrows.splice(i, 1); }
