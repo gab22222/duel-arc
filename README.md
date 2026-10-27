@@ -4,7 +4,7 @@ Duel à l'arc en 3D pour deux téléphones. Les flèches ont un temps de vol et 
 
 Deux cartes :
 - **Canyon** : face à face sur deux piliers, on ne peut que se décaler sur le côté pour esquiver.
-- **Forêt** : déplacements libres avec un joystick, arbres et rochers pour se cacher ou foncer sur l'adversaire.
+- **Forêt** : déplacements libres avec un joystick, arbres et rochers pour se cacher ou foncer sur l'adversaire. On y choisit son arme : **Arc** (par défaut) ou **Carabine** de chasse en bois avec lunette x3, dont les balles ne tombent pas et vont deux fois plus vite qu'une flèche.
 
 Pour jouer : https://gab22222.github.io/duel-arc/
 

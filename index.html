@@ -52,6 +52,11 @@ body{position:fixed;inset:0;touch-action:none;-webkit-user-select:none;user-sele
 @keyframes hpShake{25%{transform:translateX(-3px)}75%{transform:translateX(3px)}}
 #cross{left:50%;top:50%;width:72px;height:72px;margin:-36px 0 0 -36px;opacity:.95}
 #cross .ring{transition:stroke .15s}
+#scope{inset:0;background:radial-gradient(circle closest-side at 50% 50%,transparent 94%,rgba(0,0,0,.55) 95%,#050506 100%)}
+#scope::before,#scope::after{content:"";position:absolute;left:50%;top:50%;background:rgba(10,10,12,.85)}
+#scope::before{width:min(100vw,100vh);height:1.5px;transform:translate(-50%,-50%)}
+#scope::after{width:1.5px;height:min(100vw,100vh);transform:translate(-50%,-50%)}
+#scope i{position:absolute;left:50%;top:50%;width:5px;height:5px;margin:-2.5px 0 0 -2.5px;border-radius:50%;background:#ef5a45;box-shadow:0 0 6px #ef5a45;z-index:1}
 #big{left:0;right:0;top:26%;text-align:center;font-family:var(--display);font-weight:800;font-size:clamp(44px,10vw,92px);line-height:1;text-shadow:0 4px 24px rgba(0,0,0,.65);opacity:0;transform:scale(.9);transition:opacity .18s,transform .18s}
 #big.show{opacity:1;transform:scale(1)}
 #toast{left:0;right:0;top:calc(26% + clamp(56px,11vw,104px));text-align:center;font-size:17px;font-weight:700;letter-spacing:.04em;text-shadow:0 2px 10px rgba(0,0,0,.7);opacity:0;transition:opacity .25s}
@@ -134,6 +139,7 @@ p{margin:0}
   <circle cx="36" cy="36" r="2.2" fill="#efe6d6"/>
   <path d="M36 14v7M36 51v7M14 36h7M51 36h7" stroke="#efe6d6" stroke-width="2" stroke-linecap="round" opacity=".85"/>
 </svg>
+<div class="hud" id="scope" hidden><i></i></div>
 <div class="hud" id="big"></div>
 <div class="hud" id="toast"></div>
 <div class="hud" id="hurt"></div>
@@ -147,6 +153,12 @@ p{margin:0}
     <div class="seg mapsel" role="group" aria-label="Carte">
       <button data-map="canyon" aria-pressed="true">Canyon<small>face à face, esquive sur le côté</small></button>
       <button data-map="forest" aria-pressed="false">Forêt<small>cours partout, cache-toi</small></button>
+    </div>
+    <div class="opt wpnrow" hidden><span>Arme</span>
+      <div class="seg wpnsel" role="group" aria-label="Arme en forêt">
+        <button data-wpn="bow" aria-pressed="true">Arc</button>
+        <button data-wpn="rifle" aria-pressed="false">Carabine</button>
+      </div>
     </div>
     <div class="opt"><span>Visée</span>
       <div class="seg aimsel" role="group" aria-label="Courbe de visée">
@@ -187,6 +199,12 @@ p{margin:0}
       <button data-map="canyon" aria-pressed="true">Canyon<small>face à face</small></button>
       <button data-map="forest" aria-pressed="false">Forêt<small>déplacements libres</small></button>
     </div>
+    <div class="opt wpnrow" hidden><span>Arme</span>
+      <div class="seg wpnsel" role="group" aria-label="Arme en forêt">
+        <button data-wpn="bow" aria-pressed="true">Arc</button>
+        <button data-wpn="rifle" aria-pressed="false">Carabine</button>
+      </div>
+    </div>
     <div class="status"><i class="dot" id="lobbyDot"></i><span id="lobbyStatus">En attente de ton adversaire…</span></div>
     <button class="btn primary" id="btnReady" disabled>Prêt</button>
     <button class="btn" id="btnLeave">Quitter</button>
@@ -201,6 +219,12 @@ p{margin:0}
     <div class="seg mapsel" role="group" aria-label="Carte">
       <button data-map="canyon" aria-pressed="true">Canyon<small>face à face</small></button>
       <button data-map="forest" aria-pressed="false">Forêt<small>déplacements libres</small></button>
+    </div>
+    <div class="opt wpnrow" hidden><span>Arme</span>
+      <div class="seg wpnsel" role="group" aria-label="Arme en forêt">
+        <button data-wpn="bow" aria-pressed="true">Arc</button>
+        <button data-wpn="rifle" aria-pressed="false">Carabine</button>
+      </div>
     </div>
     <p class="sub" id="overStatus"></p>
     <button class="btn primary" id="btnAgain">Revanche</button>
@@ -229,6 +253,9 @@ const G = 3.4;                 // gravité (8,5 réduite de 60 % : peu de chute)
 const VMIN = 36, VMAX = 84;    // vitesse de la flèche selon la tension
 const DRAW_T = 0.8 / 1.3 / 1.2; // temps pour bander l'arc à fond (≈ 0,51 s)
 const RELOAD = 0.75;
+const BULLET_V = VMAX * 2;     // carabine : balle sans chute, deux fois plus rapide qu'une flèche à fond
+const RIFLE_AIM_T = 0.25;      // temps pour épauler et passer dans la lunette
+const SCOPE_X = 3;             // grossissement de la lunette
 const ARROW_STEP = 0.05;       // pas de collision des flèches (m) : assez fin pour ne pas sauter le bord d'un tronc
 const WIN = 3;                 // flèches pour gagner (une dans la tête suffit)
 const HP_MAX = 300;            // barre de vie : chaque flèche enlève HP_MAX / WIN
@@ -258,6 +285,9 @@ const MAPS = {
   canyon: { key: 'canyon', spawnZ: 12, lateral: true, xlim: 2.1, zlim: 12, maxv: 1.8, acc: 15, yawLim: 0.5 },
   forest: { key: 'forest', spawnZ: 17, lateral: false, xlim: 14.5, zlim: 20.5, maxv: 3.1, acc: 22, yawLim: Infinity },
 };
+// arme en forêt : arc (par défaut) ou carabine ; le canyon reste toujours à l'arc
+let weapon = 'bow';
+try { if (localStorage.getItem('duelarc-wpn') === 'rifle') weapon = 'rifle'; } catch (e) {}
 let map = MAPS.canyon;
 let mapKey = 'canyon';
 try { const k = localStorage.getItem('duelarc-map'); if (MAPS[k]) mapKey = k; } catch (e) {}
@@ -503,7 +533,18 @@ function applyMap(k) {
   hemi.color.setHex(L.hs); hemi.groundColor.setHex(L.hg); sunL.color.setHex(L.sun); sunL.intensity = L.sunI;
   try { localStorage.setItem('duelarc-map', k); } catch (e) {}
   document.querySelectorAll('.mapsel button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.map === k)));
+  document.querySelectorAll('.wpnrow').forEach(r => { r.hidden = k !== 'forest'; });
+  dressArchers();
 }
+const curW = () => map.lateral ? 'bow' : weapon;
+function setWeapon(w) {
+  weapon = w === 'rifle' ? 'rifle' : 'bow';
+  try { localStorage.setItem('duelarc-wpn', weapon); } catch (e) {}
+  document.querySelectorAll('.wpnsel button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.wpn === weapon)));
+  dressArchers();
+}
+const archers = []; // remplis à la création des deux archers
+function dressArchers() { for (const A of archers) A.setWeapon(curW()); }
 function updateFlags(t) {
   for (const f of flags) {
     if (!f.group.visible) continue;
@@ -556,6 +597,15 @@ const streakMat = {
   me: new T.MeshBasicMaterial({ color: 0x8ff5e6, transparent: true, opacity: .32, blending: T.AdditiveBlending, depthWrite: false }),
   opp: new T.MeshBasicMaterial({ color: 0xffa070, transparent: true, opacity: .38, blending: T.AdditiveBlending, depthWrite: false }),
 };
+// balle de carabine (pointe à l'origine, vers -Z) : petit plomb sombre + traceur ; reste comme un impact dans le bois
+const bulletGeo = new T.SphereGeometry(0.022, 6, 4); bulletGeo.scale(1, 1, 1.8);
+const bulletMat = std(0x26221f, { roughness: .6 });
+function makeBullet(owner) {
+  const g = new T.Group();
+  g.add(new T.Mesh(bulletGeo, bulletMat));
+  const s = new T.Mesh(streakGeo, streakMat[owner]); s.name = 'streak'; s.scale.set(0.5, 0.5, 1); g.add(s);
+  return g;
+}
 function makeArrow(owner, streak) {
   const g = new T.Group();
   g.add(new T.Mesh(tipGeo, ironMat), new T.Mesh(shaftGeo, shaftMat), new T.Mesh(fl1, fletchMat[owner]), new T.Mesh(fl2, fletchMat[owner]));
@@ -600,7 +650,7 @@ const smokeV = new T.Vector3();
 let smokeIdx = 0, smokeDirty = false, smokeTintDirty = false;
 function emitSmoke(a, back = 0) {
   smokeV.copy(a.v).normalize();
-  const i = smokeIdx, k = 0.9 + back; smokeIdx = (smokeIdx + 1) % SMOKE_N;
+  const i = smokeIdx, k = a.tail + back; smokeIdx = (smokeIdx + 1) % SMOKE_N;
   smokePos[i * 3] = a.p.x - smokeV.x * k; smokePos[i * 3 + 1] = a.p.y - smokeV.y * k; smokePos[i * 3 + 2] = a.p.z - smokeV.z * k;
   smokeBirth[i] = t; smokeTint[i] = 0; smokeArrow[i] = a.sid; smokeDirty = true;
 }
@@ -636,7 +686,22 @@ function makeArcher(cloth, hoodCol, owner) {
   const hood = new T.Mesh(new T.ConeGeometry(0.2, 0.42, 7), hoodM); hood.position.set(0, 0.49, 0.05); hood.rotation.x = -0.28; upper.add(hood);
   const cape = new T.Mesh(new T.ConeGeometry(0.3, 0.9, 7, 1, true), hoodM); cape.position.set(0, -0.12, 0.08); cape.rotation.x = 0.12; upper.add(cape);
   const quiver = new T.Mesh(new T.CylinderGeometry(0.075, 0.06, 0.55, 6), wood); quiver.position.set(0.13, 0.12, 0.24); quiver.rotation.z = -0.35; upper.add(quiver);
-  for (let i = 0; i < 3; i++) { const f = new T.Mesh(fl1, fletchMat[owner]); f.position.set(0.22 + i * 0.03, 0.42, 0.24 + i * 0.02 - 0.9); f.rotation.z = -0.35; upper.add(f); }
+  const quiverArrows = [];
+  for (let i = 0; i < 3; i++) { const f = new T.Mesh(fl1, fletchMat[owner]); f.position.set(0.22 + i * 0.03, 0.42, 0.24 + i * 0.02 - 0.9); f.rotation.z = -0.35; upper.add(f); quiverArrows.push(f); }
+  // carabine de chasse en bois avec lunette, épaulée à droite (le long de -Z)
+  const rifle = new T.Group(); rifle.position.set(0.12, 0.16, -0.18); rifle.visible = false; upper.add(rifle);
+  const stockM = std(0x8a5a2e, { roughness: .7 }), steel = std(0x2a2a2f, { metalness: .5, roughness: .45 });
+  const part = (geo, mat, x, y, z) => { const m = new T.Mesh(geo, mat); m.position.set(x, y, z); rifle.add(m); return m; };
+  part(new T.BoxGeometry(0.05, 0.12, 0.36), stockM, 0, -0.035, 0.09);          // crosse
+  part(new T.BoxGeometry(0.048, 0.07, 0.26), steel, 0, 0.0, -0.2);             // boîtier
+  part(new T.BoxGeometry(0.055, 0.06, 0.36), stockM, 0, -0.012, -0.44);        // fût
+  const barrel = part(new T.CylinderGeometry(0.013, 0.015, 0.62, 6), steel, 0, 0.02, -0.56); barrel.rotation.x = Math.PI / 2;
+  const scopeT = part(new T.CylinderGeometry(0.024, 0.024, 0.3, 8), steel, 0, 0.078, -0.22); scopeT.rotation.x = Math.PI / 2;
+  for (const z of [-0.06, -0.38]) { const l = part(new T.CylinderGeometry(0.033, 0.03, 0.06, 8), steel, 0, 0.078, z); l.rotation.x = Math.PI / 2; }
+  for (const z of [-0.14, -0.3]) part(new T.BoxGeometry(0.02, 0.05, 0.02), steel, 0, 0.045, z);
+  const muzzle = new T.Vector3(0, 0.02, -0.88);
+  const handL = new T.Vector3(0.12, 0.13, -0.63), handR = new T.Vector3(0.12, 0.12, -0.32);
+  let wpn = 'bow';
   const grip = new T.Vector3(-0.04, 0.15, -0.58);
   const bow = new T.Group(); bow.position.copy(grip); bow.rotation.z = 0.14; upper.add(bow);
   const curve = new T.QuadraticBezierCurve3(new T.Vector3(0, -0.66, 0.07), new T.Vector3(0, 0, -0.52), new T.Vector3(0, 0.66, 0.07));
@@ -649,8 +714,14 @@ function makeArcher(cloth, hoodCol, owner) {
   const shL = new T.Vector3(-0.2, 0.18, 0), shR = new T.Vector3(0.2, 0.18, 0);
   armL.set(shL, grip);
   const headPos = new T.Vector3();
+  function setWeapon(w) {
+    wpn = w; const bowOn = w !== 'rifle';
+    bow.visible = quiver.visible = bowOn; quiverArrows.forEach(f => { f.visible = bowOn; }); rifle.visible = !bowOn;
+    if (bowOn) armL.set(shL, grip); else { armL.set(shL, handL); armR.set(shR, handR); }
+  }
   function setPose(pitch, draw, isNocked) {
     upper.rotation.x = pitch;
+    if (wpn === 'rifle') { rifle.position.z = -0.18 + draw * 0.04; return; }
     const nz = 0.07 + draw * 0.5;
     const p = strGeo.attributes.position; p.setZ(1, nz); p.needsUpdate = true;
     nocked.visible = isNocked; nocked.position.set(0, 0, nz - 1.01);
@@ -659,12 +730,14 @@ function makeArcher(cloth, hoodCol, owner) {
   // centre de la zone « tête » (tête + capuche), suit l'inclinaison du buste
   function updateHead() { root.updateMatrixWorld(true); return upper.localToWorld(headPos.set(0, 0.42, 0.02)); }
   setPose(0, 0, true);
-  function bowWorld(out) { root.updateMatrixWorld(true); return bow.localToWorld(out.set(0, 0, -0.35)); }
+  // point de départ du tir : devant l'arc, ou bout du canon
+  function bowWorld(out) { root.updateMatrixWorld(true); return wpn === 'rifle' ? rifle.localToWorld(out.copy(muzzle)) : bow.localToWorld(out.set(0, 0, -0.35)); }
   scene.add(root);
-  return { root, upper, setPose, bowWorld, updateHead, headPos };
+  return { root, upper, setPose, setWeapon, bowWorld, updateHead, headPos };
 }
 const meA = makeArcher(0x2f8f83, 0x1f5f58, 'me');
 const oppA = makeArcher(0xa8342a, 0x6e1f1a, 'opp');
+archers.push(meA, oppA); dressArchers();
 
 // ---------- sound (synth, starts after first tap)
 let actx = null, noise = null;
@@ -694,6 +767,7 @@ function sfx(k, v = 1) {
   try {
     if (k === 'twang') { tone('triangle', 240, 90, 0.22, 0.28 * v); hiss('highpass', 3000, 1500, 0.06, 0.12 * v); }
     else if (k === 'whoosh') hiss('bandpass', 700, 2600, 0.45, 0.22 * v);
+    else if (k === 'bang') { hiss('lowpass', 5000, 400, 0.32, 0.6 * v); tone('sine', 120, 40, 0.25, 0.5 * v); }
     else if (k === 'thunk') { tone('sine', 150, 55, 0.14, 0.4 * v); hiss('lowpass', 1200, 300, 0.08, 0.2 * v); }
     else if (k === 'hit') { tone('square', 660, 660, 0.09, 0.09); tone('square', 990, 990, 0.14, 0.09, 0.08); }
     else if (k === 'head') { tone('square', 660, 660, 0.08, 0.1); tone('square', 990, 990, 0.08, 0.1, 0.07); tone('square', 1320, 1320, 0.2, 0.1, 0.14); }
@@ -870,24 +944,25 @@ function aimPoint(o, out) {
 }
 // où une flèche tirée de o à la vitesse v s'arrêterait (mêmes collisions que les vraies flèches, sans effet)
 const UP = new T.Vector3(0, 1, 0), simP = new T.Vector3(), simV = new T.Vector3();
-function flightEnd(o, v) {
+function flightEnd(o, v, g = G) {
   simP.copy(o); simV.copy(v);
   const h = ARROW_STEP / v.length();
   let obsR2 = 0; // au-delà de ce rayon il n'y a plus d'obstacle à tester
   for (const ob of obstacles) obsR2 = Math.max(obsR2, (Math.hypot(ob.x, ob.z) + ob.r) ** 2);
   for (let t = 0; t < 6; t += h) {
-    simV.y -= G * h; simP.addScaledVector(simV, h);
+    simV.y -= g * h; simP.addScaledVector(simV, h);
     if (mode === 'practice') {
       if (simP.z < TARGET.z + 0.08 && simP.z > TARGET.z - 0.14 && Math.hypot(simP.x - TARGET.x, simP.y - TARGET.y) < TARGET.r) break;
     } else if (hitZone(simP, opp, oppA)) break;
     if (simP.x * simP.x + simP.z * simP.z < obsR2 && inObstacle(simP)) break;
     if (simP.y < 0 && (!map.lateral || canyonRock(simP) !== null)) break;
-    if (simP.y < -85) break;
+    if (simP.y < -85 || simP.x * simP.x + simP.z * simP.z > 22500) break; // plus rien à toucher au-delà de 150 m
   }
   return simP;
 }
 function fire() {
-  const speed = VMIN + (VMAX - VMIN) * me.draw;
+  const kind = curW() === 'rifle' ? 'bullet' : 'arrow', g = kind === 'bullet' ? 0 : G;
+  const speed = kind === 'bullet' ? BULLET_V : VMIN + (VMAX - VMIN) * me.draw;
   const o = meA.bowWorld(new T.Vector3());
   forward(me.yaw, me.pitch, camF);
   const v = aimPoint(o, aimP).sub(o).normalize().multiplyScalar(speed);
@@ -895,7 +970,7 @@ function fire() {
   // tourne le tir à l'horizontale jusqu'à ce que la flèche s'arrête pile dans l'axe du viseur
   // (un essai n'est gardé que s'il rapproche la flèche de l'axe : un arbre devant l'arc reste un arbre devant l'arc)
   const right = new T.Vector3(Math.cos(me.yaw), 0, -Math.sin(me.yaw)), c = camera.position, v2 = new T.Vector3();
-  const miss = w => { const end = flightEnd(o, w); return [tmpV.copy(end).sub(c).dot(right), Math.hypot(end.x - o.x, end.z - o.z)]; };
+  const miss = w => { const end = flightEnd(o, w, g); return [tmpV.copy(end).sub(c).dot(right), Math.hypot(end.x - o.x, end.z - o.z)]; };
   let [e, dist] = miss(v), k = 1;
   for (let it = 0; it < 10 && Math.abs(e) > 0.005 && dist > 0.5; it++) {
     v2.copy(v).applyAxisAngle(UP, Math.atan2(e, dist) * k);
@@ -903,9 +978,9 @@ function fire() {
     if (Math.abs(e2) < Math.abs(e)) { v.copy(v2); e = e2; dist = d2; k = 1; } else k *= 0.5;
   }
   const id = ++shotSeq;
-  spawnArrow('me', o, v, id);
-  if (mode === 'online' && nroom) nroom.emit('shot', { g: net.started, id, o: [r3(o.x), r3(o.y), r3(o.z)], v: [r3(v.x), r3(v.y), r3(v.z)] }).catch(() => {});
-  me.reload = RELOAD; sfx('twang');
+  spawnArrow('me', o, v, id, kind);
+  if (mode === 'online' && nroom) nroom.emit('shot', { g: net.started, id, k: kind === 'bullet' ? 'b' : 'a', o: [r3(o.x), r3(o.y), r3(o.z)], v: [r3(v.x), r3(v.y), r3(v.z)] }).catch(() => {});
+  me.reload = RELOAD; sfx(kind === 'bullet' ? 'bang' : 'twang');
 }
 function updateMe(dt) {
   let ix, iy;
@@ -934,7 +1009,7 @@ function updateMe(dt) {
   if (keys.ArrowRight) me.yaw = clamp(me.yaw - dt * 1.2, -map.yawLim, map.yawLim);
   me.reload = Math.max(0, me.reload - dt);
   if (aimId !== null && !me.drawing && me.reload <= 0 && phase === 'fight') me.drawing = true;
-  if (me.drawing) me.draw = Math.min(1, me.draw + dt / DRAW_T);
+  if (me.drawing) me.draw = Math.min(1, me.draw + dt / (curW() === 'rifle' ? RIFLE_AIM_T : DRAW_T));
   meA.root.position.set(me.x, 0, me.z); meA.root.rotation.y = me.yaw;
   meA.setPose(me.pitch, me.draw, me.reload <= 0);
   meA.updateHead();
@@ -942,17 +1017,18 @@ function updateMe(dt) {
 
 // ---------- bot
 const bot = { tx: 0, tz: -12, moveT: 0, shootT: 2, drawing: false, drawGoal: 1, reload: 0, hold: 0, ex: 0, ey: 0, lead: 0, stuck: 0 };
-function solveBallistic(o, tx, ty, tz, speed) {
+function solveBallistic(o, tx, ty, tz, speed, G) {
   const dx = tx - o.x, dz = tz - o.z, d = Math.hypot(dx, dz) || 0.01, h = ty - o.y, v2 = speed * speed;
+  if (!G) return { yaw: Math.atan2(dx, dz), pitch: Math.atan2(h, d), hx: dx / d, hz: dz / d, d };
   const disc = v2 * v2 - G * (G * d * d + 2 * h * v2);
   const th = disc < 0 ? Math.PI / 4 : Math.atan((v2 - Math.sqrt(disc)) / (G * d));
   return { yaw: Math.atan2(dx, dz), pitch: th, hx: dx / d, hz: dz / d, d };
 }
 function botAim() {
-  const speed = VMIN + (VMAX - VMIN) * bot.drawGoal;
+  const rifle = curW() === 'rifle', speed = rifle ? BULLET_V : VMIN + (VMAX - VMIN) * bot.drawGoal;
   const o = oppA.bowWorld(tmpB);
   const dist = Math.hypot(me.x - o.x, me.z - o.z), flight = dist / (speed * 0.97), err = Math.max(0.6, dist / 24);
-  return { o, speed, sol: solveBallistic(o, me.x + bot.ex * err + me.vx * flight * bot.lead, 1.0 + bot.ey * err, me.z + me.vz * flight * bot.lead, speed) };
+  return { o, speed, sol: solveBallistic(o, me.x + bot.ex * err + me.vx * flight * bot.lead, 1.0 + bot.ey * err, me.z + me.vz * flight * bot.lead, speed, rifle ? 0 : G) };
 }
 const losA = new T.Vector3(), losB = new T.Vector3();
 function botPickWaypoint() {
@@ -1027,7 +1103,7 @@ function botUpdate(dt) {
       bot.ex = gauss() * 0.4; bot.ey = gauss() * 0.3; bot.lead = rand(0, 0.8);
     }
   } else {
-    opp.draw = Math.min(bot.drawGoal, opp.draw + dt / DRAW_T);
+    opp.draw = Math.min(bot.drawGoal, opp.draw + dt / (curW() === 'rifle' ? RIFLE_AIM_T : DRAW_T));
     const { o, speed, sol } = botAim();
     const k = 1 - Math.exp(-dt * 8);
     opp.yaw += angDiff(opp.yaw, sol.yaw) * k; opp.pitch += (sol.pitch - opp.pitch) * k;
@@ -1035,8 +1111,9 @@ function botUpdate(dt) {
       bot.hold += dt;
       if (bot.hold > 0.18 && see) {
         const c = Math.cos(sol.pitch) * speed;
-        spawnArrow('opp', o.clone(), new T.Vector3(sol.hx * c, Math.sin(sol.pitch) * speed, sol.hz * c));
-        sfx('twang', 0.35);
+        const rifle = curW() === 'rifle';
+        spawnArrow('opp', o.clone(), new T.Vector3(sol.hx * c, Math.sin(sol.pitch) * speed, sol.hz * c), 0, rifle ? 'bullet' : 'arrow');
+        sfx(rifle ? 'bang' : 'twang', rifle ? 0.5 : 0.35);
         bot.drawing = false; opp.draw = 0; bot.reload = RELOAD; bot.shootT = rand(0.8, 2.3);
       } else if (bot.hold > 1.6) { bot.drawing = false; opp.draw = 0; bot.shootT = rand(0.3, 1); }
     }
@@ -1057,11 +1134,13 @@ function updateOpp(dt) {
 
 // ---------- arrow physics
 function orient(a) { a.m.quaternion.setFromUnitVectors(NEG_Z, tmpV.copy(a.v).normalize()); }
-function spawnArrow(owner, p, v, id = 0) {
-  const m = makeArrow(owner, true); m.position.copy(p); scene.add(m);
-  const a = { owner, id, sid: ++arrowSerial, p, v, m, flying: true, pending: 0, life: 0, botSeen: false };
+function spawnArrow(owner, p, v, id = 0, kind = 'arrow') {
+  const bullet = kind === 'bullet';
+  const m = bullet ? makeBullet(owner) : makeArrow(owner, true); m.position.copy(p); scene.add(m);
+  // g : gravité propre au projectile (la balle n'en a pas) ; tail : distance de la pointe à l'arrière, d'où sort la fumée
+  const a = { owner, id, kind, g: bullet ? 0 : G, tail: bullet ? 0.05 : 0.9, sid: ++arrowSerial, p, v, m, flying: true, pending: 0, life: 0, botSeen: false };
   orient(a); arrows.push(a);
-  if (owner === 'opp') sfx('whoosh', 0.7);
+  if (owner === 'opp' && !bullet) sfx('whoosh', 0.7);
   const stuck = arrows.filter(x => !x.flying);
   while (stuck.length > 30) { const old = stuck.shift(); if (old.m.parent) old.m.parent.remove(old.m); arrows.splice(arrows.indexOf(old), 1); }
 }
@@ -1090,7 +1169,9 @@ function pierceDepth(p, dir, model, head) {
 }
 // plante la flèche dans l'archer, accrochée au buste (qui se penche pour viser) ou au bas du corps
 function plantInArcher(a, model, head) {
-  stopArrow(a); a.pending = 0; a.m.visible = true;
+  stopArrow(a); a.pending = 0;
+  if (a.kind === 'bullet') { a.m.visible = false; a.gone = true; a.part = 'r'; tintSmoke(a); return; } // la balle ne reste pas dans le corps
+  a.m.visible = true;
   orient(a); tmpV.copy(a.v).normalize();
   a.m.position.copy(a.p).addScaledVector(tmpV, pierceDepth(a.p, tmpV, model, head));
   model.root.updateMatrixWorld(true);
@@ -1107,7 +1188,9 @@ function hitArcher(a, model, head) {
   if (mode === 'online' && nroom) {
     // après attach, position et rotation sont locales à la partie du corps touchée : l'autre replante la flèche au même endroit
     const lp = a.m.position; tmpV.set(0, 0, -1).applyQuaternion(a.m.quaternion);
-    nroom.emit('hit', { g: net.started, id: a.id, landed: opp.taken, head, part: a.part, lp: [r3(lp.x), r3(lp.y), r3(lp.z)], ld: [r3(tmpV.x), r3(tmpV.y), r3(tmpV.z)] }).catch(() => {});
+    const msg = { g: net.started, id: a.id, landed: opp.taken, head, part: a.part };
+    if (a.kind !== 'bullet') Object.assign(msg, { lp: [r3(lp.x), r3(lp.y), r3(lp.z)], ld: [r3(tmpV.x), r3(tmpV.y), r3(tmpV.z)] });
+    nroom.emit('hit', msg).catch(() => {});
     pres({ landed: opp.taken });
   }
 }
@@ -1160,12 +1243,13 @@ function updateArrows(dt) {
     const a = arrows[i];
     if (!a.flying) {
       if (a.pending > 0) { a.pending -= dt; if (a.pending <= 0) { if (a.m.parent) a.m.parent.remove(a.m); arrows.splice(i, 1); } }
+      else if (a.gone) { if (a.m.parent) a.m.parent.remove(a.m); arrows.splice(i, 1); }
       continue;
     }
     a.life += dt;
     const n = Math.max(1, Math.ceil(a.v.length() * dt / ARROW_STEP)), h = dt / n;
     for (let s = 0; s < n && a.flying; s++) {
-      a.v.y -= G * h; a.p.addScaledVector(a.v, h); collide(a);
+      a.v.y -= a.g * h; a.p.addScaledVector(a.v, h); collide(a);
       a.smokeD = (a.smokeD || 0) + a.v.length() * h;
       // plusieurs bouffées par sous-pas, réparties en arrière le long du trajet
       while (a.flying && a.smokeD >= SMOKE_STEP) { a.smokeD -= SMOKE_STEP; emitSmoke(a, a.smokeD); }
@@ -1183,7 +1267,8 @@ let orbitT = 0;
 function updateCamera(dt) {
   const inGame = mode && phase !== 'idle';
   if (inGame) {
-    const base = portrait ? 72 : 52, zoom = portrait ? 46 : 32;
+    const base = portrait ? 72 : 52;
+    const zoom = curW() === 'rifle' ? 2 * Math.atan(Math.tan(base * Math.PI / 360) / SCOPE_X) * 180 / Math.PI : (portrait ? 46 : 32);
     const want = base + (zoom - base) * (me.drawing ? Math.sin(me.draw * Math.PI / 2) : 0);
     fov += (want - fov) * (1 - Math.exp(-dt * 10));
     camOffset(camera.position);
@@ -1209,7 +1294,10 @@ function updateCamera(dt) {
   sky.position.copy(camera.position);
 }
 const ringEl = $('#ring'), knobEl = $('#knob');
+const scopeEl = $('#scope'), crossEl = $('#cross');
 function drawHud() {
+  const scoped = !!mode && phase !== 'idle' && curW() === 'rifle' && me.drawing && me.draw > 0.6;
+  scopeEl.hidden = !scoped; crossEl.style.visibility = scoped ? 'hidden' : '';
   if (!mode || phase === 'idle') return;
   ringEl.setAttribute('stroke-dashoffset', (169.6 * (1 - me.draw)).toFixed(1));
   ringEl.setAttribute('stroke', me.draw >= 1 ? '#f2914a' : (me.reload > 0 ? 'rgba(239,230,214,.35)' : '#efe6d6'));
@@ -1319,7 +1407,7 @@ async function enterRoom(code, creator) {
     nroom.on('shot', onShot),
     nroom.on('hit', onHit),
   ];
-  pres({ rdy: false, tok: '', started: '', landed: 0, mapK: mapKey, mapV });
+  pres({ rdy: false, tok: '', started: '', landed: 0, mapK: mapKey, wpn: weapon, mapV });
   phase = 'idle';
   $('#lobbyCode').textContent = code;
   renderLobby(); showPanel('#lobby');
@@ -1346,7 +1434,8 @@ function applyOppPres(p) {
   // carte choisie dans le salon : le dernier qui change l'emporte
   if ((phase === 'idle' || phase === 'over') && MAPS[p.mapK]) {
     const v = num(p.mapV, 0);
-    if (v > mapV || (v === mapV && p.mapK !== mapKey && oppPeer < myId)) { mapV = v; applyMap(p.mapK); }
+    const w = p.wpn === 'rifle' ? 'rifle' : 'bow';
+    if (v > mapV || (v === mapV && (p.mapK !== mapKey || w !== weapon) && oppPeer < myId)) { mapV = v; setWeapon(w); applyMap(p.mapK); }
   }
   const M = MAPS[mapKey];
   opp.tx = -clamp(num(p.x, 0), -M.xlim, M.xlim);
@@ -1368,9 +1457,10 @@ function onShot(msg) {
   if (!Array.isArray(o) || !Array.isArray(v) || o.length !== 3 || v.length !== 3) return;
   const op = new T.Vector3(-num(o[0], 0), num(o[1], 1.4), -num(o[2], 0));
   const vv = new T.Vector3(-num(v[0], 0), num(v[1], 0), -num(v[2], 0));
-  if (vv.length() > 130 || Math.hypot(op.x - opp.x, op.z - opp.z) > 5) return;
-  spawnArrow('opp', op, vv, num(msg.data.id, 0));
-  sfx('twang', 0.35);
+  if (vv.length() > BULLET_V * 1.1 || Math.hypot(op.x - opp.x, op.z - opp.z) > 5) return;
+  const bullet = msg.data.k === 'b';
+  spawnArrow('opp', op, vv, num(msg.data.id, 0), bullet ? 'bullet' : 'arrow');
+  sfx(bullet ? 'bang' : 'twang', bullet ? 0.5 : 0.35);
 }
 function onHit(msg) {
   if (!fromOpp(msg)) return;
@@ -1393,27 +1483,37 @@ function chooseMap(k) {
   if (mode === 'online') {
     if (!(phase === 'idle' || phase === 'over')) return;
     mapV = Math.max(mapV, oppPres ? num(oppPres.mapV, 0) : 0) + 1;
-    applyMap(k); pres({ mapK: k, mapV });
+    applyMap(k); pres({ mapK: k, wpn: weapon, mapV });
   } else applyMap(k);
+}
+function chooseWeapon(w) {
+  if (mode === 'online') {
+    if (!(phase === 'idle' || phase === 'over')) return;
+    mapV = Math.max(mapV, oppPres ? num(oppPres.mapV, 0) : 0) + 1;
+    setWeapon(w); pres({ mapK: mapKey, wpn: weapon, mapV });
+  } else setWeapon(w);
 }
 function pressReady() {
   audioInit();
   net.rp = true; net.tok = Math.random().toString(36).slice(2, 10);
-  pres({ rdy: true, tok: net.tok, mapK: mapKey });
+  pres({ rdy: true, tok: net.tok, mapK: mapKey, wpn: weapon });
   renderLobby(); renderOverStatus(); evaluateReady();
 }
 function evaluateReady() {
   if (!net.rp || !oppPres) return;
   const p = oppPres;
-  if (typeof p.started === 'string' && p.started.split('|').includes(net.tok)) return startOnline(p.started, MAPS[p.smap] ? p.smap : mapKey);
+  const pw = w => w === 'rifle' ? 'rifle' : 'bow';
+  if (typeof p.started === 'string' && p.started.split('|').includes(net.tok)) return startOnline(p.started, MAPS[p.smap] ? p.smap : mapKey, p.swpn ? pw(p.swpn) : weapon);
   if (p.rdy === true && typeof p.tok === 'string' && /^[a-z0-9]{4,12}$/.test(p.tok)) {
-    const k = net.tok < p.tok ? mapKey : (MAPS[p.mapK] ? p.mapK : mapKey);
-    startOnline([net.tok, p.tok].sort().join('|'), k);
+    const mine = net.tok < p.tok;
+    const k = mine ? mapKey : (MAPS[p.mapK] ? p.mapK : mapKey), w = mine ? weapon : pw(p.wpn);
+    startOnline([net.tok, p.tok].sort().join('|'), k, w);
   }
 }
-function startOnline(id, k) {
+function startOnline(id, k, w) {
   net.rp = false; net.started = id;
-  pres({ rdy: false, started: id, smap: k, landed: 0 });
+  setWeapon(w);
+  pres({ rdy: false, started: id, smap: k, swpn: weapon, landed: 0 });
   resetMatch(k);
 }
 function renderLobby() {
@@ -1440,6 +1540,7 @@ function renderOverStatus() {
 
 // ---------- buttons
 document.querySelectorAll('.mapsel button').forEach(b => b.addEventListener('click', () => chooseMap(b.dataset.map)));
+document.querySelectorAll('.wpnsel button').forEach(b => b.addEventListener('click', () => chooseWeapon(b.dataset.wpn)));
 document.querySelectorAll('.aimsel button').forEach(b => b.addEventListener('click', () => setAimCurve(b.dataset.aim)));
 setAimCurve(aimCurve);
 document.querySelectorAll('.tintsel button').forEach(b => b.addEventListener('click', () => setTintHits(b.dataset.tint === 'on')));
@@ -1466,6 +1567,7 @@ $('#quit').addEventListener('click', () => {
 });
 
 // ---------- loop
+setWeapon(weapon);
 applyMap(mapKey);
 let last = performance.now(), t = 0;
 function frame(now) {
