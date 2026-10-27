@@ -222,6 +222,7 @@ const G = 3.4;                 // gravité (8,5 réduite de 60 % : peu de chute)
 const VMIN = 36, VMAX = 84;    // vitesse de la flèche selon la tension
 const DRAW_T = 0.8 / 1.3 / 1.2; // temps pour bander l'arc à fond (≈ 0,51 s)
 const RELOAD = 0.75;
+const ARROW_STEP = 0.05;       // pas de collision des flèches (m) : assez fin pour ne pas sauter le bord d'un tronc
 const WIN = 2;
 const BODY_R = 0.27, BODY_TOP = 1.52;  // corps : capsule verticale des pieds (y=0) jusqu'aux épaules
 const HEAD_R = 0.21;                   // tête : une touche = victoire
@@ -295,6 +296,33 @@ function rough(geo, amt) {
 }
 const std = (color, extra) => new T.MeshStandardMaterial(Object.assign({ color, flatShading: true, roughness: 1, metalness: 0 }, extra || {}));
 const OBST = { canyon: [], forest: [] };
+// forme réelle d'un tronc : les triangles de son flanc tels qu'ils sont dessinés (cylindre irrégulier qui s'affine)
+function trunkTris(geo, h, x, z) {
+  const p = geo.attributes.position, n = geo.parameters.radialSegments, hs = geo.parameters.heightSegments, tris = [];
+  const v = k => [x + p.getX(k), p.getY(k) + h / 2, z + p.getZ(k)];
+  for (let j = 0; j < hs; j++) for (let i = 0; i < n; i++) {
+    const a = v(j * (n + 1) + i), b = v((j + 1) * (n + 1) + i), c = v((j + 1) * (n + 1) + i + 1), d = v(j * (n + 1) + i + 1);
+    tris.push(...a, ...b, ...d, ...b, ...c, ...d); // même découpage que CylinderGeometry
+  }
+  return new Float32Array(tris);
+}
+// le point est-il dans le tronc dessiné ? on coupe le flanc à la hauteur du point et on compte les traversées d'un rayon horizontal
+function inTrunkShape(o, p) {
+  const t = o.tris, y = p.y; let cross = 0;
+  for (let i = 0; i < t.length; i += 9) {
+    // segment où ce triangle coupe le plan horizontal y
+    let sx = 0, sz = 0, ex = 0, ez = 0, got = 0;
+    for (let e = 0; e < 3; e++) {
+      const i1 = i + e * 3, i2 = i + ((e + 1) % 3) * 3, y1 = t[i1 + 1], y2 = t[i2 + 1];
+      if ((y1 > y) === (y2 > y)) continue;
+      const k = (y - y1) / (y2 - y1), qx = t[i1] + (t[i2] - t[i1]) * k, qz = t[i1 + 2] + (t[i2 + 2] - t[i1 + 2]) * k;
+      if (got++) { ex = qx; ez = qz; } else { sx = qx; sz = qz; }
+    }
+    if (got < 2 || (sz > p.z) === (ez > p.z)) continue;
+    if (sx + (p.z - sz) * (ex - sx) / (ez - sz) > p.x) cross++;
+  }
+  return (cross & 1) === 1;
+}
 let obstacles = OBST.canyon;
 const flags = [];
 
@@ -372,7 +400,7 @@ const forestG = new T.Group(); scene.add(forestG); forestG.visible = false;
       c.position.y = 4.4 + i * 1.55 * s + 1.4 * s; c.rotation.y = rr(0, 3); g.add(c);
     }
     forestG.add(g);
-    if (solid) OBST.forest.push({ type: 'trunk', x, z, r: r * 1.05, h });
+    if (solid) OBST.forest.push({ type: 'trunk', x, z, r: r * 1.05, h, tris: trunkTris(trunk.geometry, h, x, z) });
   }
   function oakTree(x, z, r, solid) {
     const g = new T.Group(); g.position.set(x, 0, z);
@@ -384,7 +412,7 @@ const forestG = new T.Group(); scene.add(forestG); forestG.visible = false;
       c.position.set(rr(-1.2, 1.2), rr(6.8, 8.4), rr(-1.2, 1.2)); g.add(c);
     }
     forestG.add(g);
-    if (solid) OBST.forest.push({ type: 'trunk', x, z, r: r * 1.15, h });
+    if (solid) OBST.forest.push({ type: 'trunk', x, z, r: r * 1.15, h, tris: trunkTris(trunk.geometry, h, x, z) });
   }
   function rock(x, z, r, rot) {
     const m = new T.Mesh(rough(new T.DodecahedronGeometry(r, 1), r * 0.18), rockM);
@@ -471,11 +499,15 @@ function updateFlags(t) {
     p.needsUpdate = true; f.geo.computeVertexNormals();
   }
 }
-// obstacles : troncs (cylindres verticaux) et rochers (sphères aplaties)
+// obstacles : troncs (forme exacte pour les flèches, cylindre englobant avec marge pour joueurs et caméra) et rochers (sphères aplaties)
 function inObstacle(p, m = 0) {
   for (const o of obstacles) {
     const dx = p.x - o.x, dz = p.z - o.z, r = o.r + m;
-    if (o.type === 'trunk') { if (p.y < o.h && dx * dx + dz * dz < r * r) return true; }
+    if (o.type === 'trunk') {
+      if (p.y >= o.h) continue;
+      if (o.tris && !m) { if (dx * dx + dz * dz < r * r * 1.5 && inTrunkShape(o, p)) return true; }
+      else if (dx * dx + dz * dz < r * r) return true;
+    }
     else { const dy = (p.y - o.cy) / o.sy; if (dx * dx + dz * dz + dy * dy < r * r) return true; }
   }
   return false;
@@ -811,7 +843,7 @@ function aimPoint(o, out) {
 const UP = new T.Vector3(0, 1, 0), simP = new T.Vector3(), simV = new T.Vector3();
 function flightEnd(o, v) {
   simP.copy(o); simV.copy(v);
-  const h = 0.15 / v.length();
+  const h = ARROW_STEP / v.length();
   let obsR2 = 0; // au-delà de ce rayon il n'y a plus d'obstacle à tester
   for (const ob of obstacles) obsR2 = Math.max(obsR2, (Math.hypot(ob.x, ob.z) + ob.r) ** 2);
   for (let t = 0; t < 6; t += h) {
@@ -1084,7 +1116,7 @@ function updateArrows(dt) {
       continue;
     }
     a.life += dt;
-    const n = Math.max(1, Math.ceil(a.v.length() * dt / 0.15)), h = dt / n;
+    const n = Math.max(1, Math.ceil(a.v.length() * dt / ARROW_STEP)), h = dt / n;
     for (let s = 0; s < n && a.flying; s++) {
       a.v.y -= G * h; a.p.addScaledVector(a.v, h); collide(a);
       a.smokeD = (a.smokeD || 0) + a.v.length() * h;
