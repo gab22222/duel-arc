@@ -11,6 +11,7 @@ Deux cartes :
 
 Pour jouer : https://gab22222.github.io/duel-arc/
 
-- Un joueur appuie sur **Créer une partie** et donne le code à l'autre, qui le tape puis appuie sur **Rejoindre**.
+- Un joueur appuie sur **Créer une partie** et donne le code aux autres, qui le tapent puis appuient sur **Rejoindre**.
+- **À 3 (1v1v1)** : si trois joueurs sont dans le salon, la partie démarre quand les trois ont appuyé sur **Prêt**. On joue en forêt, chacun part d'un côté, le dernier debout gagne. Les adversaires sont en rouge et en jaune.
 - Gauche : glisser pour se déplacer (joystick en forêt). Droite : maintenir pour bander l'arc, glisser pour viser, relâcher pour tirer.
 - Aucun compte n'est nécessaire. Le multijoueur passe par un relais MQTT public (broker.emqx.io).

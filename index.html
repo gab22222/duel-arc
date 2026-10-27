@@ -41,6 +41,8 @@ body{position:fixed;inset:0;touch-action:none;-webkit-user-select:none;user-sele
 .pip.on{background:currentColor;box-shadow:0 0 8px currentColor}
 .me{color:var(--teal)}
 .them{color:var(--crimson)}
+.them2{color:#e8b93a}
+.mapsel button:disabled{opacity:.35;cursor:default}
 .vs{color:var(--mute);font-size:12px;letter-spacing:.12em}
 
 #hp{left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 8px);transform:translateX(-50%);display:flex;align-items:center;gap:10px;font-family:var(--display);font-weight:700;font-size:14px;letter-spacing:.06em;color:var(--teal);text-shadow:0 1px 6px rgba(0,0,0,.8);white-space:nowrap;transition:color .3s}
@@ -132,6 +134,7 @@ p{margin:0}
   <div class="side me">Toi <div class="pips" id="pipsMe"><i class="pip"></i><i class="pip"></i><i class="pip"></i></div></div>
   <div class="vs">contre</div>
   <div class="side them"><div class="pips" id="pipsThem"><i class="pip"></i><i class="pip"></i><i class="pip"></i></div> <span id="themName">Rival</span></div>
+  <div class="side them2" id="side2" hidden><div class="pips" id="pipsThem2"><i class="pip"></i><i class="pip"></i><i class="pip"></i></div> <span>Jaune</span></div>
 </div>
 <div class="hud" id="hp" hidden><div class="hpbar"><i id="hpFill"></i></div><span id="hpTxt">300 HP</span></div>
 <svg class="hud" id="cross" viewBox="0 0 72 72" hidden>
@@ -196,7 +199,7 @@ p{margin:0}
   <div class="sheet">
     <div class="eyebrow">Code de la partie</div>
     <div class="codebig" id="lobbyCode">----</div>
-    <p class="sub">Ton adversaire ouvre la même page, tape ce code et appuie sur Rejoindre.</p>
+    <p class="sub">Tes adversaires ouvrent la même page, tapent ce code et appuient sur Rejoindre. Jusqu'à 3 joueurs : à 3, chacun pour soi en forêt, le dernier debout gagne.</p>
     <div class="seg mapsel" role="group" aria-label="Carte">
       <button data-map="canyon" aria-pressed="true">Canyon<small>face à face</small></button>
       <button data-map="forest" aria-pressed="false">Forêt<small>déplacements libres</small></button>
@@ -604,10 +607,11 @@ const fl2 = fl1.clone(); fl2.rotateZ(Math.PI / 2);
 const streakGeo = new T.CylinderGeometry(0.03, 0.006, 2.2, 5, 1, true); streakGeo.rotateX(Math.PI / 2); streakGeo.translate(0, 0, 2.1);
 const ironMat = std(0xd8d2c8, { metalness: .3, roughness: .5 });
 const shaftMat = std(0xc89a5e);
-const fletchMat = { me: new T.MeshBasicMaterial({ color: 0x6ff0de, side: T.DoubleSide }), opp: new T.MeshBasicMaterial({ color: 0xff6a50, side: T.DoubleSide }) };
+const fletchMat = { me: new T.MeshBasicMaterial({ color: 0x6ff0de, side: T.DoubleSide }), opp: new T.MeshBasicMaterial({ color: 0xff6a50, side: T.DoubleSide }), opp2: new T.MeshBasicMaterial({ color: 0xffd24a, side: T.DoubleSide }) };
 const streakMat = {
   me: new T.MeshBasicMaterial({ color: 0x8ff5e6, transparent: true, opacity: .32, blending: T.AdditiveBlending, depthWrite: false }),
   opp: new T.MeshBasicMaterial({ color: 0xffa070, transparent: true, opacity: .38, blending: T.AdditiveBlending, depthWrite: false }),
+  opp2: new T.MeshBasicMaterial({ color: 0xffe08a, transparent: true, opacity: .38, blending: T.AdditiveBlending, depthWrite: false }),
 };
 // balle de carabine (pointe à l'origine, vers -Z) : petit plomb sombre + traceur ; reste comme un impact dans le bois
 const bulletGeo = new T.SphereGeometry(0.022, 6, 4); bulletGeo.scale(1, 1, 1.8);
@@ -628,14 +632,14 @@ function makeArrow(owner, streak) {
 // ---------- traînée de fumée grise derrière les flèches (s'efface en 6 s), colorée si la flèche touche un joueur
 const SMOKE_N = 36000, SMOKE_LIFE = 6, SMOKE_STEP = 0.05;
 const smokePos = new Float32Array(SMOKE_N * 3), smokeBirth = new Float32Array(SMOKE_N).fill(-1e4);
-const smokeTint = new Float32Array(SMOKE_N), smokeArrow = new Int32Array(SMOKE_N); // 0 gris, 1 bleu (moi), 2 rouge (adversaire) ; flèche émettrice
+const smokeTint = new Float32Array(SMOKE_N), smokeArrow = new Int32Array(SMOKE_N); // 0 gris, 1 bleu (moi), 2 rouge, 3 jaune (adversaires) ; flèche émettrice
 let arrowSerial = 0;
 const smokeGeo = new T.BufferGeometry();
 smokeGeo.setAttribute('position', new T.BufferAttribute(smokePos, 3));
 smokeGeo.setAttribute('birth', new T.BufferAttribute(smokeBirth, 1));
 smokeGeo.setAttribute('tint', new T.BufferAttribute(smokeTint, 1));
 const smokeMat = new T.ShaderMaterial({
-  uniforms: { uTime: { value: 0 }, uScale: { value: 400 }, uColor: { value: new T.Color(0xb4b4b4) }, uMe: { value: new T.Color(0x2fa6d0) }, uOpp: { value: new T.Color(0xe2402f) }, uAlpha: { value: 0.14 } },
+  uniforms: { uTime: { value: 0 }, uScale: { value: 400 }, uColor: { value: new T.Color(0xb4b4b4) }, uMe: { value: new T.Color(0x2fa6d0) }, uOpp: { value: new T.Color(0xe2402f) }, uOpp2: { value: new T.Color(0xf0c030) }, uAlpha: { value: 0.14 } },
   vertexShader: `
     attribute float birth; attribute float tint; uniform float uTime; uniform float uScale; varying float vA; varying float vT;
     void main() {
@@ -647,11 +651,11 @@ const smokeMat = new T.ShaderMaterial({
       gl_Position = projectionMatrix * mv;
     }`,
   fragmentShader: `
-    uniform vec3 uColor; uniform vec3 uMe; uniform vec3 uOpp; uniform float uAlpha; varying float vA; varying float vT;
+    uniform vec3 uColor; uniform vec3 uMe; uniform vec3 uOpp; uniform vec3 uOpp2; uniform float uAlpha; varying float vA; varying float vT;
     void main() {
       vec2 c = gl_PointCoord - 0.5; float d = dot(c, c);
       if (d > 0.25 || vA <= 0.0) discard;
-      vec3 col = vT > 1.5 ? uOpp : (vT > 0.5 ? uMe : uColor);
+      vec3 col = vT > 2.5 ? uOpp2 : (vT > 1.5 ? uOpp : (vT > 0.5 ? uMe : uColor));
       float a = vT > 0.5 ? uAlpha * 2.4 : uAlpha;
       gl_FragColor = vec4(col, vA * a * (1.0 - d * 4.0));
     }`,
@@ -669,7 +673,7 @@ function emitSmoke(a, back = 0) {
 // colore toute la traînée encore visible d'une flèche qui vient de toucher un joueur
 function tintSmoke(a) {
   if (!tintHits || !a.sid) return;
-  const v = a.owner === 'me' ? 1 : 2;
+  const v = a.owner === 'me' ? 1 : a.owner === 'opp' ? 2 : 3;
   for (let i = 0; i < SMOKE_N; i++) if (smokeArrow[i] === a.sid && t - smokeBirth[i] < SMOKE_LIFE) smokeTint[i] = v;
   smokeTintDirty = true;
 }
@@ -768,7 +772,8 @@ function makeArcher(cloth, hoodCol, owner) {
 }
 const meA = makeArcher(0x2f8f83, 0x1f5f58, 'me');
 const oppA = makeArcher(0xa8342a, 0x6e1f1a, 'opp');
-archers.push(meA, oppA); dressArchers();
+const opp2A = makeArcher(0xc99a2e, 0x7d5a14, 'opp2'); opp2A.root.visible = false;
+archers.push(meA, oppA, opp2A); dressArchers();
 
 // ---------- sound (synth, starts after first tap)
 let actx = null, noise = null;
@@ -813,6 +818,20 @@ function sfx(k, v = 1) {
 // ---------- game state (chaque joueur se voit au sud, face au -Z ; l'adversaire est symétrique)
 const me = { x: 0, z: 12, vx: 0, vz: 0, yaw: 0, pitch: 0.04, draw: 0, drawing: false, reload: 0, taken: 0 };
 const opp = { x: 0, z: -12, tx: 0, tz: -12, vx: 0, vz: 0, yaw: 0, tyaw: 0, pitch: 0.04, tpitch: 0.04, draw: 0, nock: true, taken: 0 };
+const opp2 = { x: 0, z: 0, tx: 0, tz: 0, vx: 0, vz: 0, yaw: 0, tyaw: 0, pitch: 0.04, tpitch: 0.04, draw: 0, nock: true, taken: 0 };
+// joueurs : moi + adversaires (un en duel contre le bot ou en ligne, deux en 1v1v1 en ligne)
+const ME = { key: 'me', s: me, A: meA, name: 'Toi' };
+const FOES = { opp: { key: 'opp', s: opp, A: oppA, peer: null, slot: 1, name: 'Rouge' }, opp2: { key: 'opp2', s: opp2, A: opp2A, peer: null, slot: 2, name: 'Jaune' } };
+let foes = [FOES.opp];
+let nPlayers = 2, mySlot = 0;
+const trio = () => nPlayers === 3;
+const foeByPeer = id => foes.find(f => f.peer === id);
+const entryByKey = k => k === 'me' ? ME : FOES[k];
+const isDead = e => e.s.taken >= WIN;
+// à 3 : pas de miroir, chacun part d'un des trois côtés de la forêt, tourné vers le centre
+function spawnOf(slot) { const R = 13.5, a = slot * 2 * Math.PI / 3; return { x: R * Math.sin(a), z: R * Math.cos(a), yaw: a }; }
+// un éliminé tombe sur le côté
+function deadPose(A, dead) { A.root.rotation.z += ((dead ? 1.45 : 0) - A.root.rotation.z) * 0.15; A.root.position.y = dead ? 0.12 : 0; }
 let mode = null;      // 'bot' | 'online' | null
 let phase = 'idle';   // idle | countdown | fight | ending | over
 let cd = 0, endT = 0, fov = 52, headshot = false;
@@ -821,6 +840,7 @@ let shotSeq = 0;
 function placeIdle() {
   meA.root.position.set(0, 0, map.spawnZ); meA.root.rotation.y = 0;
   oppA.root.position.set(0, 0, -map.spawnZ); oppA.root.rotation.y = Math.PI;
+  meA.root.rotation.z = oppA.root.rotation.z = 0; meA.root.position.y = oppA.root.position.y = 0;
 }
 
 // ---------- HUD helpers
@@ -837,8 +857,10 @@ function toast(text, dur = 1.6, color = 'var(--bone)') {
 function flashHurt() { hurtEl.classList.add('on'); requestAnimationFrame(() => requestAnimationFrame(() => hurtEl.classList.remove('on'))); }
 let hpShown = HP_MAX;
 function renderScore() {
-  [...$('#pipsMe').children].forEach((p, i) => p.classList.toggle('on', i < opp.taken));
-  [...$('#pipsThem').children].forEach((p, i) => p.classList.toggle('on', i < me.taken));
+  // en duel : mes touches / les siennes ; à 3 : les touches reçues par chacun
+  const pip = (sel, n) => [...$(sel).children].forEach((p, i) => p.classList.toggle('on', i < n));
+  if (trio()) { pip('#pipsMe', me.taken); pip('#pipsThem', opp.taken); pip('#pipsThem2', opp2.taken); }
+  else { pip('#pipsMe', opp.taken); pip('#pipsThem', me.taken); }
   const hp = Math.max(0, HP_MAX - me.taken * HP_MAX / WIN), el = $('#hp');
   $('#hpFill').style.width = (hp / HP_MAX * 100) + '%';
   $('#hpTxt').textContent = hp + ' HP';
@@ -862,12 +884,20 @@ function resetMatch(k) {
   clearArrows();
   Object.assign(me, { x: 0, z: map.spawnZ, vx: 0, vz: 0, yaw: 0, pitch: 0.04, draw: 0, drawing: false, reload: 0, taken: 0 });
   Object.assign(opp, { x: 0, z: -map.spawnZ, tx: 0, tz: -map.spawnZ, vx: 0, vz: 0, yaw: 0, tyaw: 0, pitch: 0.04, tpitch: 0.04, draw: 0, nock: true, taken: 0 });
+  Object.assign(opp2, { vx: 0, vz: 0, pitch: 0.04, tpitch: 0.04, draw: 0, nock: true, taken: 0 });
+  if (mode !== 'online') { nPlayers = 2; foes = [FOES.opp]; FOES.opp.peer = null; }
+  if (trio()) {
+    const sp = spawnOf(mySlot); Object.assign(me, { x: sp.x, z: sp.z, yaw: sp.yaw }); resolveMove(me);
+    for (const f of foes) { const q = spawnOf(f.slot); Object.assign(f.s, { x: q.x, z: q.z, tx: q.x, tz: q.z, yaw: q.yaw, tyaw: q.yaw }); }
+  }
+  for (const A of archers) { A.root.rotation.z = 0; A.root.position.y = 0; }
+  $('#side2').hidden = !trio(); $('.vs').hidden = trio(); opp2A.root.visible = trio();
   Object.assign(bot, { tx: 0, tz: -map.spawnZ, moveT: 0, shootT: rand(1.4, 2.2), drawing: false, reload: 0, hold: 0, stuck: 0 });
   aimId = null; moveId = null; moveIn.x = moveIn.y = 0; headshot = false;
   phase = 'countdown'; cd = 3; big('3', 0.8); sfx('tick');
   $('#stick').classList.toggle('round', !map.lateral);
   hpShown = HP_MAX; showPanel(null); setPlayingHud(true); renderScore();
-  $('#themName').textContent = mode === 'bot' ? 'Bot' : 'Rival';
+  $('#themName').textContent = mode === 'bot' ? 'Bot' : trio() ? 'Rouge' : 'Rival';
   if (mode === 'practice') {
     phase = 'fight'; cd = 0; big('Entraînement', 1.0, 'var(--ember)');
     $('#score').hidden = $('#hp').hidden = true;
@@ -875,20 +905,25 @@ function resetMatch(k) {
   try { navigator.wakeLock && navigator.wakeLock.request('screen').catch(() => {}); } catch (e) {}
 }
 function checkEnd() {
-  if (phase === 'fight' && (me.taken >= WIN || opp.taken >= WIN)) { phase = 'ending'; endT = 1.0; me.drawing = false; me.draw = 0; }
+  if (phase !== 'fight') return;
+  // en duel : dès qu'un joueur tombe ; à 3 : quand il reste un survivant (ou personne)
+  const over = trio() ? [ME, ...foes].filter(e => !isDead(e)).length <= 1 : (isDead(ME) || foes.some(isDead));
+  if (over) { phase = 'ending'; endT = 1.0; me.drawing = false; me.draw = 0; }
 }
 function finish() {
   phase = 'over'; me.drawing = false; me.draw = 0;
   let title, color;
-  if (me.taken >= WIN && opp.taken >= WIN) { title = 'Égalité'; color = 'var(--bone)'; }
-  else if (opp.taken >= WIN) { title = 'Victoire'; color = 'var(--teal)'; sfx('win'); }
+  const standing = [ME, ...foes].filter(e => !isDead(e));
+  if (trio() ? standing.length === 0 : (isDead(ME) && isDead(FOES.opp))) { title = 'Égalité'; color = 'var(--bone)'; }
+  else if (trio() ? standing[0] === ME : isDead(FOES.opp)) { title = 'Victoire'; color = 'var(--teal)'; sfx('win'); }
   else { title = 'Défaite'; color = 'var(--crimson)'; sfx('lose'); }
   big(title, 1.4, color);
   setTimeout(() => {
     if (phase !== 'over') return;
     $('#overTitle').textContent = title; $('#overTitle').style.color = color;
     $('#overEyebrow').textContent = headshot ? 'Fin du duel · tir à la tête' : 'Fin du duel';
-    $('#overScore').textContent = `Toi ${opp.taken} – ${me.taken} ${mode === 'bot' ? 'Bot' : 'Rival'}`;
+    $('#overScore').textContent = trio() ? (standing.length ? `Dernier debout : ${standing[0].name}` : 'Personne ne reste debout')
+      : `Toi ${opp.taken} – ${me.taken} ${mode === 'bot' ? 'Bot' : 'Rival'}`;
     $('#btnAgain').textContent = mode === 'bot' ? 'Rejouer' : 'Revanche';
     $('#btnAgain').disabled = false;
     renderOverStatus();
@@ -960,13 +995,14 @@ function camOffset(out) {
 }
 const camF = new T.Vector3(), aimP = new T.Vector3();
 // point réellement sous le viseur : on suit le rayon de la caméra avec les mêmes collisions que les flèches
+function hitsFoe(p) { for (const f of foes) if (!isDead(f) && hitZone(p, f.s, f.A)) return true; return false; }
 function aimPoint(o, out) {
   const c = camera.position, s0 = Math.max(0.5, tmpV.copy(o).sub(c).dot(camF));
   for (let d = s0; d < 250; d += 0.1) {
     out.copy(c).addScaledVector(camF, d);
     if (mode === 'practice') {
       if (Math.abs(out.z - TARGET.z) < 0.1 && Math.hypot(out.x - TARGET.x, out.y - TARGET.y) < TARGET.r) return out;
-    } else if (hitZone(out, opp, oppA)) return out;
+    } else if (hitsFoe(out)) return out;
     if (obstacles.length && inObstacle(out)) return out;
     if (!map.lateral && out.y < 0) return out;
     if (out.y < -85) return out;
@@ -984,7 +1020,7 @@ function flightEnd(o, v, g = G) {
     simV.y -= g * h; simP.addScaledVector(simV, h);
     if (mode === 'practice') {
       if (simP.z < TARGET.z + 0.08 && simP.z > TARGET.z - 0.14 && Math.hypot(simP.x - TARGET.x, simP.y - TARGET.y) < TARGET.r) break;
-    } else if (hitZone(simP, opp, oppA)) break;
+    } else if (hitsFoe(simP)) break;
     if (simP.x * simP.x + simP.z * simP.z < obsR2 && inObstacle(simP)) break;
     if (simP.y < 0 && (!map.lateral || canyonRock(simP) !== null)) break;
     if (simP.y < -85 || simP.x * simP.x + simP.z * simP.z > 22500) break; // plus rien à toucher au-delà de 150 m
@@ -1022,7 +1058,9 @@ function updateMe(dt) {
     ix = ((keys.KeyD) ? 1 : 0) - ((keys.KeyA || keys.KeyQ) ? 1 : 0);
     iy = ((keys.KeyS) ? 1 : 0) - ((keys.KeyW || keys.KeyZ) ? 1 : 0);
   }
-  const slow = me.drawing ? (map.lateral ? 0.65 : 0.55) : 1, act = canMove();
+  const out = isDead(ME); // éliminé (à 3) : on regarde la fin sans bouger ni tirer
+  if (out) { me.drawing = false; me.draw = 0; }
+  const slow = me.drawing ? (map.lateral ? 0.65 : 0.55) : 1, act = canMove() && !out;
   let tvx = 0, tvz = 0;
   if (act && map.lateral) tvx = ix * map.maxv * slow;
   else if (act) {
@@ -1041,10 +1079,11 @@ function updateMe(dt) {
   if (keys.ArrowLeft) me.yaw = clamp(me.yaw + dt * 1.2, -map.yawLim, map.yawLim);
   if (keys.ArrowRight) me.yaw = clamp(me.yaw - dt * 1.2, -map.yawLim, map.yawLim);
   me.reload = Math.max(0, me.reload - dt);
-  if (aimId !== null && !me.drawing && me.reload <= 0 && phase === 'fight') me.drawing = true;
+  if (aimId !== null && !me.drawing && me.reload <= 0 && phase === 'fight' && !out) me.drawing = true;
   if (me.drawing) me.draw = Math.min(1, me.draw + dt / curWpn().aimT);
   meA.root.position.set(me.x, 0, me.z); meA.root.rotation.y = me.yaw;
   meA.setPose(me.pitch, me.draw, me.reload <= 0);
+  deadPose(meA, out && trio());
   meA.updateHead();
 }
 
@@ -1155,14 +1194,19 @@ function botUpdate(dt) {
 function updateOpp(dt) {
   if (mode === 'practice') return;
   if (mode === 'bot') botUpdate(dt);
-  else {
-    const k = 1 - Math.exp(-dt * 14);
-    opp.x += (opp.tx - opp.x) * k; opp.z += (opp.tz - opp.z) * k;
-    opp.yaw += angDiff(opp.yaw, opp.tyaw) * k; opp.pitch += (opp.tpitch - opp.pitch) * k;
+  const k = 1 - Math.exp(-dt * 14);
+  for (const f of foes) {
+    const s = f.s;
+    if (mode !== 'bot') {
+      s.x += (s.tx - s.x) * k; s.z += (s.tz - s.z) * k;
+      s.yaw += angDiff(s.yaw, s.tyaw) * k; s.pitch += (s.tpitch - s.pitch) * k;
+    }
+    // en duel l'adversaire est vu en miroir (il se croit au sud) ; à 3 tout le monde partage le même repère
+    f.A.root.position.set(s.x, 0, s.z); f.A.root.rotation.y = (trio() ? 0 : Math.PI) + s.yaw;
+    deadPose(f.A, trio() && isDead(f));
+    f.A.setPose(s.pitch, s.draw, s.nock);
+    f.A.updateHead();
   }
-  oppA.root.position.set(opp.x, 0, opp.z); oppA.root.rotation.y = Math.PI + opp.yaw;
-  oppA.setPose(opp.pitch, opp.draw, opp.nock);
-  oppA.updateHead();
 }
 
 // ---------- arrow physics
@@ -1180,7 +1224,7 @@ function spawnArrow(owner, p, v, id = 0, kind = 'arrow') {
   // kill : le carreau d'arbalète tue d'un coup, où qu'il touche
   const a = { owner, id, kind, g: bullet ? 0 : G, tail: bullet ? 0.05 : kind === 'bolt' ? 0.9 * BOLT_LEN : 0.9, kill: kind === 'bolt', sid: ++arrowSerial, p, v, m, flying: true, pending: 0, life: 0, botSeen: false };
   orient(a); arrows.push(a);
-  if (owner === 'opp' && !bullet) sfx('whoosh', 0.7);
+  if (owner !== 'me' && !bullet) sfx('whoosh', 0.7);
   const stuck = arrows.filter(x => !x.flying);
   while (stuck.length > 30) { const old = stuck.shift(); if (old.m.parent) old.m.parent.remove(old.m); arrows.splice(arrows.indexOf(old), 1); }
 }
@@ -1219,37 +1263,44 @@ function plantInArcher(a, model, head) {
   part.attach(a.m); a.part = part === model.upper ? 'u' : 'r';
   tintSmoke(a);
 }
-function hitArcher(a, model, head) {
-  plantInArcher(a, model, head);
+// en ligne, chaque tireur décide de ses touches : dealt[tireur][victime] = touches données (publié dans la présence)
+// et les touches reçues par un joueur sont la somme de ce que tous lui ont donné
+let dealt = {};
+function recountTaken(victim, head, byKey) {
+  const vid = victim === ME ? myId : victim.peer; let n = 0;
+  for (const sid in dealt) n += num(dealt[sid][vid], 0);
+  registerTaken(victim, n, head, byKey);
+}
+function hitArcher(a, tgt, head) {
+  plantInArcher(a, tgt.A, head);
   sfx('thunk', 0.8);
   if (!(phase === 'fight' || phase === 'ending')) return;
   const lethal = head || a.kill;
-  if (a.owner === 'opp') { registerMeTaken(lethal ? WIN : me.taken + 1, head); return; }
-  registerOppTaken(lethal ? WIN : opp.taken + 1, head);
-  if (mode === 'online' && nroom) {
-    // après attach, position et rotation sont locales à la partie du corps touchée : l'autre replante la flèche au même endroit
-    const lp = a.m.position; tmpV.set(0, 0, -1).applyQuaternion(a.m.quaternion);
-    const msg = { g: net.started, id: a.id, k: KIND_CODE[a.kind], landed: opp.taken, head, part: a.part };
-    if (a.kind !== 'bullet') Object.assign(msg, { lp: [r3(lp.x), r3(lp.y), r3(lp.z)], ld: [r3(tmpV.x), r3(tmpV.y), r3(tmpV.z)] });
-    nroom.emit('hit', msg).catch(() => {});
-    pres({ landed: opp.taken });
-  }
+  if (!(mode === 'online' && nroom)) { registerTaken(tgt, lethal ? WIN : tgt.s.taken + 1, head, a.owner); return; }
+  // ma flèche a touché un adversaire : c'est moi qui décide, et je préviens tout le monde
+  const mine = dealt[myId] || (dealt[myId] = {});
+  mine[tgt.peer] = Math.min(WIN, num(mine[tgt.peer], 0) + (lethal ? WIN : 1));
+  recountTaken(tgt, head, 'me');
+  // après attach, position et rotation sont locales à la partie du corps touchée : les autres replantent la flèche au même endroit
+  const lp = a.m.position; tmpV.set(0, 0, -1).applyQuaternion(a.m.quaternion);
+  const msg = { g: net.started, id: a.id, k: KIND_CODE[a.kind], v: tgt.peer, n: mine[tgt.peer], head, part: a.part };
+  if (a.kind !== 'bullet') Object.assign(msg, { lp: [r3(lp.x), r3(lp.y), r3(lp.z)], ld: [r3(tmpV.x), r3(tmpV.y), r3(tmpV.z)] });
+  nroom.emit('hit', msg).catch(() => {});
+  pres({ dealt: { ...mine } });
 }
-function registerMeTaken(n, head) {
+function registerTaken(e, n, head, byKey) {
   n = Math.min(WIN, Math.floor(n));
-  if (!(phase === 'fight' || phase === 'ending') || !(n > me.taken)) return;
-  const wasHead = head || (curW() !== 'crossbow' && n === WIN && n - me.taken >= 2);
-  me.taken = n; if (wasHead) headshot = true;
-  flashHurt(); sfx('hurt'); toast(wasHead ? 'En pleine tête…' : 'Tu es touché', 1.6, 'var(--crimson)');
-  renderScore(); checkEnd();
-}
-function registerOppTaken(n, head) {
-  n = Math.min(WIN, Math.floor(n));
-  if (!(phase === 'fight' || phase === 'ending') || !(n > opp.taken)) return;
-  const wasHead = head || (curW() !== 'crossbow' && n === WIN && n - opp.taken >= 2);
-  opp.taken = n;
-  if (wasHead) { headshot = true; big('Tir à la tête !', 1.1, 'var(--teal)'); sfx('head'); }
-  else { big('Touché !', 0.9, 'var(--teal)'); sfx('hit'); }
+  if (!(phase === 'fight' || phase === 'ending') || !(n > e.s.taken)) return;
+  const wasHead = head || (curW() !== 'crossbow' && n === WIN && n - e.s.taken >= 2);
+  e.s.taken = n;
+  if (e === ME) {
+    if (wasHead) headshot = true;
+    flashHurt(); sfx('hurt');
+    toast(trio() && n >= WIN ? 'Éliminé… regarde la fin' : wasHead ? 'En pleine tête…' : 'Tu es touché', 1.8, 'var(--crimson)');
+  } else if (byKey === 'me') {
+    if (wasHead) { headshot = true; big('Tir à la tête !', 1.1, 'var(--teal)'); sfx('head'); }
+    else { big(trio() && n >= WIN ? 'Éliminé !' : 'Touché !', 0.9, 'var(--teal)'); sfx('hit'); }
+  } else if (n >= WIN && trio()) toast(`${e.name} est éliminé`, 1.6, 'var(--bone)');
   renderScore(); checkEnd();
 }
 // rocher sous les plateformes du canyon : renvoie le z de la plateforme touchée, sinon null
@@ -1262,13 +1313,14 @@ function canyonRock(p) {
 }
 function collide(a) {
   const p = a.p;
-  const who = a.owner === 'me' ? opp : me, model = a.owner === 'me' ? oppA : meA;
-  if (mode === 'practice' && hitTarget(a)) return;
-  const z = mode === 'practice' ? 0 : hitZone(p, who, model);
-  if (z) {
-    // en ligne, une flèche adverse qui m'atteint attend la confirmation du tireur (elle sera replantée à l'endroit qu'il a vu)
-    if (a.owner === 'opp' && mode === 'online') { a.flying = false; a.pending = 1.2; a.zone = z; a.m.visible = false; return; }
-    hitArcher(a, model, z === 2); return;
+  if (mode === 'practice') { if (hitTarget(a)) return; }
+  else for (const tg of [ME, ...foes]) {
+    if (tg.key === a.owner || isDead(tg)) continue;
+    const z = hitZone(p, tg.s, tg.A);
+    if (!z) continue;
+    // en ligne, la flèche d'un autre attend la confirmation de son tireur (elle sera replantée à l'endroit qu'il a vu)
+    if (a.owner !== 'me' && mode === 'online') { a.flying = false; a.pending = 1.2; a.zone = z; a.victim = tg.key; a.m.visible = false; return; }
+    hitArcher(a, tg, z === 2); return;
   }
   if (obstacles.length && inObstacle(p)) { stopArrow(a); a.m.position.copy(p); sfx('thunk', a.owner === 'me' ? 0.3 : 0.5); return; }
   if (map.lateral) {
@@ -1350,7 +1402,8 @@ function drawHud() {
 // ---------- online (relais MQTT public : pas de compte, marche en Wi-Fi comme en 4G)
 const BROKERS = ['wss://broker.emqx.io:8084/mqtt', 'wss://broker.hivemq.com:8884/mqtt'];
 const myId = Math.random().toString(36).slice(2, 12);
-let nroom = null, subs = [], oppPeer = null, oppPres = null, roomCode = '';
+let nroom = null, subs = [], roomCode = '';
+let peersNow = []; // les autres joueurs du salon (2 au plus), triés par identifiant : { peer, presence }
 let net = { rp: false, tok: '', started: '' };
 let mapV = 0;
 const myPres = {};
@@ -1441,7 +1494,7 @@ async function enterRoom(code, creator) {
   catch (e) { nroom = null; joining = false; menuNote("Connexion impossible pour l'instant. Vérifie ta connexion internet et réessaie."); return; }
   joining = false;
   menuNote('');
-  mode = 'online'; roomCode = code; oppPeer = null; oppPres = null;
+  mode = 'online'; roomCode = code; peersNow = []; FOES.opp.peer = FOES.opp2.peer = null; foes = [FOES.opp]; nPlayers = 2;
   net = { rp: false, tok: '', started: '' }; lastSent = '';
   mapV = creator ? 1 : 0; // la carte choisie par le créateur l'emporte au départ
   subs = [
@@ -1449,7 +1502,7 @@ async function enterRoom(code, creator) {
     nroom.on('shot', onShot),
     nroom.on('hit', onHit),
   ];
-  pres({ rdy: false, tok: '', started: '', landed: 0, mapK: mapKey, wpn: weapon, mapV });
+  pres({ rdy: false, tok: '', started: '', dealt: {}, mapK: mapKey, wpn: weapon, mapV });
   phase = 'idle';
   $('#lobbyCode').textContent = code;
   renderLobby(); showPanel('#lobby');
@@ -1457,81 +1510,103 @@ async function enterRoom(code, creator) {
 function leaveRoom() {
   subs.forEach(u => { try { u(); } catch (e) {} }); subs = [];
   if (nroom) nroom.leave().catch(() => {});
-  nroom = null; oppPeer = null; oppPres = null; mode = null; phase = 'idle';
+  nroom = null; peersNow = []; FOES.opp.peer = FOES.opp2.peer = null; foes = [FOES.opp]; nPlayers = 2; mode = null; phase = 'idle';
   clearArrows(); setPlayingHud(false); showPanel('#menu');
 }
+const inGame = () => mode === 'online' && phase !== 'idle';
 function onPeers(peers) {
-  const o = peers.find(p => !p.sameTab && p.kind === 'viewer');
-  const had = oppPeer;
-  oppPeer = o ? o.peer : null; oppPres = o ? o.presence : null;
-  if (had && !oppPeer && mode === 'online' && phase !== 'idle') {
-    phase = 'idle'; clearArrows(); setPlayingHud(false); net.rp = false; pres({ rdy: false });
-    renderLobby(); showPanel('#lobby'); menuNote('');
-    toast('Ton adversaire est parti', 2.2);
+  peersNow = peers.filter(p => !p.sameTab && p.kind === 'viewer').sort((a, b) => a.peer < b.peer ? -1 : 1).slice(0, 2)
+    .map(p => ({ peer: p.peer, presence: p.presence || {} }));
+  if (inGame()) {
+    // un joueur de la partie est parti : en duel on revient au salon, à 3 il est éliminé
+    const gone = foes.filter(f => !peersNow.some(x => x.peer === f.peer));
+    if (gone.length && (!trio() || gone.length === foes.length)) {
+      phase = 'idle'; clearArrows(); setPlayingHud(false); net.rp = false; pres({ rdy: false });
+      renderLobby(); showPanel('#lobby'); menuNote('');
+      toast(gone.length > 1 ? 'Tes adversaires sont partis' : trio() ? `${gone[0].name} est parti` : 'Ton adversaire est parti', 2.2);
+    } else for (const f of gone) if (!isDead(f)) { f.s.taken = WIN; toast(`${f.name} est parti`, 1.8); renderScore(); checkEnd(); }
   }
-  if (oppPres && mode === 'online') applyOppPres(oppPres);
+  if (mode === 'online') {
+    syncLobbyChoice();
+    for (const x of peersNow) { const f = foeByPeer(x.peer); if (f && inGame()) applyOppPres(x.presence, f); }
+  }
   renderLobby(); renderOverStatus(); evaluateReady();
 }
-function applyOppPres(p) {
-  // carte choisie dans le salon : le dernier qui change l'emporte
-  if ((phase === 'idle' || phase === 'over') && MAPS[p.mapK]) {
-    const v = num(p.mapV, 0);
-    const w = wpnKey(p.wpn);
-    if (v > mapV || (v === mapV && (p.mapK !== mapKey || w !== weapon) && oppPeer < myId)) { mapV = v; setWeapon(w); applyMap(p.mapK); }
-  }
-  const M = MAPS[mapKey];
-  opp.tx = -clamp(num(p.x, 0), -M.xlim, M.xlim);
-  opp.tz = -clamp(num(p.z, M.spawnZ), -M.zlim, M.zlim);
-  opp.tyaw = M.lateral ? clamp(num(p.yaw, 0), -0.6, 0.6) : num(p.yaw, 0);
-  opp.tpitch = clamp(num(p.pitch, 0), -0.5, 0.8);
-  opp.draw = clamp(num(p.draw, 0), 0, 1);
-  opp.nock = p.nock !== false;
-  if (net.started && p.started === net.started) {
-    const before = me.taken; registerMeTaken(num(p.landed, 0));
-    // le message « touché » s'est perdu : on plante quand même la flèche qu'on a vue arriver
-    if (me.taken > before) for (const a of arrows) if (a.owner === 'opp' && a.pending > 0) plantInArcher(a, meA, a.zone === 2);
+// carte et arme choisies dans le salon : le dernier qui change l'emporte (à égalité, le plus petit identifiant)
+function syncLobbyChoice() {
+  if (!(phase === 'idle' || phase === 'over')) return;
+  for (const x of peersNow) {
+    const p = x.presence; if (!MAPS[p.mapK]) continue;
+    const v = num(p.mapV, 0), w = wpnKey(p.wpn);
+    if (v > mapV || (v === mapV && (p.mapK !== mapKey || w !== weapon) && x.peer < myId)) { mapV = v; setWeapon(w); applyMap(p.mapK); }
   }
 }
-function fromOpp(msg) { return msg && !msg.sameTab && msg.peer === oppPeer && mode === 'online' && msg.data && msg.data.g === net.started && net.started; }
+function applyOppPres(p, f) {
+  const M = MAPS[mapKey], k = trio() ? 1 : -1, s = f.s;
+  s.tx = k * clamp(num(p.x, 0), -M.xlim, M.xlim);
+  s.tz = k * clamp(num(p.z, M.spawnZ), -M.zlim, M.zlim);
+  s.tyaw = M.lateral ? clamp(num(p.yaw, 0), -0.6, 0.6) : num(p.yaw, 0);
+  s.tpitch = clamp(num(p.pitch, 0), -0.5, 0.8);
+  s.draw = clamp(num(p.draw, 0), 0, 1);
+  s.nock = p.nock !== false;
+  if (net.started && p.started === net.started && p.dealt && typeof p.dealt === 'object') {
+    // touches publiées par ce joueur (rattrape un message « touché » perdu)
+    const d = dealt[f.peer] || (dealt[f.peer] = {});
+    for (const vid in p.dealt) d[vid] = Math.max(num(d[vid], 0), Math.min(WIN, num(p.dealt[vid], 0)));
+    for (const v of [ME, ...foes]) {
+      if (v === f) continue;
+      const before = v.s.taken; recountTaken(v, false, f.key);
+      // le message s'est perdu : on plante quand même la flèche qu'on a vue arriver
+      if (v.s.taken > before) for (const a of arrows) if (a.owner === f.key && a.pending > 0 && a.victim === v.key) plantInArcher(a, v.A, a.zone === 2);
+    }
+  }
+}
+function fromOpp(msg) { return msg && !msg.sameTab && mode === 'online' && msg.data && net.started && msg.data.g === net.started && !!foeByPeer(msg.peer); }
 function onShot(msg) {
   if (!fromOpp(msg) || !(phase === 'fight' || phase === 'ending')) return;
   const o = msg.data.o, v = msg.data.v;
   if (!Array.isArray(o) || !Array.isArray(v) || o.length !== 3 || v.length !== 3) return;
-  const op = new T.Vector3(-num(o[0], 0), num(o[1], 1.4), -num(o[2], 0));
-  const vv = new T.Vector3(-num(v[0], 0), num(v[1], 0), -num(v[2], 0));
-  if (vv.length() > BULLET_V * 1.1 || Math.hypot(op.x - opp.x, op.z - opp.z) > 5) return;
+  const f = foeByPeer(msg.peer), k = trio() ? 1 : -1;
+  const op = new T.Vector3(k * num(o[0], 0), num(o[1], 1.4), k * num(o[2], 0));
+  const vv = new T.Vector3(k * num(v[0], 0), num(v[1], 0), k * num(v[2], 0));
+  if (isDead(f) || vv.length() > BULLET_V * 1.1 || Math.hypot(op.x - f.s.x, op.z - f.s.z) > 5) return;
   const kind = CODE_KIND[msg.data.k] || 'arrow';
-  spawnArrow('opp', op, vv, num(msg.data.id, 0), kind);
+  spawnArrow(f.key, op, vv, num(msg.data.id, 0), kind);
   sfx(kind === 'bullet' ? 'bang' : 'twang', kind === 'bullet' ? 0.5 : 0.35);
 }
 function onHit(msg) {
   if (!fromOpp(msg)) return;
-  const d = msg.data;
-  const i = arrows.findIndex(a => a.owner === 'opp' && a.id === d.id && d.id);
+  const d = msg.data, f = foeByPeer(msg.peer);
+  const victim = (d.v === undefined || d.v === myId) ? ME : foeByPeer(d.v);
+  if (!victim || victim === f) return;
+  const i = arrows.findIndex(a => a.owner === f.key && a.id === d.id && d.id);
   if (i >= 0) { const a = arrows[i]; tintSmoke(a); if (a.m.parent) a.m.parent.remove(a.m); arrows.splice(i, 1); }
   if (Array.isArray(d.lp) && Array.isArray(d.ld) && d.lp.length === 3 && d.ld.length === 3) {
     const lp = new T.Vector3(num(d.lp[0], 0), num(d.lp[1], 1), num(d.lp[2], 0));
     const ld = new T.Vector3(num(d.ld[0], 0), num(d.ld[1], 0), num(d.ld[2], -1));
     if (lp.length() < 3 && ld.lengthSq() > 0.01) {
-      const m = makeProjectile('opp', CODE_KIND[d.k] || 'arrow', false); m.position.copy(lp); m.quaternion.setFromUnitVectors(NEG_Z, ld.normalize());
-      (d.part === 'u' ? meA.upper : meA.root).add(m);
-      arrows.push({ owner: 'opp', id: d.id, p: lp, v: ld, m, flying: false, pending: 0, life: 0 });
+      const m = makeProjectile(f.key, CODE_KIND[d.k] || 'arrow', false); m.position.copy(lp); m.quaternion.setFromUnitVectors(NEG_Z, ld.normalize());
+      (d.part === 'u' ? victim.A.upper : victim.A.root).add(m);
+      arrows.push({ owner: f.key, id: d.id, p: lp, v: ld, m, flying: false, pending: 0, life: 0 });
     }
   }
-  registerMeTaken(num(d.landed, 0), d.head === true);
+  const dd = dealt[f.peer] || (dealt[f.peer] = {}), vid = victim === ME ? myId : victim.peer;
+  dd[vid] = Math.max(num(dd[vid], 0), Math.min(WIN, num(d.n, 0)));
+  recountTaken(victim, d.head === true, f.key);
 }
 function chooseMap(k) {
   if (!MAPS[k]) return;
   if (mode === 'online') {
     if (!(phase === 'idle' || phase === 'over')) return;
-    mapV = Math.max(mapV, oppPres ? num(oppPres.mapV, 0) : 0) + 1;
+    if (k === 'canyon' && peersNow.length > 1) return; // à 3, la forêt seulement
+    mapV = Math.max(mapV, ...peersNow.map(x => num(x.presence.mapV, 0))) + 1;
     applyMap(k); pres({ mapK: k, wpn: weapon, mapV });
   } else applyMap(k);
 }
 function chooseWeapon(w) {
   if (mode === 'online') {
     if (!(phase === 'idle' || phase === 'over')) return;
-    mapV = Math.max(mapV, oppPres ? num(oppPres.mapV, 0) : 0) + 1;
+    mapV = Math.max(mapV, ...peersNow.map(x => num(x.presence.mapV, 0))) + 1;
     setWeapon(w); pres({ mapK: mapKey, wpn: weapon, mapV });
   } else setWeapon(w);
 }
@@ -1541,30 +1616,44 @@ function pressReady() {
   pres({ rdy: true, tok: net.tok, mapK: mapKey, wpn: weapon });
   renderLobby(); renderOverStatus(); evaluateReady();
 }
+const okTok = t => typeof t === 'string' && /^[a-z0-9]{4,12}$/.test(t);
 function evaluateReady() {
-  if (!net.rp || !oppPres) return;
-  const p = oppPres;
-  const pw = wpnKey;
-  if (typeof p.started === 'string' && p.started.split('|').includes(net.tok)) return startOnline(p.started, MAPS[p.smap] ? p.smap : mapKey, p.swpn ? pw(p.swpn) : weapon);
-  if (p.rdy === true && typeof p.tok === 'string' && /^[a-z0-9]{4,12}$/.test(p.tok)) {
-    const mine = net.tok < p.tok;
-    const k = mine ? mapKey : (MAPS[p.mapK] ? p.mapK : mapKey), w = mine ? weapon : pw(p.wpn);
-    startOnline([net.tok, p.tok].sort().join('|'), k, w);
+  if (!net.rp || !peersNow.length) return;
+  const ps = peersNow.map(x => x.presence);
+  // un autre a déjà lancé une partie qui m'inclut
+  const st = ps.find(p => typeof p.started === 'string' && p.started.split('|').includes(net.tok));
+  if (st) return startOnline(st.started, MAPS[st.smap] ? st.smap : mapKey, st.swpn ? wpnKey(st.swpn) : weapon);
+  // tout le monde est prêt : la carte et l'arme sont celles du joueur au plus petit jeton (même choix sur chaque téléphone)
+  if (ps.every(p => p.rdy === true && okTok(p.tok))) {
+    const toks = [net.tok, ...ps.map(p => p.tok)].sort();
+    const lead = toks[0] === net.tok ? { mapK: mapKey, wpn: weapon } : ps.find(p => p.tok === toks[0]);
+    const k = toks.length === 3 ? 'forest' : (MAPS[lead.mapK] ? lead.mapK : mapKey);
+    startOnline(toks.join('|'), k, wpnKey(lead.wpn));
   }
 }
 function startOnline(id, k, w) {
   net.rp = false; net.started = id;
+  // participants : les joueurs présents dont le jeton fait partie de la partie ; la place de chacun suit l'ordre des jetons
+  const toks = id.split('|');
+  const parts = peersNow.filter(x => toks.includes(x.presence.tok)).sort((a, b) => toks.indexOf(a.presence.tok) - toks.indexOf(b.presence.tok));
+  if (!parts.length && peersNow.length) parts.push(peersNow[0]);
+  nPlayers = clamp(parts.length + 1, 2, 3); mySlot = Math.max(0, toks.indexOf(net.tok));
+  foes = [FOES.opp, FOES.opp2].slice(0, nPlayers - 1);
+  foes.forEach((f, i) => { f.peer = parts[i] ? parts[i].peer : null; f.slot = parts[i] ? Math.max(0, toks.indexOf(parts[i].presence.tok)) : i + 1; });
+  dealt = {};
   setWeapon(w);
-  pres({ rdy: false, started: id, smap: k, swpn: weapon, landed: 0 });
+  pres({ rdy: false, started: id, smap: k, swpn: weapon, dealt: {} });
   resetMatch(k);
 }
 function renderLobby() {
   if (mode !== 'online') return;
-  const ok = !!oppPeer;
+  const n = peersNow.length, ok = n > 0, rdy = peersNow.filter(x => x.presence.rdy === true).length;
   $('#lobbyDot').classList.toggle('ok', ok);
-  let s = ok ? 'Adversaire connecté' : 'En attente de ton adversaire…';
-  if (ok && oppPres && oppPres.rdy === true) s = 'Ton adversaire est prêt';
-  if (net.rp) s = ok ? "Prêt. On attend que l'autre appuie aussi…" : 'Prêt. En attente de ton adversaire…';
+  // à 3, le canyon (deux piliers face à face) n'est pas proposé
+  document.querySelectorAll('#lobby .mapsel [data-map=canyon], #over .mapsel [data-map=canyon]').forEach(b => { b.disabled = n > 1; });
+  let s = !ok ? 'En attente de ton adversaire…' : n === 1 ? 'Adversaire connecté' : '3 joueurs : chacun pour soi, en forêt';
+  if (ok && rdy) s = n === 1 ? 'Ton adversaire est prêt' : rdy === n ? 'Les deux autres sont prêts' : 'Un adversaire est prêt';
+  if (net.rp) s = ok ? 'Prêt. On attend que les autres appuient aussi…' : 'Prêt. En attente de ton adversaire…';
   $('#lobbyStatus').textContent = s;
   const b = $('#btnReady'); b.disabled = !ok || net.rp; b.textContent = net.rp ? 'En attente…' : 'Prêt';
 }
@@ -1572,11 +1661,11 @@ function renderOverStatus() {
   if (mode === 'bot') { $('#overStatus').textContent = ''; return; }
   if (mode !== 'online') return;
   let s = '';
-  if (!oppPeer) s = 'Ton adversaire a quitté la partie.';
-  else if (net.rp) s = "En attente de la réponse de l'autre…";
-  else if (oppPres && oppPres.rdy === true) s = 'Ton adversaire veut une revanche.';
+  if (!peersNow.length) s = 'Tes adversaires ont quitté la partie.';
+  else if (net.rp) s = 'En attente de la réponse des autres…';
+  else if (peersNow.some(x => x.presence.rdy === true)) s = 'Revanche demandée.';
   $('#overStatus').textContent = s;
-  $('#btnAgain').disabled = net.rp || !oppPeer;
+  $('#btnAgain').disabled = net.rp || !peersNow.length;
   $('#btnAgain').textContent = net.rp ? 'En attente…' : 'Revanche';
 }
 
@@ -1615,6 +1704,7 @@ let last = performance.now(), t = 0;
 function frame(now) {
   const dt = Math.min(0.05, Math.max(0, (now - last) / 1000)); last = now; t += dt;
   targetG.visible = mode === 'practice'; oppA.root.visible = mode !== 'practice';
+  opp2A.root.visible = mode === 'online' && trio() && phase !== 'idle';
   updatePhase(dt);
   if (mode && phase !== 'idle') { updateMe(dt); updateOpp(dt); }
   updateArrows(dt);
