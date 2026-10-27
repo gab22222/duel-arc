@@ -516,7 +516,7 @@ function makeArrow(owner, streak) {
 }
 
 // ---------- traînée de fumée grise derrière les flèches (s'efface en 4 s)
-const SMOKE_N = 12000, SMOKE_LIFE = 4, SMOKE_STEP = 0.1;
+const SMOKE_N = 24000, SMOKE_LIFE = 4, SMOKE_STEP = 0.05;
 const smokePos = new Float32Array(SMOKE_N * 3), smokeBirth = new Float32Array(SMOKE_N).fill(-1e4);
 const smokeGeo = new T.BufferGeometry();
 smokeGeo.setAttribute('position', new T.BufferAttribute(smokePos, 3));
@@ -529,7 +529,7 @@ const smokeMat = new T.ShaderMaterial({
       float age = uTime - birth;
       vA = (age < 0.0 || age > ${SMOKE_LIFE.toFixed(1)}) ? 0.0 : 1.0 - age / ${SMOKE_LIFE.toFixed(1)};
       vec4 mv = modelViewMatrix * vec4(position + vec3(0.0, age * 0.06, 0.0), 1.0);
-      gl_PointSize = min(60.0, (0.12 + age * 0.1) * uScale / max(0.1, -mv.z));
+      gl_PointSize = min(60.0, 0.12 * uScale / max(0.1, -mv.z));
       gl_Position = projectionMatrix * mv;
     }`,
   fragmentShader: `
@@ -544,10 +544,10 @@ const smokeMat = new T.ShaderMaterial({
 const smoke = new T.Points(smokeGeo, smokeMat); smoke.frustumCulled = false; scene.add(smoke);
 const smokeV = new T.Vector3();
 let smokeIdx = 0, smokeDirty = false;
-function emitSmoke(a) {
+function emitSmoke(a, back = 0) {
   smokeV.copy(a.v).normalize();
-  const i = smokeIdx; smokeIdx = (smokeIdx + 1) % SMOKE_N;
-  smokePos[i * 3] = a.p.x - smokeV.x * 0.9; smokePos[i * 3 + 1] = a.p.y - smokeV.y * 0.9; smokePos[i * 3 + 2] = a.p.z - smokeV.z * 0.9;
+  const i = smokeIdx, k = 0.9 + back; smokeIdx = (smokeIdx + 1) % SMOKE_N;
+  smokePos[i * 3] = a.p.x - smokeV.x * k; smokePos[i * 3 + 1] = a.p.y - smokeV.y * k; smokePos[i * 3 + 2] = a.p.z - smokeV.z * k;
   smokeBirth[i] = t; smokeDirty = true;
 }
 function updateSmoke() {
@@ -1043,7 +1043,8 @@ function updateArrows(dt) {
     for (let s = 0; s < n && a.flying; s++) {
       a.v.y -= G * h; a.p.addScaledVector(a.v, h); collide(a);
       a.smokeD = (a.smokeD || 0) + a.v.length() * h;
-      if (a.flying && a.smokeD >= SMOKE_STEP) { a.smokeD = 0; emitSmoke(a); }
+      // plusieurs bouffées par sous-pas, réparties en arrière le long du trajet
+      while (a.flying && a.smokeD >= SMOKE_STEP) { a.smokeD -= SMOKE_STEP; emitSmoke(a, a.smokeD); }
     }
     if (a.flying) {
       a.m.position.copy(a.p); orient(a);
