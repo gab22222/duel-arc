@@ -206,7 +206,7 @@ function mulberry32(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = 
 
 // ---------- tuning
 const G = 8.5;                 // gravité (réduite : moins de chute)
-const VMIN = 24, VMAX = 56;    // vitesse de la flèche selon la tension
+const VMIN = 36, VMAX = 84;    // vitesse de la flèche selon la tension
 const DRAW_T = 0.8;            // temps pour bander l'arc à fond
 const RELOAD = 0.75;
 const WIN = 2;
@@ -215,8 +215,8 @@ const HEAD_R = 0.21;                   // tête : une touche = victoire
 const PLAYER_R = 0.35;                 // rayon de collision pour les déplacements
 const SENS = 0.0028;
 const MAPS = {
-  canyon: { key: 'canyon', spawnZ: 12, lateral: true, xlim: 2.1, zlim: 12, maxv: 2.6, acc: 15, aimDist: 24, yawLim: 0.5 },
-  forest: { key: 'forest', spawnZ: 17, lateral: false, xlim: 14.5, zlim: 20.5, maxv: 4.4, acc: 22, aimDist: 20, yawLim: Infinity },
+  canyon: { key: 'canyon', spawnZ: 12, lateral: true, xlim: 2.1, zlim: 12, maxv: 1.8, acc: 15, aimDist: 24, yawLim: 0.5 },
+  forest: { key: 'forest', spawnZ: 17, lateral: false, xlim: 14.5, zlim: 20.5, maxv: 3.1, acc: 22, aimDist: 20, yawLim: Infinity },
 };
 let map = MAPS.canyon;
 let mapKey = 'canyon';
@@ -562,6 +562,7 @@ let mode = null;      // 'bot' | 'online' | null
 let phase = 'idle';   // idle | countdown | fight | ending | over
 let cd = 0, endT = 0, hintT = 0, fov = 52, headshot = false;
 const arrows = [];
+let shotSeq = 0;
 function placeIdle() {
   meA.root.position.set(0, 0, map.spawnZ); meA.root.rotation.y = 0;
   oppA.root.position.set(0, 0, -map.spawnZ); oppA.root.rotation.y = Math.PI;
@@ -700,8 +701,9 @@ function fire() {
   camOffset(camP); forward(me.yaw, me.pitch, camF);
   const aim = camP.clone().addScaledVector(camF, map.aimDist);
   const v = aim.sub(o).normalize().multiplyScalar(speed);
-  spawnArrow('me', o, v);
-  if (mode === 'online' && nroom) nroom.emit('shot', { g: net.started, o: [r3(o.x), r3(o.y), r3(o.z)], v: [r3(v.x), r3(v.y), r3(v.z)] }).catch(() => {});
+  const id = ++shotSeq;
+  spawnArrow('me', o, v, id);
+  if (mode === 'online' && nroom) nroom.emit('shot', { g: net.started, id, o: [r3(o.x), r3(o.y), r3(o.z)], v: [r3(v.x), r3(v.y), r3(v.z)] }).catch(() => {});
   me.reload = RELOAD; sfx('twang');
 }
 function updateMe(dt) {
@@ -853,9 +855,9 @@ function updateOpp(dt) {
 
 // ---------- arrow physics
 function orient(a) { a.m.quaternion.setFromUnitVectors(NEG_Z, tmpV.copy(a.v).normalize()); }
-function spawnArrow(owner, p, v) {
+function spawnArrow(owner, p, v, id = 0) {
   const m = makeArrow(owner, true); m.position.copy(p); scene.add(m);
-  const a = { owner, p, v, m, flying: true, life: 0, botSeen: false };
+  const a = { owner, id, p, v, m, flying: true, pending: 0, life: 0, botSeen: false };
   orient(a); arrows.push(a);
   if (owner === 'opp') sfx('whoosh', 0.7);
   const stuck = arrows.filter(x => !x.flying);
@@ -878,22 +880,24 @@ function hitArcher(a, model, head) {
   stopArrow(a);
   orient(a); a.m.position.copy(a.p).addScaledVector(tmpV.copy(a.v).normalize(), 0.12);
   model.root.attach(a.m);
-  const live = phase === 'fight' || phase === 'ending';
-  if (a.owner === 'opp') {
-    if (!live) return;
-    me.taken = head ? WIN : Math.min(WIN, me.taken + 1);
-    flashHurt(); sfx('hurt');
-    toast(head ? 'En pleine tête…' : 'Tu es touché', 1.6, 'var(--crimson)');
-    if (head) headshot = true;
-    if (mode === 'online' && nroom) {
-      nroom.emit('hit', { g: net.started, taken: me.taken, head }).catch(() => {});
-      pres({ taken: me.taken });
-    }
-    renderScore(); checkEnd();
-  } else {
-    sfx('thunk', 0.8);
-    if (mode === 'bot' && live) registerOppTaken(head ? WIN : opp.taken + 1, head);
+  sfx('thunk', 0.8);
+  if (!(phase === 'fight' || phase === 'ending')) return;
+  if (a.owner === 'opp') { registerMeTaken(head ? WIN : me.taken + 1, head); return; }
+  registerOppTaken(head ? WIN : opp.taken + 1, head);
+  if (mode === 'online' && nroom) {
+    // après attach, position et rotation sont locales à l'archer touché : l'autre replante la flèche au même endroit
+    const lp = a.m.position; tmpV.set(0, 0, -1).applyQuaternion(a.m.quaternion);
+    nroom.emit('hit', { g: net.started, id: a.id, landed: opp.taken, head, lp: [r3(lp.x), r3(lp.y), r3(lp.z)], ld: [r3(tmpV.x), r3(tmpV.y), r3(tmpV.z)] }).catch(() => {});
+    pres({ landed: opp.taken });
   }
+}
+function registerMeTaken(n, head) {
+  n = Math.min(WIN, Math.floor(n));
+  if (!(phase === 'fight' || phase === 'ending') || !(n > me.taken)) return;
+  const wasHead = head || n - me.taken >= 2;
+  me.taken = n; if (wasHead) headshot = true;
+  flashHurt(); sfx('hurt'); toast(wasHead ? 'En pleine tête…' : 'Tu es touché', 1.6, 'var(--crimson)');
+  renderScore(); checkEnd();
 }
 function registerOppTaken(n, head) {
   n = Math.min(WIN, Math.floor(n));
@@ -908,7 +912,11 @@ function collide(a) {
   const p = a.p;
   const who = a.owner === 'me' ? opp : me, model = a.owner === 'me' ? oppA : meA;
   const z = hitZone(p, who, model);
-  if (z) { hitArcher(a, model, z === 2); return; }
+  if (z) {
+    // en ligne, une flèche adverse qui m'atteint attend la confirmation du tireur (elle sera replantée à l'endroit qu'il a vu)
+    if (a.owner === 'opp' && mode === 'online') { a.flying = false; a.pending = 1.2; a.m.visible = false; return; }
+    hitArcher(a, model, z === 2); return;
+  }
   if (obstacles.length && inObstacle(p)) { stopArrow(a); a.m.position.copy(p); sfx('thunk', a.owner === 'me' ? 0.3 : 0.5); return; }
   if (map.lateral) {
     if (p.y < 0) {
@@ -926,7 +934,10 @@ function collide(a) {
 function updateArrows(dt) {
   for (let i = arrows.length - 1; i >= 0; i--) {
     const a = arrows[i];
-    if (!a.flying) continue;
+    if (!a.flying) {
+      if (a.pending > 0) { a.pending -= dt; if (a.pending <= 0) { if (a.m.parent) a.m.parent.remove(a.m); arrows.splice(i, 1); } }
+      continue;
+    }
     a.life += dt;
     const n = Math.max(1, Math.ceil(a.v.length() * dt / 0.15)), h = dt / n;
     for (let s = 0; s < n && a.flying; s++) { a.v.y -= G * h; a.p.addScaledVector(a.v, h); collide(a); }
@@ -1079,7 +1090,7 @@ async function enterRoom(code, creator) {
     nroom.on('shot', onShot),
     nroom.on('hit', onHit),
   ];
-  pres({ rdy: false, tok: '', started: '', taken: 0, mapK: mapKey, mapV });
+  pres({ rdy: false, tok: '', started: '', landed: 0, mapK: mapKey, mapV });
   phase = 'idle';
   $('#lobbyCode').textContent = code;
   renderLobby(); showPanel('#lobby');
@@ -1115,7 +1126,7 @@ function applyOppPres(p) {
   opp.tpitch = clamp(num(p.pitch, 0), -0.5, 0.8);
   opp.draw = clamp(num(p.draw, 0), 0, 1);
   opp.nock = p.nock !== false;
-  if (net.started && p.started === net.started) registerOppTaken(num(p.taken, 0));
+  if (net.started && p.started === net.started) registerMeTaken(num(p.landed, 0));
 }
 function fromOpp(msg) { return msg && !msg.sameTab && msg.peer === oppPeer && mode === 'online' && msg.data && msg.data.g === net.started && net.started; }
 function onShot(msg) {
@@ -1124,11 +1135,26 @@ function onShot(msg) {
   if (!Array.isArray(o) || !Array.isArray(v) || o.length !== 3 || v.length !== 3) return;
   const op = new T.Vector3(-num(o[0], 0), num(o[1], 1.4), -num(o[2], 0));
   const vv = new T.Vector3(-num(v[0], 0), num(v[1], 0), -num(v[2], 0));
-  if (vv.length() > 80 || Math.hypot(op.x - opp.x, op.z - opp.z) > 5) return;
-  spawnArrow('opp', op, vv);
+  if (vv.length() > 130 || Math.hypot(op.x - opp.x, op.z - opp.z) > 5) return;
+  spawnArrow('opp', op, vv, num(msg.data.id, 0));
   sfx('twang', 0.35);
 }
-function onHit(msg) { if (fromOpp(msg)) registerOppTaken(num(msg.data.taken, 0), msg.data.head === true); }
+function onHit(msg) {
+  if (!fromOpp(msg)) return;
+  const d = msg.data;
+  const i = arrows.findIndex(a => a.owner === 'opp' && a.id === d.id && d.id);
+  if (i >= 0) { const a = arrows[i]; if (a.m.parent) a.m.parent.remove(a.m); arrows.splice(i, 1); }
+  if (Array.isArray(d.lp) && Array.isArray(d.ld) && d.lp.length === 3 && d.ld.length === 3) {
+    const lp = new T.Vector3(num(d.lp[0], 0), num(d.lp[1], 1), num(d.lp[2], 0));
+    const ld = new T.Vector3(num(d.ld[0], 0), num(d.ld[1], 0), num(d.ld[2], -1));
+    if (lp.length() < 3 && ld.lengthSq() > 0.01) {
+      const m = makeArrow('opp', false); m.position.copy(lp); m.quaternion.setFromUnitVectors(NEG_Z, ld.normalize());
+      meA.root.add(m);
+      arrows.push({ owner: 'opp', id: d.id, p: lp, v: ld, m, flying: false, pending: 0, life: 0 });
+    }
+  }
+  registerMeTaken(num(d.landed, 0), d.head === true);
+}
 function chooseMap(k) {
   if (!MAPS[k]) return;
   if (mode === 'online') {
@@ -1154,7 +1180,7 @@ function evaluateReady() {
 }
 function startOnline(id, k) {
   net.rp = false; net.started = id;
-  pres({ rdy: false, started: id, smap: k, taken: 0 });
+  pres({ rdy: false, started: id, smap: k, landed: 0 });
   resetMatch(k);
 }
 function renderLobby() {
