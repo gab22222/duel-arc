@@ -723,7 +723,9 @@ touch.addEventListener('pointermove', e => {
     const dx = e.clientX - aimX, dy = e.clientY - aimY; aimX = e.clientX; aimY = e.clientY;
     const dtMs = clamp(e.timeStamp - aimT, 4, 100); aimT = e.timeStamp;
     aimV = aimV * 0.5 + (Math.hypot(dx, dy) / dtMs) * 0.5; // vitesse du doigt lissée
-    const s = SENS * (fov / 52) * (portrait ? 1.3 : 1) * (aimCurve === 'expo' ? aimGain(aimV) : 1); // +30 % en portrait
+    // linéaire : -20 % arc au repos, jusqu'à -40 % arc chargé à fond
+    const curve = aimCurve === 'expo' ? aimGain(aimV) : 0.8 - 0.2 * me.draw;
+    const s = SENS * (fov / 52) * (portrait ? 1.3 : 1) * curve; // +30 % en portrait
     me.yaw = clamp(me.yaw - dx * s * (map.lateral ? 1 : 1.25), -map.yawLim, map.yawLim);
     me.pitch = clamp(me.pitch - dy * s, -0.45, 0.65);
   }
