@@ -90,6 +90,9 @@ p{margin:0}
 .seg button small{display:block;font-weight:500;font-size:12px;opacity:.8}
 .seg button[aria-pressed="true"]{background:rgba(239,230,214,.14);color:var(--bone)}
 .seg button[aria-pressed="true"] small{color:var(--ember);opacity:1}
+.opt{display:flex;align-items:center;gap:10px;font-size:14px;color:var(--mute)}
+.opt .seg{flex:1;padding:3px}
+.opt .seg button{padding:6px 10px;text-align:center}
 .howto{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;font-size:14px;color:var(--mute);line-height:1.35;border-top:1px solid var(--line);padding-top:12px}
 .howto b{color:var(--bone);font-weight:700}
 .note{font-size:14px;color:var(--ember);line-height:1.4;min-height:0}
@@ -143,6 +146,12 @@ p{margin:0}
     <div class="seg mapsel" role="group" aria-label="Carte">
       <button data-map="canyon" aria-pressed="true">Canyon<small>face à face, esquive sur le côté</small></button>
       <button data-map="forest" aria-pressed="false">Forêt<small>cours partout, cache-toi</small></button>
+    </div>
+    <div class="opt"><span>Visée</span>
+      <div class="seg aimsel" role="group" aria-label="Courbe de visée">
+        <button data-aim="linear" aria-pressed="true">Linéaire</button>
+        <button data-aim="expo" aria-pressed="false">Exponentielle</button>
+      </div>
     </div>
     <button class="btn primary" id="btnCreate">Créer une partie <span>tu reçois un code</span></button>
     <div class="row">
@@ -220,6 +229,13 @@ const PLAYER_R = 0.35;                 // rayon de collision pour les déplaceme
 const SENS = 0.0028;
 // accélération de visée légère : doigt lent = plus précis, doigt rapide = un peu plus vif
 const AIM_VREF = 0.6, AIM_EXP = 0.3, AIM_MIN = 0.55, AIM_MAX = 1.4; // vitesse de référence en px/ms (gain 1)
+let aimCurve = 'linear'; // 'linear' (par défaut) ou 'expo'
+try { if (localStorage.getItem('duelarc-aim') === 'expo') aimCurve = 'expo'; } catch (e) {}
+function setAimCurve(k) {
+  aimCurve = k === 'expo' ? 'expo' : 'linear';
+  try { localStorage.setItem('duelarc-aim', aimCurve); } catch (e) {}
+  document.querySelectorAll('.aimsel button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.aim === aimCurve)));
+}
 const aimGain = v => clamp(Math.pow(Math.max(v, 0.001) / AIM_VREF, AIM_EXP), AIM_MIN, AIM_MAX);
 const MAPS = {
   canyon: { key: 'canyon', spawnZ: 12, lateral: true, xlim: 2.1, zlim: 12, maxv: 1.8, acc: 15, aimDist: 24, yawLim: 0.5 },
@@ -707,7 +723,7 @@ touch.addEventListener('pointermove', e => {
     const dx = e.clientX - aimX, dy = e.clientY - aimY; aimX = e.clientX; aimY = e.clientY;
     const dtMs = clamp(e.timeStamp - aimT, 4, 100); aimT = e.timeStamp;
     aimV = aimV * 0.5 + (Math.hypot(dx, dy) / dtMs) * 0.5; // vitesse du doigt lissée
-    const s = SENS * (fov / 52) * (portrait ? 1.3 : 1) * aimGain(aimV); // +30 % en portrait
+    const s = SENS * (fov / 52) * (portrait ? 1.3 : 1) * (aimCurve === 'expo' ? aimGain(aimV) : 1); // +30 % en portrait
     me.yaw = clamp(me.yaw - dx * s * (map.lateral ? 1 : 1.25), -map.yawLim, map.yawLim);
     me.pitch = clamp(me.pitch - dy * s, -0.45, 0.65);
   }
@@ -1248,6 +1264,8 @@ function renderOverStatus() {
 
 // ---------- buttons
 document.querySelectorAll('.mapsel button').forEach(b => b.addEventListener('click', () => chooseMap(b.dataset.map)));
+document.querySelectorAll('.aimsel button').forEach(b => b.addEventListener('click', () => setAimCurve(b.dataset.aim)));
+setAimCurve(aimCurve);
 $('#btnCreate').addEventListener('click', () => enterRoom(randCode(), true));
 $('#btnJoin').addEventListener('click', () => {
   const c = $('#code').value.toUpperCase().replace(/[^A-Z0-9]/g, '');
