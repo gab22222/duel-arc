@@ -8,6 +8,7 @@ Deux cartes :
   - **Arc** (par défaut).
   - **Arbalète** avec lunette x1,5 : ses carreaux tombent et volent comme une flèche tirée à fond, et tuent d'un coup où qu'ils touchent.
   - **Carabine** de chasse en bois avec lunette x3 : les balles ne tombent pas et vont deux fois plus vite qu'une flèche.
+  - **Batte** de baseball : corps à corps (portée environ 2 m, devant soi), 100 HP par coup, et on court 3 fois plus vite.
 
 Pour jouer : https://gab22222.github.io/duel-arc/
 

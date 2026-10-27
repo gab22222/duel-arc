@@ -103,7 +103,8 @@ p{margin:0}
 .opt{display:flex;align-items:center;gap:10px;font-size:14px;color:var(--mute)}
 .opt .seg{flex:1;padding:3px}
 .opt .seg button{padding:6px 10px;text-align:center}
-.opt .wpnsel{grid-template-columns:repeat(3,1fr)}
+.opt .wpnsel{grid-template-columns:repeat(4,1fr)}
+.opt .wpnsel button{padding:6px 2px;font-size:13px}
 .howto{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;font-size:14px;color:var(--mute);line-height:1.35;border-top:1px solid var(--line);padding-top:12px}
 .howto b{color:var(--bone);font-weight:700}
 .note{font-size:14px;color:var(--ember);line-height:1.4;min-height:0}
@@ -163,6 +164,7 @@ p{margin:0}
         <button data-wpn="bow" aria-pressed="true">Arc</button>
         <button data-wpn="crossbow" aria-pressed="false">Arbalète</button>
         <button data-wpn="rifle" aria-pressed="false">Carabine</button>
+        <button data-wpn="bat" aria-pressed="false">Batte</button>
       </div>
     </div>
     <div class="opt"><span>Visée</span>
@@ -209,6 +211,7 @@ p{margin:0}
         <button data-wpn="bow" aria-pressed="true">Arc</button>
         <button data-wpn="crossbow" aria-pressed="false">Arbalète</button>
         <button data-wpn="rifle" aria-pressed="false">Carabine</button>
+        <button data-wpn="bat" aria-pressed="false">Batte</button>
       </div>
     </div>
     <div class="status"><i class="dot" id="lobbyDot"></i><span id="lobbyStatus">En attente de ton adversaire…</span></div>
@@ -231,6 +234,7 @@ p{margin:0}
         <button data-wpn="bow" aria-pressed="true">Arc</button>
         <button data-wpn="crossbow" aria-pressed="false">Arbalète</button>
         <button data-wpn="rifle" aria-pressed="false">Carabine</button>
+        <button data-wpn="bat" aria-pressed="false">Batte</button>
       </div>
     </div>
     <p class="sub" id="overStatus"></p>
@@ -298,7 +302,10 @@ const WPN = {
   bow: { kind: 'arrow', aimT: DRAW_T, zoomX: null },
   crossbow: { kind: 'bolt', aimT: RIFLE_AIM_T, zoomX: 1.5 },  // carreau : chute et vitesse de l'arc à fond, tue d'un coup
   rifle: { kind: 'bullet', aimT: RIFLE_AIM_T, zoomX: SCOPE_X },
+  bat: { kind: 'melee', aimT: 0.15, zoomX: null, melee: true },     // batte : corps à corps, déplacements x3
 };
+const BAT_RANGE = 2.3, BAT_ARC = 1.0, BAT_COOLDOWN = 0.55, BAT_SPEED = 3; // portée (m), demi-angle devant soi (rad), délai entre deux coups (s)
+const speedMul = () => curWpn().melee ? BAT_SPEED : 1;
 const wpnKey = w => WPN[w] ? w : 'bow';
 let weapon = 'bow';
 try { weapon = wpnKey(localStorage.getItem('duelarc-wpn')); } catch (e) {}
@@ -728,6 +735,15 @@ function makeArcher(cloth, hoodCol, owner) {
   for (const z of [-0.14, -0.26]) xpart(new T.BoxGeometry(0.016, 0.04, 0.016), steel, 0, 0.04, z);
   const xBolt = makeArrow(owner, false); xBolt.scale.set(1, 1, 0.45); xBolt.position.set(0, 0.035, -0.7); xbow.add(xBolt);
   const xTip = new T.Vector3(0, 0.035, -0.72);
+  // batte de baseball tenue à deux mains : sur l'épaule au repos, armée vers l'arrière, frappe en arc de droite à gauche
+  const handB = new T.Vector3(0.1, 0.06, -0.32);
+  const batSwing = new T.Group(); batSwing.position.copy(handB); batSwing.visible = false; upper.add(batSwing);
+  const batG = new T.Group(); batSwing.add(batG);
+  const batGeo = new T.CylinderGeometry(0.046, 0.017, 0.84, 7); batGeo.translate(0, 0.42, 0);
+  batG.add(new T.Mesh(batGeo, std(0xc8955a, { roughness: .6 })));
+  const knob = new T.Mesh(new T.CylinderGeometry(0.027, 0.027, 0.03, 7), dark); batG.add(knob);
+  let swingAt = -9;
+  function swing() { swingAt = t; }
   const handL = new T.Vector3(0.12, 0.13, -0.63), handR = new T.Vector3(0.12, 0.12, -0.32);
   let wpn = 'bow';
   const grip = new T.Vector3(-0.04, 0.15, -0.58);
@@ -745,13 +761,21 @@ function makeArcher(cloth, hoodCol, owner) {
   function setWeapon(w) {
     wpn = w; const bowOn = w === 'bow';
     bow.visible = quiver.visible = bowOn; quiverArrows.forEach(f => { f.visible = bowOn; });
-    rifle.visible = w === 'rifle'; xbow.visible = w === 'crossbow';
-    if (bowOn) armL.set(shL, grip); else { armL.set(shL, handL); armR.set(shR, handR); }
+    rifle.visible = w === 'rifle'; xbow.visible = w === 'crossbow'; batSwing.visible = w === 'bat';
+    if (bowOn) armL.set(shL, grip);
+    else if (w === 'bat') { armL.set(shL, tmpA.copy(handB).add(tmpB.set(-0.02, -0.02, 0.02))); armR.set(shR, handB); }
+    else { armL.set(shL, handL); armR.set(shR, handR); }
   }
   function setPose(pitch, draw, isNocked) {
     upper.rotation.x = pitch;
     if (wpn === 'rifle') { rifle.position.z = -0.18 + draw * 0.04; return; }
     if (wpn === 'crossbow') { xbow.position.z = -0.18 + draw * 0.04; xBolt.visible = isNocked; return; }
+    if (wpn === 'bat') {
+      const k = (t - swingAt) / 0.28;
+      if (k >= 0 && k < 1) { batG.rotation.set(-Math.PI / 2, 0, 0); batSwing.rotation.y = -1.4 + 2.8 * k; }
+      else { batSwing.rotation.y = 0; batG.rotation.set(0.5 + draw * 0.6, 0, -0.5 - draw * 0.4); }
+      return;
+    }
     const nz = 0.07 + draw * 0.5;
     const p = strGeo.attributes.position; p.setZ(1, nz); p.needsUpdate = true;
     nocked.visible = isNocked; nocked.position.set(0, 0, nz - 1.01);
@@ -765,10 +789,11 @@ function makeArcher(cloth, hoodCol, owner) {
     root.updateMatrixWorld(true);
     if (wpn === 'rifle') return rifle.localToWorld(out.copy(muzzle));
     if (wpn === 'crossbow') return xbow.localToWorld(out.copy(xTip));
+    if (wpn === 'bat') return upper.localToWorld(out.copy(handB));
     return bow.localToWorld(out.set(0, 0, -0.35));
   }
   scene.add(root);
-  return { root, upper, setPose, setWeapon, bowWorld, updateHead, headPos };
+  return { root, upper, setPose, setWeapon, swing, bowWorld, updateHead, headPos };
 }
 const meA = makeArcher(0x2f8f83, 0x1f5f58, 'me');
 const oppA = makeArcher(0xa8342a, 0x6e1f1a, 'opp');
@@ -892,7 +917,8 @@ function resetMatch(k) {
   }
   for (const A of archers) { A.root.rotation.z = 0; A.root.position.y = 0; }
   $('#side2').hidden = !trio(); $('.vs').hidden = trio(); opp2A.root.visible = trio();
-  Object.assign(bot, { tx: 0, tz: -map.spawnZ, moveT: 0, shootT: rand(1.4, 2.2), drawing: false, reload: 0, hold: 0, stuck: 0 });
+  Object.assign(bot, { tx: 0, tz: -map.spawnZ, moveT: 0, shootT: rand(1.4, 2.2), drawing: false, reload: 0, hold: 0, stuck: 0, swingHit: 0 });
+  me.swingHit = 0;
   aimId = null; moveId = null; moveIn.x = moveIn.y = 0; headshot = false;
   phase = 'countdown'; cd = 3; big('3', 0.8); sfx('tick');
   $('#stick').classList.toggle('round', !map.lateral);
@@ -985,7 +1011,7 @@ addEventListener('keyup', e => { keys[e.code] = false; if (e.code === 'Space' &&
 addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
 
 function release() {
-  if (me.drawing && me.draw > 0.15 && phase === 'fight') fire();
+  if (me.drawing && me.draw > 0.15 && phase === 'fight') { if (curWpn().melee) swingBat(); else fire(); }
   me.drawing = false; me.draw = 0;
 }
 function forward(yaw, pitch, out) { return out.set(-Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), -Math.cos(yaw) * Math.cos(pitch)); }
@@ -1051,6 +1077,31 @@ function fire() {
   if (mode === 'online' && nroom) nroom.emit('shot', { g: net.started, id, k: KIND_CODE[kind], o: [r3(o.x), r3(o.y), r3(o.z)], v: [r3(v.x), r3(v.y), r3(v.z)] }).catch(() => {});
   me.reload = RELOAD; sfx(kind === 'bullet' ? 'bang' : 'twang');
 }
+// ---------- batte : le coup part au relâcher, il touche ~0,1 s plus tard l'adversaire le plus proche devant soi
+function inBatReach(ax, az, yaw, tg) {
+  const dx = tg.s.x - ax, dz = tg.s.z - az, d = Math.hypot(dx, dz);
+  if (d > BAT_RANGE) return false;
+  if (d > 0.5 && Math.abs(angDiff(yaw, Math.atan2(-dx, -dz))) > BAT_ARC) return false;
+  return lineOfSight(losA.set(ax, 1.2, az), losB.set(tg.s.x, 1.2, tg.s.z));
+}
+function swingBat() {
+  meA.swing(); sfx('whoosh', 0.6); me.reload = BAT_COOLDOWN; me.swingHit = 0.1;
+  if (mode === 'online' && nroom) nroom.emit('shot', { g: net.started, id: ++shotSeq, k: 'm' }).catch(() => {});
+}
+function meleeStrike() {
+  if (!(phase === 'fight' || phase === 'ending') || isDead(ME)) return;
+  let best = null, bd = 1e9;
+  for (const f of foes) if (!isDead(f) && inBatReach(me.x, me.z, me.yaw, f)) { const d = Math.hypot(f.s.x - me.x, f.s.z - me.z); if (d < bd) { bd = d; best = f; } }
+  if (!best) return;
+  sfx('thunk', 1);
+  if (!(mode === 'online' && nroom)) { registerTaken(best, best.s.taken + 1, false, 'me'); return; }
+  // comme pour une flèche : c'est moi qui décide du coup et je préviens tout le monde
+  const mine = dealt[myId] || (dealt[myId] = {});
+  mine[best.peer] = Math.min(WIN, num(mine[best.peer], 0) + 1);
+  recountTaken(best, false, 'me');
+  nroom.emit('hit', { g: net.started, id: 0, k: 'm', v: best.peer, n: mine[best.peer], head: false }).catch(() => {});
+  pres({ dealt: { ...mine } });
+}
 function updateMe(dt) {
   let ix, iy;
   if (moveId !== null) { ix = moveIn.x; iy = moveIn.y; }
@@ -1060,7 +1111,7 @@ function updateMe(dt) {
   }
   const out = isDead(ME); // éliminé (à 3) : on regarde la fin sans bouger ni tirer
   if (out) { me.drawing = false; me.draw = 0; }
-  const slow = me.drawing ? (map.lateral ? 0.65 : 0.55) : 1, act = canMove() && !out;
+  const slow = (me.drawing && !curWpn().melee ? (map.lateral ? 0.65 : 0.55) : 1) * speedMul(), act = canMove() && !out;
   let tvx = 0, tvz = 0;
   if (act && map.lateral) tvx = ix * map.maxv * slow;
   else if (act) {
@@ -1069,7 +1120,7 @@ function updateMe(dt) {
     tvx = (mx * c - mf * s) * map.maxv * slow;
     tvz = (-mx * s - mf * c) * map.maxv * slow;
   }
-  me.vx = approach(me.vx, tvx, map.acc * dt); me.vz = approach(me.vz, tvz, map.acc * dt);
+  me.vx = approach(me.vx, tvx, map.acc * speedMul() * dt); me.vz = approach(me.vz, tvz, map.acc * speedMul() * dt);
   const px = me.x, pz = me.z;
   me.x += me.vx * dt; me.z += me.vz * dt;
   if (map.lateral) { me.z = map.spawnZ; if (Math.abs(me.x) > map.xlim) { me.x = clamp(me.x, -map.xlim, map.xlim); me.vx = 0; } }
@@ -1079,6 +1130,7 @@ function updateMe(dt) {
   if (keys.ArrowLeft) me.yaw = clamp(me.yaw + dt * 1.2, -map.yawLim, map.yawLim);
   if (keys.ArrowRight) me.yaw = clamp(me.yaw - dt * 1.2, -map.yawLim, map.yawLim);
   me.reload = Math.max(0, me.reload - dt);
+  if (me.swingHit > 0) { me.swingHit -= dt; if (me.swingHit <= 0) meleeStrike(); }
   if (aimId !== null && !me.drawing && me.reload <= 0 && phase === 'fight' && !out) me.drawing = true;
   if (me.drawing) me.draw = Math.min(1, me.draw + dt / curWpn().aimT);
   meA.root.position.set(me.x, 0, me.z); meA.root.rotation.y = me.yaw;
@@ -1088,7 +1140,7 @@ function updateMe(dt) {
 }
 
 // ---------- bot
-const bot = { tx: 0, tz: -12, moveT: 0, shootT: 2, drawing: false, drawGoal: 1, reload: 0, hold: 0, ex: 0, ey: 0, lead: 0, stuck: 0 };
+const bot = { tx: 0, tz: -12, moveT: 0, shootT: 2, drawing: false, drawGoal: 1, reload: 0, hold: 0, ex: 0, ey: 0, lead: 0, stuck: 0, swingHit: 0, react: 0.25 };
 function solveBallistic(o, tx, ty, tz, speed, G) {
   const dx = tx - o.x, dz = tz - o.z, d = Math.hypot(dx, dz) || 0.01, h = ty - o.y, v2 = speed * speed;
   if (!G) return { yaw: Math.atan2(dx, dz), pitch: Math.atan2(h, d), hx: dx / d, hz: dz / d, d };
@@ -1138,11 +1190,15 @@ function botMove(dt) {
     return;
   }
   bot.moveT -= dt;
+  if (curWpn().melee) { // à la batte, il fonce sur le joueur et s'arrête au contact
+    const ex = me.x - opp.x, ez = me.z - opp.z, el = Math.hypot(ex, ez) || 1, k = Math.max(0, el - 1.1) / el;
+    bot.tx = opp.x + ex * k; bot.tz = opp.z + ez * k;
+  }
   const dx = bot.tx - opp.x, dz = bot.tz - opp.z, d = Math.hypot(dx, dz);
-  if (bot.moveT <= 0 || d < 0.6 || bot.stuck > 0.8) { botPickWaypoint(); bot.stuck = 0; }
+  if (!curWpn().melee && (bot.moveT <= 0 || d < 0.6 || bot.stuck > 0.8)) { botPickWaypoint(); bot.stuck = 0; }
   let vx = 0, vz = 0;
   if (active && d > 0.6) {
-    const sp = map.maxv * (bot.drawing ? 0.5 : 0.95);
+    const sp = map.maxv * (bot.drawing ? 0.5 : 0.95) * speedMul();
     let ux = dx / d, uz = dz / d;
     // évite les obstacles en tournant si la route est bloquée
     for (const ang of [0, 0.7, -0.7, 1.4, -1.4]) {
@@ -1152,7 +1208,7 @@ function botMove(dt) {
     }
     vx = ux * sp; vz = uz * sp;
   }
-  opp.vx = approach(opp.vx, vx, map.acc * dt); opp.vz = approach(opp.vz, vz, map.acc * dt);
+  opp.vx = approach(opp.vx, vx, map.acc * speedMul() * dt); opp.vz = approach(opp.vz, vz, map.acc * speedMul() * dt);
   const px = opp.x, pz = opp.z;
   opp.x += opp.vx * dt; opp.z += opp.vz * dt; resolveMove(opp);
   if (active && d > 0.6 && Math.hypot(opp.x - px, opp.z - pz) < dt * 0.6) bot.stuck += dt; else bot.stuck = 0;
@@ -1166,6 +1222,7 @@ function botUpdate(dt) {
     opp.yaw += angDiff(opp.yaw, want) * (1 - Math.exp(-dt * 6));
   }
   if (phase !== 'fight') { bot.drawing = false; opp.draw = 0; return; }
+  if (curWpn().melee) { botMelee(dt); return; }
   oppA.bowWorld(losA); losB.set(me.x, 1.2, me.z);
   const see = lineOfSight(losA, losB) && Math.hypot(me.x - opp.x, me.z - opp.z) < 34;
   if (!bot.drawing) {
@@ -1190,6 +1247,17 @@ function botUpdate(dt) {
       } else if (bot.hold > 1.6) { bot.drawing = false; opp.draw = 0; bot.shootT = rand(0.3, 1); }
     }
   }
+}
+function botMelee(dt) {
+  const d = Math.hypot(me.x - opp.x, me.z - opp.z);
+  if (bot.swingHit > 0) {
+    bot.swingHit -= dt;
+    // le bot est vu de face : son « devant » est son angle + π dans le repère du joueur
+    if (bot.swingHit <= 0 && !isDead(ME) && inBatReach(opp.x, opp.z, opp.yaw + Math.PI, ME)) { sfx('thunk', 1); registerTaken(ME, me.taken + 1, false, 'opp'); }
+  } else if (d < BAT_RANGE * 0.85 && bot.reload <= 0) {
+    bot.hold += dt;
+    if (bot.hold > (bot.react || 0.25)) { oppA.swing(); sfx('whoosh', 0.5); bot.swingHit = 0.1; bot.reload = BAT_COOLDOWN * rand(1, 1.6); bot.hold = 0; bot.react = rand(0.12, 0.4); }
+  } else bot.hold = 0;
 }
 function updateOpp(dt) {
   if (mode === 'practice') return;
@@ -1362,7 +1430,7 @@ function updateCamera(dt) {
   if (inGame) {
     const base = portrait ? 72 : 52;
     const zx = curWpn().zoomX;
-    const zoom = zx ? 2 * Math.atan(Math.tan(base * Math.PI / 360) / zx) * 180 / Math.PI : (portrait ? 46 : 32);
+    const zoom = zx ? 2 * Math.atan(Math.tan(base * Math.PI / 360) / zx) * 180 / Math.PI : curWpn().melee ? base : (portrait ? 46 : 32);
     const want = base + (zoom - base) * (me.drawing ? Math.sin(me.draw * Math.PI / 2) : 0);
     fov += (want - fov) * (1 - Math.exp(-dt * 10));
     camOffset(camera.position);
@@ -1564,6 +1632,7 @@ function applyOppPres(p, f) {
 function fromOpp(msg) { return msg && !msg.sameTab && mode === 'online' && msg.data && net.started && msg.data.g === net.started && !!foeByPeer(msg.peer); }
 function onShot(msg) {
   if (!fromOpp(msg) || !(phase === 'fight' || phase === 'ending')) return;
+  if (msg.data.k === 'm') { const f = foeByPeer(msg.peer); if (!isDead(f)) { f.A.swing(); sfx('whoosh', 0.5); } return; } // coup de batte
   const o = msg.data.o, v = msg.data.v;
   if (!Array.isArray(o) || !Array.isArray(v) || o.length !== 3 || v.length !== 3) return;
   const f = foeByPeer(msg.peer), k = trio() ? 1 : -1;
