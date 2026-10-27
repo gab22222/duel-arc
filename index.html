@@ -515,6 +515,47 @@ function makeArrow(owner, streak) {
   return g;
 }
 
+// ---------- traînée de fumée grise derrière les flèches (s'efface en 4 s)
+const SMOKE_N = 6000, SMOKE_LIFE = 4, SMOKE_STEP = 0.2;
+const smokePos = new Float32Array(SMOKE_N * 3), smokeBirth = new Float32Array(SMOKE_N).fill(-1e4);
+const smokeGeo = new T.BufferGeometry();
+smokeGeo.setAttribute('position', new T.BufferAttribute(smokePos, 3));
+smokeGeo.setAttribute('birth', new T.BufferAttribute(smokeBirth, 1));
+const smokeMat = new T.ShaderMaterial({
+  uniforms: { uTime: { value: 0 }, uScale: { value: 400 }, uColor: { value: new T.Color(0xb4b4b4) }, uAlpha: { value: 0.14 } },
+  vertexShader: `
+    attribute float birth; uniform float uTime; uniform float uScale; varying float vA;
+    void main() {
+      float age = uTime - birth;
+      vA = (age < 0.0 || age > ${SMOKE_LIFE.toFixed(1)}) ? 0.0 : 1.0 - age / ${SMOKE_LIFE.toFixed(1)};
+      vec4 mv = modelViewMatrix * vec4(position + vec3(0.0, age * 0.06, 0.0), 1.0);
+      gl_PointSize = min(160.0, (0.35 + age * 0.3) * uScale / max(0.1, -mv.z));
+      gl_Position = projectionMatrix * mv;
+    }`,
+  fragmentShader: `
+    uniform vec3 uColor; uniform float uAlpha; varying float vA;
+    void main() {
+      vec2 c = gl_PointCoord - 0.5; float d = dot(c, c);
+      if (d > 0.25 || vA <= 0.0) discard;
+      gl_FragColor = vec4(uColor, vA * uAlpha * (1.0 - d * 4.0));
+    }`,
+  transparent: true, depthWrite: false,
+});
+const smoke = new T.Points(smokeGeo, smokeMat); smoke.frustumCulled = false; scene.add(smoke);
+const smokeV = new T.Vector3();
+let smokeIdx = 0, smokeDirty = false;
+function emitSmoke(a) {
+  smokeV.copy(a.v).normalize();
+  const i = smokeIdx; smokeIdx = (smokeIdx + 1) % SMOKE_N;
+  smokePos[i * 3] = a.p.x - smokeV.x * 0.9; smokePos[i * 3 + 1] = a.p.y - smokeV.y * 0.9; smokePos[i * 3 + 2] = a.p.z - smokeV.z * 0.9;
+  smokeBirth[i] = t; smokeDirty = true;
+}
+function updateSmoke() {
+  smokeMat.uniforms.uTime.value = t;
+  smokeMat.uniforms.uScale.value = renderer.domElement.height / (2 * Math.tan(camera.fov * Math.PI / 360));
+  if (smokeDirty) { smokeGeo.attributes.position.needsUpdate = true; smokeGeo.attributes.birth.needsUpdate = true; smokeDirty = false; }
+}
+
 // ---------- archers (face -Z)
 const tmpA = new T.Vector3(), tmpB = new T.Vector3(), tmpL = new T.Vector3(), tmpV = new T.Vector3();
 function limb(mat, thick) {
@@ -999,7 +1040,11 @@ function updateArrows(dt) {
     }
     a.life += dt;
     const n = Math.max(1, Math.ceil(a.v.length() * dt / 0.15)), h = dt / n;
-    for (let s = 0; s < n && a.flying; s++) { a.v.y -= G * h; a.p.addScaledVector(a.v, h); collide(a); }
+    for (let s = 0; s < n && a.flying; s++) {
+      a.v.y -= G * h; a.p.addScaledVector(a.v, h); collide(a);
+      a.smokeD = (a.smokeD || 0) + a.v.length() * h;
+      if (a.flying && a.smokeD >= SMOKE_STEP) { a.smokeD = 0; emitSmoke(a); }
+    }
     if (a.flying) {
       a.m.position.copy(a.p); orient(a);
       if (a.p.y < -85 || a.life > 6) { scene.remove(a.m); arrows.splice(i, 1); }
@@ -1302,6 +1347,7 @@ function frame(now) {
   updateCamera(dt);
   netTick(now);
   drawHud();
+  updateSmoke();
   renderer.render(scene, camera);
   requestAnimationFrame(frame);
 }
