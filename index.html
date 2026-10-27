@@ -39,6 +39,7 @@ body{position:fixed;inset:0;touch-action:none;-webkit-user-select:none;user-sele
 .pips{display:flex;gap:7px}
 .pip{width:11px;height:11px;transform:rotate(45deg);border:1.5px solid currentColor}
 .pip.on{background:currentColor;box-shadow:0 0 8px currentColor}
+.pip.half{background:linear-gradient(90deg,currentColor 50%,transparent 50%)}
 .me{color:var(--teal)}
 .them{color:var(--crimson)}
 .them2{color:#e8b93a}
@@ -75,6 +76,8 @@ body{position:fixed;inset:0;touch-action:none;-webkit-user-select:none;user-sele
 #stick.round #knob{top:40px;left:40px;width:44px;height:44px;border-radius:50%}
 #stick.round::before,#stick.round::after{display:none}
 
+#sil{position:fixed;z-index:6;left:calc(env(safe-area-inset-left,0px) + 30px);bottom:calc(env(safe-area-inset-bottom,0px) + 182px);padding:5px 10px;border-radius:999px;border:1px solid var(--line);background:rgba(14,12,22,.55);color:var(--mute);font:700 12px/1 var(--body);letter-spacing:.04em;cursor:pointer;touch-action:manipulation}
+#sil[aria-pressed="true"]{color:var(--bone);border-color:rgba(239,230,214,.5);background:rgba(239,230,214,.16)}
 #quit{position:fixed;z-index:6;top:calc(env(safe-area-inset-top,0px) + 8px);left:calc(env(safe-area-inset-left,0px) + 10px);width:40px;height:40px;border-radius:12px;border:1px solid var(--line);background:rgba(14,12,22,.55);color:var(--bone);font-size:18px;line-height:1;cursor:pointer}
 
 .panel{position:fixed;z-index:5;inset:0;display:grid;place-items:center;padding:max(14px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(14px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));background:linear-gradient(180deg,rgba(10,9,18,.25),rgba(10,9,18,.72));overflow:auto;touch-action:manipulation}
@@ -103,7 +106,7 @@ p{margin:0}
 .opt{display:flex;align-items:center;gap:10px;font-size:14px;color:var(--mute)}
 .opt .seg{flex:1;padding:3px}
 .opt .seg button{padding:6px 10px;text-align:center}
-.opt .wpnsel{grid-template-columns:repeat(4,1fr)}
+.opt .wpnsel{grid-template-columns:repeat(3,1fr)}
 .opt .wpnsel button{padding:6px 2px;font-size:13px}
 .howto{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;font-size:14px;color:var(--mute);line-height:1.35;border-top:1px solid var(--line);padding-top:12px}
 .howto b{color:var(--bone);font-weight:700}
@@ -150,6 +153,7 @@ p{margin:0}
 <div class="hud" id="hurt"></div>
 <div class="hud" id="stick" hidden><div id="knob"></div></div>
 <button id="quit" aria-label="Quitter la partie" hidden>✕</button>
+<button id="sil" aria-pressed="false" hidden>Silencieux</button>
 
 <section class="panel" id="menu">
   <div class="sheet">
@@ -165,6 +169,7 @@ p{margin:0}
         <button data-wpn="crossbow" aria-pressed="false">Arbalète</button>
         <button data-wpn="rifle" aria-pressed="false">Carabine</button>
         <button data-wpn="bat" aria-pressed="false">Batte</button>
+        <button data-wpn="pistol" aria-pressed="false">Pistolet</button>
       </div>
     </div>
     <div class="opt"><span>Visée</span>
@@ -212,6 +217,7 @@ p{margin:0}
         <button data-wpn="crossbow" aria-pressed="false">Arbalète</button>
         <button data-wpn="rifle" aria-pressed="false">Carabine</button>
         <button data-wpn="bat" aria-pressed="false">Batte</button>
+        <button data-wpn="pistol" aria-pressed="false">Pistolet</button>
       </div>
     </div>
     <div class="status"><i class="dot" id="lobbyDot"></i><span id="lobbyStatus">En attente de ton adversaire…</span></div>
@@ -235,6 +241,7 @@ p{margin:0}
         <button data-wpn="crossbow" aria-pressed="false">Arbalète</button>
         <button data-wpn="rifle" aria-pressed="false">Carabine</button>
         <button data-wpn="bat" aria-pressed="false">Batte</button>
+        <button data-wpn="pistol" aria-pressed="false">Pistolet</button>
       </div>
     </div>
     <p class="sub" id="overStatus"></p>
@@ -303,7 +310,15 @@ const WPN = {
   crossbow: { kind: 'bolt', aimT: RIFLE_AIM_T, zoomX: 1.5 },  // carreau : chute et vitesse de l'arc à fond, tue d'un coup
   rifle: { kind: 'bullet', aimT: RIFLE_AIM_T, zoomX: SCOPE_X },
   bat: { kind: 'melee', aimT: 0.15, zoomX: null, melee: true },     // batte : corps à corps, déplacements x3
+  pistol: { kind: 'pistol', aimT: 0.15, zoomX: null, auto: true, rate: 0.25 }, // pistolet : tir continu tant qu'on maintient
 };
+const isBullet = k => k === 'bullet' || k === 'pistol'; // pas de chute, pas de temps de vol
+// dégâts en « touches » (1 touche = 100 HP, WIN touches = mort)
+function hitDamage(a, head) {
+  if (a.kind === 'pistol') return head ? 1 : 0.5;
+  return head || a.kill ? WIN : 1;
+}
+let silencer = false; // pistolet : silencieux vissé ou non (change le bruit du tir)
 const BAT_RANGE = 2.3, BAT_ARC = 1.0, BAT_COOLDOWN = 0.55, BAT_SPEED = 3; // portée (m), demi-angle devant soi (rad), délai entre deux coups (s)
 const speedMul = () => curWpn().melee ? BAT_SPEED : 1;
 const wpnKey = w => WPN[w] ? w : 'bow';
@@ -744,6 +759,16 @@ function makeArcher(cloth, hoodCol, owner) {
   const knob = new T.Mesh(new T.CylinderGeometry(0.027, 0.027, 0.03, 7), dark); batG.add(knob);
   let swingAt = -9;
   function swing() { swingAt = t; }
+  // pistolet tenu à deux mains bras tendus ; silencieux vissé au bout du canon quand il est mis
+  const handP = new T.Vector3(0.08, 0.1, -0.56);
+  const pistolG = new T.Group(); pistolG.position.copy(handP); pistolG.visible = false; upper.add(pistolG);
+  const ppart = (geo, mat, x, y, z) => { const m = new T.Mesh(geo, mat); m.position.set(x, y, z); pistolG.add(m); return m; };
+  ppart(new T.BoxGeometry(0.035, 0.05, 0.19), steel, 0, 0.035, -0.06);   // culasse
+  const pgrip = ppart(new T.BoxGeometry(0.032, 0.1, 0.045), dark, 0, -0.025, 0.01); pgrip.rotation.x = 0.25;
+  const sil = ppart(new T.CylinderGeometry(0.017, 0.017, 0.14, 8), steel, 0, 0.038, -0.225); sil.rotation.x = Math.PI / 2; sil.visible = false;
+  let pKick = -9;
+  function setSilencer(on) { sil.visible = on; }
+  function recoil() { pKick = t; }
   const handL = new T.Vector3(0.12, 0.13, -0.63), handR = new T.Vector3(0.12, 0.12, -0.32);
   let wpn = 'bow';
   const grip = new T.Vector3(-0.04, 0.15, -0.58);
@@ -761,8 +786,9 @@ function makeArcher(cloth, hoodCol, owner) {
   function setWeapon(w) {
     wpn = w; const bowOn = w === 'bow';
     bow.visible = quiver.visible = bowOn; quiverArrows.forEach(f => { f.visible = bowOn; });
-    rifle.visible = w === 'rifle'; xbow.visible = w === 'crossbow'; batSwing.visible = w === 'bat';
+    rifle.visible = w === 'rifle'; xbow.visible = w === 'crossbow'; batSwing.visible = w === 'bat'; pistolG.visible = w === 'pistol';
     if (bowOn) armL.set(shL, grip);
+    else if (w === 'pistol') { armL.set(shL, tmpA.copy(handP).add(tmpB.set(-0.02, -0.03, 0.03))); armR.set(shR, handP); }
     else if (w === 'bat') { armL.set(shL, tmpA.copy(handB).add(tmpB.set(-0.02, -0.02, 0.02))); armR.set(shR, handB); }
     else { armL.set(shL, handL); armR.set(shR, handR); }
   }
@@ -770,6 +796,7 @@ function makeArcher(cloth, hoodCol, owner) {
     upper.rotation.x = pitch;
     if (wpn === 'rifle') { rifle.position.z = -0.18 + draw * 0.04; return; }
     if (wpn === 'crossbow') { xbow.position.z = -0.18 + draw * 0.04; xBolt.visible = isNocked; return; }
+    if (wpn === 'pistol') { const k = clamp((t - pKick) / 0.12, 0, 1); pistolG.rotation.x = (1 - k) * 0.25; pistolG.position.z = handP.z + (1 - k) * 0.03; return; }
     if (wpn === 'bat') {
       const k = (t - swingAt) / 0.28;
       if (k >= 0 && k < 1) { batG.rotation.set(-Math.PI / 2, 0, 0); batSwing.rotation.y = -1.4 + 2.8 * k; }
@@ -790,10 +817,11 @@ function makeArcher(cloth, hoodCol, owner) {
     if (wpn === 'rifle') return rifle.localToWorld(out.copy(muzzle));
     if (wpn === 'crossbow') return xbow.localToWorld(out.copy(xTip));
     if (wpn === 'bat') return upper.localToWorld(out.copy(handB));
+    if (wpn === 'pistol') return pistolG.localToWorld(out.set(0, 0.038, sil.visible ? -0.3 : -0.16));
     return bow.localToWorld(out.set(0, 0, -0.35));
   }
   scene.add(root);
-  return { root, upper, setPose, setWeapon, swing, bowWorld, updateHead, headPos };
+  return { root, upper, setPose, setWeapon, swing, setSilencer, recoil, bowWorld, updateHead, headPos };
 }
 const meA = makeArcher(0x2f8f83, 0x1f5f58, 'me');
 const oppA = makeArcher(0xa8342a, 0x6e1f1a, 'opp');
@@ -828,6 +856,8 @@ function sfx(k, v = 1) {
   try {
     if (k === 'twang') { tone('triangle', 240, 90, 0.22, 0.28 * v); hiss('highpass', 3000, 1500, 0.06, 0.12 * v); }
     else if (k === 'whoosh') hiss('bandpass', 700, 2600, 0.45, 0.22 * v);
+    else if (k === 'pbang') { hiss('highpass', 4200, 1400, 0.14, 0.5 * v); tone('square', 240, 70, 0.09, 0.22 * v); hiss('lowpass', 2500, 300, 0.12, 0.35 * v); }
+    else if (k === 'psil') { hiss('bandpass', 1600, 500, 0.07, 0.16 * v); tone('sine', 150, 70, 0.06, 0.1 * v); }
     else if (k === 'bang') { hiss('lowpass', 5000, 400, 0.32, 0.6 * v); tone('sine', 120, 40, 0.25, 0.5 * v); }
     else if (k === 'thunk') { tone('sine', 150, 55, 0.14, 0.4 * v); hiss('lowpass', 1200, 300, 0.08, 0.2 * v); }
     else if (k === 'hit') { tone('square', 660, 660, 0.09, 0.09); tone('square', 990, 990, 0.14, 0.09, 0.08); }
@@ -841,7 +871,7 @@ function sfx(k, v = 1) {
 }
 
 // ---------- game state (chaque joueur se voit au sud, face au -Z ; l'adversaire est symétrique)
-const me = { x: 0, z: 12, vx: 0, vz: 0, yaw: 0, pitch: 0.04, draw: 0, drawing: false, reload: 0, taken: 0 };
+const me = { x: 0, z: 12, vx: 0, vz: 0, yaw: 0, pitch: 0.04, draw: 0, drawing: false, reload: 0, taken: 0, nextShot: -Infinity };
 const opp = { x: 0, z: -12, tx: 0, tz: -12, vx: 0, vz: 0, yaw: 0, tyaw: 0, pitch: 0.04, tpitch: 0.04, draw: 0, nock: true, taken: 0 };
 const opp2 = { x: 0, z: 0, tx: 0, tz: 0, vx: 0, vz: 0, yaw: 0, tyaw: 0, pitch: 0.04, tpitch: 0.04, draw: 0, nock: true, taken: 0 };
 // joueurs : moi + adversaires (un en duel contre le bot ou en ligne, deux en 1v1v1 en ligne)
@@ -883,7 +913,7 @@ function flashHurt() { hurtEl.classList.add('on'); requestAnimationFrame(() => r
 let hpShown = HP_MAX;
 function renderScore() {
   // en duel : mes touches / les siennes ; à 3 : les touches reçues par chacun
-  const pip = (sel, n) => [...$(sel).children].forEach((p, i) => p.classList.toggle('on', i < n));
+  const pip = (sel, n) => [...$(sel).children].forEach((p, i) => { p.classList.toggle('on', i < Math.floor(n)); p.classList.toggle('half', i === Math.floor(n) && n % 1 >= 0.5); });
   if (trio()) { pip('#pipsMe', me.taken); pip('#pipsThem', opp.taken); pip('#pipsThem2', opp2.taken); }
   else { pip('#pipsMe', opp.taken); pip('#pipsThem', me.taken); }
   const hp = Math.max(0, HP_MAX - me.taken * HP_MAX / WIN), el = $('#hp');
@@ -897,6 +927,7 @@ const panels = ['#menu', '#lobby', '#over'];
 function showPanel(id) { panels.forEach(p => { $(p).hidden = p !== id; }); }
 function setPlayingHud(on) {
   ['#score', '#hp', '#cross', '#stick', '#quit'].forEach(s => { $(s).toggleAttribute('hidden', !on); });
+  $('#sil').hidden = !(on && curW() === 'pistol');
 }
 
 // ---------- match flow
@@ -949,7 +980,7 @@ function finish() {
     $('#overTitle').textContent = title; $('#overTitle').style.color = color;
     $('#overEyebrow').textContent = headshot ? 'Fin du duel · tir à la tête' : 'Fin du duel';
     $('#overScore').textContent = trio() ? (standing.length ? `Dernier debout : ${standing[0].name}` : 'Personne ne reste debout')
-      : `Toi ${opp.taken} – ${me.taken} ${mode === 'bot' ? 'Bot' : 'Rival'}`;
+      : `Toi ${String(opp.taken).replace('.', ',')} – ${String(me.taken).replace('.', ',')} ${mode === 'bot' ? 'Bot' : 'Rival'}`;
     $('#btnAgain').textContent = mode === 'bot' ? 'Rejouer' : 'Revanche';
     $('#btnAgain').disabled = false;
     renderOverStatus();
@@ -1011,7 +1042,7 @@ addEventListener('keyup', e => { keys[e.code] = false; if (e.code === 'Space' &&
 addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
 
 function release() {
-  if (me.drawing && me.draw > 0.15 && phase === 'fight') { if (curWpn().melee) swingBat(); else fire(); }
+  if (me.drawing && me.draw > 0.15 && phase === 'fight' && !curWpn().auto) { if (curWpn().melee) swingBat(); else fire(); }
   me.drawing = false; me.draw = 0;
 }
 function forward(yaw, pitch, out) { return out.set(-Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), -Math.cos(yaw) * Math.cos(pitch)); }
@@ -1054,9 +1085,10 @@ function flightEnd(o, v, g = G) {
   return simP;
 }
 // vitesse et gravité d'un projectile : la balle file droit, le carreau vole comme une flèche tirée à fond
-function shotSpeed(kind, draw) { return kind === 'bullet' ? BULLET_V : kind === 'bolt' ? VMAX : VMIN + (VMAX - VMIN) * draw; }
+function shotSpeed(kind, draw) { return isBullet(kind) ? BULLET_V : kind === 'bolt' ? VMAX : VMIN + (VMAX - VMIN) * draw; }
+function shotSfx(kind, sil, v = 1) { sfx(kind === 'pistol' ? (sil ? 'psil' : 'pbang') : kind === 'bullet' ? 'bang' : 'twang', v); }
 function fire() {
-  const kind = curWpn().kind, g = kind === 'bullet' ? 0 : G;
+  const kind = curWpn().kind, g = isBullet(kind) ? 0 : G;
   const speed = shotSpeed(kind, me.draw);
   const o = meA.bowWorld(new T.Vector3());
   forward(me.yaw, me.pitch, camF);
@@ -1074,9 +1106,12 @@ function fire() {
   }
   const id = ++shotSeq;
   // le tir part avant d'être résolu : une balle touche dans la foulée, les autres doivent recevoir le tir avant la touche
-  if (mode === 'online' && nroom) nroom.emit('shot', { g: net.started, id, k: KIND_CODE[kind], o: [r3(o.x), r3(o.y), r3(o.z)], v: [r3(v.x), r3(v.y), r3(v.z)] }).catch(() => {});
+  if (mode === 'online' && nroom) nroom.emit('shot', { g: net.started, id, k: KIND_CODE[kind], s: kind === 'pistol' && silencer ? 1 : 0, o: [r3(o.x), r3(o.y), r3(o.z)], v: [r3(v.x), r3(v.y), r3(v.z)] }).catch(() => {});
   spawnArrow('me', o, v, id, kind);
-  me.reload = RELOAD; sfx(kind === 'bullet' ? 'bang' : 'twang');
+  me.reload = curWpn().rate || RELOAD; shotSfx(kind, silencer);
+  // tir continu : cadence exacte, sans dériver avec la durée des images
+  if (curWpn().auto) { const ns = me.nextShot; me.nextShot = (t - ns < me.reload ? ns : t) + me.reload; }
+  if (kind === 'pistol') meA.recoil();
 }
 // ---------- batte : le coup part au relâcher, il touche ~0,1 s plus tard l'adversaire le plus proche devant soi
 function inBatReach(ax, az, yaw, tg) {
@@ -1134,6 +1169,7 @@ function updateMe(dt) {
   if (me.swingHit > 0) { me.swingHit -= dt; if (me.swingHit <= 0) meleeStrike(); }
   if (aimId !== null && !me.drawing && me.reload <= 0 && phase === 'fight' && !out) me.drawing = true;
   if (me.drawing) me.draw = Math.min(1, me.draw + dt / curWpn().aimT);
+  if (curWpn().auto && me.drawing && aimId !== null && me.draw >= 1 && t >= me.nextShot - 1e-6 && phase === 'fight' && !out) fire();
   meA.root.position.set(me.x, 0, me.z); meA.root.rotation.y = me.yaw;
   meA.setPose(me.pitch, me.draw, me.reload <= 0);
   deadPose(meA, out && trio());
@@ -1153,7 +1189,7 @@ function botAim() {
   const kind = curWpn().kind, speed = shotSpeed(kind, bot.drawGoal);
   const o = oppA.bowWorld(tmpB);
   const dist = Math.hypot(me.x - o.x, me.z - o.z), flight = dist / (speed * 0.97), err = Math.max(0.6, dist / 24);
-  return { o, speed, sol: solveBallistic(o, me.x + bot.ex * err + me.vx * flight * bot.lead, 1.0 + bot.ey * err, me.z + me.vz * flight * bot.lead, speed, kind === 'bullet' ? 0 : G) };
+  return { o, speed, sol: solveBallistic(o, me.x + bot.ex * err + me.vx * flight * bot.lead, 1.0 + bot.ey * err, me.z + me.vz * flight * bot.lead, speed, isBullet(kind) ? 0 : G) };
 }
 const losA = new T.Vector3(), losB = new T.Vector3();
 function botPickWaypoint() {
@@ -1231,6 +1267,7 @@ function botUpdate(dt) {
     if (bot.shootT <= 0 && bot.reload <= 0 && see) {
       bot.drawing = true; bot.hold = 0; bot.drawGoal = rand(0.75, 1);
       bot.ex = gauss() * 0.4; bot.ey = gauss() * 0.3; bot.lead = rand(0, 0.8);
+      bot.burst = curWpn().auto ? 3 + Math.floor(Math.random() * 4) : 1; // au pistolet : une rafale de 3 à 6 balles
     }
   } else {
     opp.draw = Math.min(bot.drawGoal, opp.draw + dt / curWpn().aimT);
@@ -1243,8 +1280,10 @@ function botUpdate(dt) {
         const c = Math.cos(sol.pitch) * speed;
         const kind = curWpn().kind;
         spawnArrow('opp', o.clone(), new T.Vector3(sol.hx * c, Math.sin(sol.pitch) * speed, sol.hz * c), 0, kind);
-        sfx(kind === 'bullet' ? 'bang' : 'twang', kind === 'bullet' ? 0.5 : 0.35);
-        bot.drawing = false; opp.draw = 0; bot.reload = RELOAD; bot.shootT = rand(0.8, 2.3);
+        shotSfx(kind, false, isBullet(kind) ? 0.5 : 0.35);
+        if (kind === 'pistol') oppA.recoil();
+        if (--bot.burst > 0) { bot.hold = 0.18 - curWpn().rate; bot.ex = gauss() * 0.4; bot.ey = gauss() * 0.3; } // balle suivante 0,25 s plus tard
+        else { bot.drawing = false; opp.draw = 0; bot.reload = RELOAD; bot.shootT = rand(0.8, 2.3); }
       } else if (bot.hold > 1.6) { bot.drawing = false; opp.draw = 0; bot.shootT = rand(0.3, 1); }
     }
   }
@@ -1280,14 +1319,14 @@ function updateOpp(dt) {
 
 // ---------- arrow physics
 function orient(a) { a.m.quaternion.setFromUnitVectors(NEG_Z, tmpV.copy(a.v).normalize()); }
-const KIND_CODE = { arrow: 'a', bolt: 'x', bullet: 'b' }, CODE_KIND = { a: 'arrow', x: 'bolt', b: 'bullet' };
+const KIND_CODE = { arrow: 'a', bolt: 'x', bullet: 'b', pistol: 'p' }, CODE_KIND = { a: 'arrow', x: 'bolt', b: 'bullet', p: 'pistol' };
 const BOLT_LEN = 0.45; // un carreau est une flèche raccourcie
 function makeProjectile(owner, kind, streak) {
-  if (kind === 'bullet') return makeBullet(owner);
+  if (isBullet(kind)) return makeBullet(owner);
   const m = makeArrow(owner, streak); if (kind === 'bolt') m.scale.set(1, 1, BOLT_LEN); return m;
 }
 function spawnArrow(owner, p, v, id = 0, kind = 'arrow') {
-  const bullet = kind === 'bullet';
+  const bullet = isBullet(kind);
   const m = makeProjectile(owner, kind, true); m.position.copy(p); scene.add(m);
   // g : gravité propre au projectile (la balle n'en a pas) ; tail : distance de la pointe à l'arrière, d'où sort la fumée
   // kill : le carreau d'arbalète tue d'un coup, où qu'il touche
@@ -1324,7 +1363,7 @@ function pierceDepth(p, dir, model, head, len = 0.9) {
 // plante la flèche dans l'archer, accrochée au buste (qui se penche pour viser) ou au bas du corps
 function plantInArcher(a, model, head) {
   stopArrow(a); a.pending = 0;
-  if (a.kind === 'bullet') { a.m.visible = false; a.gone = true; a.part = 'r'; tintSmoke(a); return; } // la balle ne reste pas dans le corps
+  if (isBullet(a.kind)) { a.m.visible = false; a.gone = true; a.part = 'r'; tintSmoke(a); return; } // la balle ne reste pas dans le corps
   a.m.visible = true;
   orient(a); tmpV.copy(a.v).normalize();
   a.m.position.copy(a.p).addScaledVector(tmpV, pierceDepth(a.p, tmpV, model, head, a.kind === 'bolt' ? 0.9 * BOLT_LEN : 0.9));
@@ -1345,30 +1384,30 @@ function hitArcher(a, tgt, head) {
   plantInArcher(a, tgt.A, head);
   sfx('thunk', 0.8);
   if (!(phase === 'fight' || phase === 'ending')) return;
-  const lethal = head || a.kill;
-  if (!(mode === 'online' && nroom)) { registerTaken(tgt, lethal ? WIN : tgt.s.taken + 1, head, a.owner); return; }
+  const dmg = hitDamage(a, head);
+  if (!(mode === 'online' && nroom)) { registerTaken(tgt, tgt.s.taken + dmg, head, a.owner); return; }
   // ma flèche a touché un adversaire : c'est moi qui décide, et je préviens tout le monde
   const mine = dealt[myId] || (dealt[myId] = {});
-  mine[tgt.peer] = Math.min(WIN, num(mine[tgt.peer], 0) + (lethal ? WIN : 1));
+  mine[tgt.peer] = Math.min(WIN, num(mine[tgt.peer], 0) + dmg);
   recountTaken(tgt, head, 'me');
   // après attach, position et rotation sont locales à la partie du corps touchée : les autres replantent la flèche au même endroit
   const lp = a.m.position; tmpV.set(0, 0, -1).applyQuaternion(a.m.quaternion);
   const msg = { g: net.started, id: a.id, k: KIND_CODE[a.kind], v: tgt.peer, n: mine[tgt.peer], head, part: a.part };
-  if (a.kind !== 'bullet') Object.assign(msg, { lp: [r3(lp.x), r3(lp.y), r3(lp.z)], ld: [r3(tmpV.x), r3(tmpV.y), r3(tmpV.z)] });
+  if (!isBullet(a.kind)) Object.assign(msg, { lp: [r3(lp.x), r3(lp.y), r3(lp.z)], ld: [r3(tmpV.x), r3(tmpV.y), r3(tmpV.z)] });
   nroom.emit('hit', msg).catch(() => {});
   pres({ dealt: { ...mine } });
 }
 function registerTaken(e, n, head, byKey) {
-  n = Math.min(WIN, Math.floor(n));
+  n = Math.min(WIN, Math.round(n * 2) / 2); // demi-touches : 50 HP au pistolet
   if (!(phase === 'fight' || phase === 'ending') || !(n > e.s.taken)) return;
-  const wasHead = head || (curW() !== 'crossbow' && n === WIN && n - e.s.taken >= 2);
+  const wasHead = head || ((curW() === 'bow' || curW() === 'rifle') && n === WIN && n - e.s.taken >= 2);
   e.s.taken = n;
   if (e === ME) {
-    if (wasHead) headshot = true;
+    if (wasHead && n >= WIN) headshot = true; // « tir à la tête » sur l'écran de fin seulement si la tête a achevé
     flashHurt(); sfx('hurt');
     toast(trio() && n >= WIN ? 'Éliminé… regarde la fin' : wasHead ? 'En pleine tête…' : 'Tu es touché', 1.8, 'var(--crimson)');
   } else if (byKey === 'me') {
-    if (wasHead) { headshot = true; big('Tir à la tête !', 1.1, 'var(--teal)'); sfx('head'); }
+    if (wasHead) { if (n >= WIN) headshot = true; big('Tir à la tête !', 1.1, 'var(--teal)'); sfx('head'); }
     else { big(trio() && n >= WIN ? 'Éliminé !' : 'Touché !', 0.9, 'var(--teal)'); sfx('hit'); }
   } else if (n >= WIN && trio()) toast(`${e.name} est éliminé`, 1.6, 'var(--bone)');
   renderScore(); checkEnd();
@@ -1442,7 +1481,7 @@ function updateCamera(dt) {
   if (inGame) {
     const base = portrait ? 72 : 52;
     const zx = curWpn().zoomX;
-    const zoom = zx ? 2 * Math.atan(Math.tan(base * Math.PI / 360) / zx) * 180 / Math.PI : curWpn().melee ? base : (portrait ? 46 : 32);
+    const zoom = zx ? 2 * Math.atan(Math.tan(base * Math.PI / 360) / zx) * 180 / Math.PI : curWpn().melee || curWpn().auto ? base : (portrait ? 46 : 32);
     const want = base + (zoom - base) * (me.drawing ? Math.sin(me.draw * Math.PI / 2) : 0);
     fov += (want - fov) * (1 - Math.exp(-dt * 10));
     camOffset(camera.position);
@@ -1559,7 +1598,7 @@ function pres(patch) { Object.assign(myPres, patch); if (nroom) nroom.presence(p
 function netTick(now) {
   if (mode !== 'online' || !nroom || now - lastSendAt < 66) return;
   lastSendAt = now;
-  const p = { x: r3(me.x), z: r3(me.z), yaw: r3(me.yaw), pitch: r3(me.pitch), draw: Math.round(me.draw * 100) / 100, nock: me.reload <= 0 };
+  const p = { x: r3(me.x), z: r3(me.z), yaw: r3(me.yaw), pitch: r3(me.pitch), draw: Math.round(me.draw * 100) / 100, nock: me.reload <= 0, sil: silencer };
   const key = JSON.stringify(p);
   if (key !== lastSent) { lastSent = key; pres(p); }
 }
@@ -1629,6 +1668,7 @@ function applyOppPres(p, f) {
   s.tpitch = clamp(num(p.pitch, 0), -0.5, 0.8);
   s.draw = clamp(num(p.draw, 0), 0, 1);
   s.nock = p.nock !== false;
+  f.A.setSilencer(p.sil === true);
   if (net.started && p.started === net.started && p.dealt && typeof p.dealt === 'object') {
     // touches publiées par ce joueur (rattrape un message « touché » perdu)
     const d = dealt[f.peer] || (dealt[f.peer] = {});
@@ -1653,7 +1693,8 @@ function onShot(msg) {
   if (isDead(f) || vv.length() > BULLET_V * 1.1 || Math.hypot(op.x - f.s.x, op.z - f.s.z) > 5) return;
   const kind = CODE_KIND[msg.data.k] || 'arrow';
   spawnArrow(f.key, op, vv, num(msg.data.id, 0), kind);
-  sfx(kind === 'bullet' ? 'bang' : 'twang', kind === 'bullet' ? 0.5 : 0.35);
+  shotSfx(kind, msg.data.s === 1, isBullet(kind) ? 0.5 : 0.35);
+  if (kind === 'pistol') { f.A.setSilencer(msg.data.s === 1); f.A.recoil(); }
 }
 function onHit(msg) {
   if (!fromOpp(msg)) return;
@@ -1767,6 +1808,11 @@ $('#code').addEventListener('keydown', e => { if (e.key === 'Enter') $('#btnJoin
 $('#btnBot').addEventListener('click', () => { audioInit(); menuNote(''); mode = 'bot'; resetMatch(); });
 $('#btnPractice').addEventListener('click', () => { audioInit(); menuNote(''); practicePrevMap = mapKey; mode = 'practice'; resetMatch('forest'); });
 $('#btnReady').addEventListener('click', pressReady);
+// visser / dévisser le silencieux du pistolet
+$('#sil').addEventListener('click', () => {
+  silencer = !silencer; $('#sil').setAttribute('aria-pressed', String(silencer)); meA.setSilencer(silencer);
+  sfx('tick', 0.6);
+});
 $('#btnLeave').addEventListener('click', leaveRoom);
 $('#btnAgain').addEventListener('click', () => { if (mode === 'bot') resetMatch(); else pressReady(); });
 $('#btnMenu').addEventListener('click', () => { if (mode === 'online') leaveRoom(); else { mode = null; phase = 'idle'; clearArrows(); setPlayingHud(false); showPanel('#menu'); } });

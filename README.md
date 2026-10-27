@@ -9,6 +9,7 @@ Deux cartes :
   - **Arbalète** avec lunette x1,5 : ses carreaux tombent et volent comme une flèche tirée à fond, et tuent d'un coup où qu'ils touchent.
   - **Carabine** de chasse en bois avec lunette x3 : les balles ne tombent pas et arrivent instantanément.
   - **Batte** de baseball : corps à corps (portée environ 2 m, devant soi), 100 HP par coup, et on court 3 fois plus vite.
+  - **Pistolet** : on maintient pour tirer en continu (une balle toutes les 0,25 s, chargeur infini), balles sans chute ni temps de vol, 50 HP au corps et 100 HP à la tête. Un petit bouton au-dessus du joystick visse ou dévisse le silencieux, ce qui change le bruit du tir.
 
 Pour jouer : https://gab22222.github.io/duel-arc/
 
