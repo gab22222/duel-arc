@@ -516,7 +516,7 @@ function makeArrow(owner, streak) {
 }
 
 // ---------- traînée de fumée grise derrière les flèches (s'efface en 4 s)
-const SMOKE_N = 6000, SMOKE_LIFE = 4, SMOKE_STEP = 0.2;
+const SMOKE_N = 12000, SMOKE_LIFE = 4, SMOKE_STEP = 0.1;
 const smokePos = new Float32Array(SMOKE_N * 3), smokeBirth = new Float32Array(SMOKE_N).fill(-1e4);
 const smokeGeo = new T.BufferGeometry();
 smokeGeo.setAttribute('position', new T.BufferAttribute(smokePos, 3));
@@ -529,7 +529,7 @@ const smokeMat = new T.ShaderMaterial({
       float age = uTime - birth;
       vA = (age < 0.0 || age > ${SMOKE_LIFE.toFixed(1)}) ? 0.0 : 1.0 - age / ${SMOKE_LIFE.toFixed(1)};
       vec4 mv = modelViewMatrix * vec4(position + vec3(0.0, age * 0.06, 0.0), 1.0);
-      gl_PointSize = min(160.0, (0.35 + age * 0.3) * uScale / max(0.1, -mv.z));
+      gl_PointSize = min(60.0, (0.12 + age * 0.1) * uScale / max(0.1, -mv.z));
       gl_Position = projectionMatrix * mv;
     }`,
   fragmentShader: `
