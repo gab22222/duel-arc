@@ -1,4 +1,4 @@
-# Duel à l'Arc
+# Duel de tir
 
 Duel à l'arc en 3D pour deux téléphones. Les flèches ont un temps de vol et retombent avec la gravité. Chaque joueur a 300 HP : une flèche dans le corps enlève 100 HP, une flèche dans la tête enlève les 300 d'un coup. Le premier qui touche 3 flèches (ou 1 dans la tête) gagne.
 
