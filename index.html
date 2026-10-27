@@ -178,6 +178,12 @@ p{margin:0}
         <button data-aim="expo" aria-pressed="false">Exponentielle</button>
       </div>
     </div>
+    <div class="opt"><span>Caméra</span>
+      <div class="seg camsel" role="group" aria-label="Position de la caméra">
+        <button data-cam="center" aria-pressed="true">Centrée</button>
+        <button data-cam="shoulder" aria-pressed="false">Épaule</button>
+      </div>
+    </div>
     <div class="opt"><span>Fumée des touches</span>
       <div class="seg tintsel" role="group" aria-label="Fumée colorée quand une flèche touche">
         <button data-tint="on" aria-pressed="true">Colorée</button>
@@ -297,6 +303,14 @@ function setTintHits(on) {
   tintHits = on;
   try { localStorage.setItem('duelarc-tint', on ? 'on' : 'off'); } catch (e) {}
   document.querySelectorAll('.tintsel button').forEach(b => b.setAttribute('aria-pressed', String((b.dataset.tint === 'on') === on)));
+}
+// caméra centrée derrière le personnage (par défaut) : pas de décalage à droite, si l'ennemi me voit je le vois aussi
+let camCenter = true;
+try { if (localStorage.getItem('duelarc-cam') === 'shoulder') camCenter = false; } catch (e) {}
+function setCamCenter(on) {
+  camCenter = on;
+  try { localStorage.setItem('duelarc-cam', on ? 'center' : 'shoulder'); } catch (e) {}
+  document.querySelectorAll('.camsel button').forEach(b => b.setAttribute('aria-pressed', String((b.dataset.cam === 'center') === on)));
 }
 const aimGain = v => clamp(Math.pow(Math.max(v, 0.001) / AIM_VREF, AIM_EXP), AIM_MIN, AIM_MAX);
 const MAPS = {
@@ -1047,8 +1061,9 @@ function release() {
 }
 function forward(yaw, pitch, out) { return out.set(-Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), -Math.cos(yaw) * Math.cos(pitch)); }
 function camOffset(out) {
-  const c = Math.cos(me.yaw), s = Math.sin(me.yaw), ox = 0.95, oz = 2.9 - me.draw * 0.8;
-  return out.set(me.x + ox * c + oz * s, 2.15, me.z - ox * s + oz * c);
+  // centrée : juste derrière et un peu plus haut, pour que la tête du personnage passe sous le viseur
+  const c = Math.cos(me.yaw), s = Math.sin(me.yaw), ox = camCenter ? 0 : 0.95, oz = 2.9 - me.draw * 0.8;
+  return out.set(me.x + ox * c + oz * s, camCenter ? 2.45 : 2.15, me.z - ox * s + oz * c);
 }
 const camF = new T.Vector3(), aimP = new T.Vector3();
 // point réellement sous le viseur : on suit le rayon de la caméra avec les mêmes collisions que les flèches
@@ -1797,6 +1812,8 @@ document.querySelectorAll('.wpnsel button').forEach(b => b.addEventListener('cli
 document.querySelectorAll('.aimsel button').forEach(b => b.addEventListener('click', () => setAimCurve(b.dataset.aim)));
 setAimCurve(aimCurve);
 document.querySelectorAll('.tintsel button').forEach(b => b.addEventListener('click', () => setTintHits(b.dataset.tint === 'on')));
+document.querySelectorAll('.camsel button').forEach(b => b.addEventListener('click', () => setCamCenter(b.dataset.cam === 'center')));
+setCamCenter(camCenter);
 setTintHits(tintHits);
 $('#btnCreate').addEventListener('click', () => enterRoom(randCode(), true));
 $('#btnJoin').addEventListener('click', () => {
