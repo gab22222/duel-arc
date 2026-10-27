@@ -547,8 +547,7 @@ let smokeIdx = 0, smokeDirty = false;
 function emitSmoke(a, back = 0) {
   smokeV.copy(a.v).normalize();
   const i = smokeIdx, k = 0.9 + back; smokeIdx = (smokeIdx + 1) % SMOKE_N;
-  const vk = voK(a), vx = vk ? a.vo.x * vk : 0, vz = vk ? a.vo.z * vk : 0;
-  smokePos[i * 3] = a.p.x - smokeV.x * k + vx; smokePos[i * 3 + 1] = a.p.y - smokeV.y * k; smokePos[i * 3 + 2] = a.p.z - smokeV.z * k + vz;
+  smokePos[i * 3] = a.p.x - smokeV.x * k; smokePos[i * 3 + 1] = a.p.y - smokeV.y * k; smokePos[i * 3 + 2] = a.p.z - smokeV.z * k;
   smokeBirth[i] = t; smokeDirty = true;
 }
 function updateSmoke() {
@@ -808,20 +807,43 @@ function aimPoint(o, out) {
   }
   return out.copy(c).addScaledVector(camF, 250);
 }
+// où une flèche tirée de o à la vitesse v s'arrêterait (mêmes collisions que les vraies flèches, sans effet)
+const UP = new T.Vector3(0, 1, 0), simP = new T.Vector3(), simV = new T.Vector3();
+function flightEnd(o, v) {
+  simP.copy(o); simV.copy(v);
+  const h = 0.15 / v.length();
+  let obsR2 = 0; // au-delà de ce rayon il n'y a plus d'obstacle à tester
+  for (const ob of obstacles) obsR2 = Math.max(obsR2, (Math.hypot(ob.x, ob.z) + ob.r) ** 2);
+  for (let t = 0; t < 6; t += h) {
+    simV.y -= G * h; simP.addScaledVector(simV, h);
+    if (mode === 'practice') {
+      if (simP.z < TARGET.z + 0.08 && simP.z > TARGET.z - 0.14 && Math.hypot(simP.x - TARGET.x, simP.y - TARGET.y) < TARGET.r) break;
+    } else if (hitZone(simP, opp, oppA)) break;
+    if (simP.x * simP.x + simP.z * simP.z < obsR2 && inObstacle(simP)) break;
+    if (simP.y < 0 && (!map.lateral || canyonRock(simP) !== null)) break;
+    if (simP.y < -85) break;
+  }
+  return simP;
+}
 function fire() {
   const speed = VMIN + (VMAX - VMIN) * me.draw;
-  const bow = meA.bowWorld(new T.Vector3());
+  const o = meA.bowWorld(new T.Vector3());
   forward(me.yaw, me.pitch, camF);
-  // la flèche vole dans le plan vertical du viseur (pas de dérive à droite de loin) ;
-  // seul son dessin part de l'arc et rejoint ce plan sur les premiers mètres
-  const right = new T.Vector3(Math.cos(me.yaw), 0, -Math.sin(me.yaw));
-  let vo = right.multiplyScalar(tmpV.copy(bow).sub(camera.position).dot(right));
-  const o = bow.clone().sub(vo);
-  if (obstacles.length && inObstacle(o)) { o.copy(bow); vo = null; }
   const v = aimPoint(o, aimP).sub(o).normalize().multiplyScalar(speed);
+  // l'arc est décalé du viseur : on simule le vol complet (chute, arbres, sol, adversaire) et on
+  // tourne le tir à l'horizontale jusqu'à ce que la flèche s'arrête pile dans l'axe du viseur
+  // (un essai n'est gardé que s'il rapproche la flèche de l'axe : un arbre devant l'arc reste un arbre devant l'arc)
+  const right = new T.Vector3(Math.cos(me.yaw), 0, -Math.sin(me.yaw)), c = camera.position, v2 = new T.Vector3();
+  const miss = w => { const end = flightEnd(o, w); return [tmpV.copy(end).sub(c).dot(right), Math.hypot(end.x - o.x, end.z - o.z)]; };
+  let [e, dist] = miss(v), k = 1;
+  for (let it = 0; it < 10 && Math.abs(e) > 0.005 && dist > 0.5; it++) {
+    v2.copy(v).applyAxisAngle(UP, Math.atan2(e, dist) * k);
+    const [e2, d2] = miss(v2);
+    if (Math.abs(e2) < Math.abs(e)) { v.copy(v2); e = e2; dist = d2; k = 1; } else k *= 0.5;
+  }
   const id = ++shotSeq;
-  spawnArrow('me', o, v, id, vo);
-  if (mode === 'online' && nroom) nroom.emit('shot', { g: net.started, id, o: [r3(o.x), r3(o.y), r3(o.z)], v: [r3(v.x), r3(v.y), r3(v.z)], vo: vo ? [r3(vo.x), r3(vo.z)] : null }).catch(() => {});
+  spawnArrow('me', o, v, id);
+  if (mode === 'online' && nroom) nroom.emit('shot', { g: net.started, id, o: [r3(o.x), r3(o.y), r3(o.z)], v: [r3(v.x), r3(v.y), r3(v.z)] }).catch(() => {});
   me.reload = RELOAD; sfx('twang');
 }
 function updateMe(dt) {
@@ -974,11 +996,9 @@ function updateOpp(dt) {
 
 // ---------- arrow physics
 function orient(a) { a.m.quaternion.setFromUnitVectors(NEG_Z, tmpV.copy(a.v).normalize()); }
-const VO_DIST = 4; // distance sur laquelle le dessin de la flèche rejoint sa vraie trajectoire
-const voK = a => a.vo ? Math.max(0, 1 - a.trav / VO_DIST) : 0;
-function spawnArrow(owner, p, v, id = 0, vo = null) {
-  const m = makeArrow(owner, true); m.position.copy(p); if (vo) m.position.add(vo); scene.add(m);
-  const a = { owner, id, p, v, m, vo, trav: 0, flying: true, pending: 0, life: 0, botSeen: false };
+function spawnArrow(owner, p, v, id = 0) {
+  const m = makeArrow(owner, true); m.position.copy(p); scene.add(m);
+  const a = { owner, id, p, v, m, flying: true, pending: 0, life: 0, botSeen: false };
   orient(a); arrows.push(a);
   if (owner === 'opp') sfx('whoosh', 0.7);
   const stuck = arrows.filter(x => !x.flying);
@@ -1029,6 +1049,14 @@ function registerOppTaken(n, head) {
   else { big('Touché !', 0.9, 'var(--teal)'); sfx('hit'); }
   renderScore(); checkEnd();
 }
+// rocher sous les plateformes du canyon : renvoie le z de la plateforme touchée, sinon null
+function canyonRock(p) {
+  for (const zc of [map.spawnZ, -map.spawnZ]) {
+    const dz = p.z - zc;
+    if ((p.y > -0.42 && Math.abs(p.x) < 2.9 && Math.abs(dz) < 1.7) || Math.hypot(p.x, dz) < 2.6 + (-p.y / 80) * 1.8) return zc;
+  }
+  return null;
+}
 function collide(a) {
   const p = a.p;
   const who = a.owner === 'me' ? opp : me, model = a.owner === 'me' ? oppA : meA;
@@ -1041,15 +1069,10 @@ function collide(a) {
   }
   if (obstacles.length && inObstacle(p)) { stopArrow(a); a.m.position.copy(p); sfx('thunk', a.owner === 'me' ? 0.3 : 0.5); return; }
   if (map.lateral) {
-    if (p.y < 0) {
-      for (const zc of [map.spawnZ, -map.spawnZ]) {
-        const dz = p.z - zc;
-        if ((p.y > -0.42 && Math.abs(p.x) < 2.9 && Math.abs(dz) < 1.7) || Math.hypot(p.x, dz) < 2.6 + (-p.y / 80) * 1.8) {
-          stopArrow(a); a.m.position.copy(p);
-          if (a.owner === 'me' || Math.abs(dz) < 3) sfx('thunk', a.owner === 'me' ? 0.25 : 0.6);
-          return;
-        }
-      }
+    const zc = p.y < 0 ? canyonRock(p) : null;
+    if (zc !== null) {
+      stopArrow(a); a.m.position.copy(p);
+      if (a.owner === 'me' || Math.abs(p.z - zc) < 3) sfx('thunk', a.owner === 'me' ? 0.25 : 0.6);
     }
   } else if (p.y < 0) { p.y = 0; stopArrow(a); a.m.position.copy(p); }
 }
@@ -1064,12 +1087,12 @@ function updateArrows(dt) {
     const n = Math.max(1, Math.ceil(a.v.length() * dt / 0.15)), h = dt / n;
     for (let s = 0; s < n && a.flying; s++) {
       a.v.y -= G * h; a.p.addScaledVector(a.v, h); collide(a);
-      a.trav += a.v.length() * h; a.smokeD = (a.smokeD || 0) + a.v.length() * h;
+      a.smokeD = (a.smokeD || 0) + a.v.length() * h;
       // plusieurs bouffées par sous-pas, réparties en arrière le long du trajet
       while (a.flying && a.smokeD >= SMOKE_STEP) { a.smokeD -= SMOKE_STEP; emitSmoke(a, a.smokeD); }
     }
     if (a.flying) {
-      a.m.position.copy(a.p); if (a.vo) a.m.position.addScaledVector(a.vo, voK(a)); orient(a);
+      a.m.position.copy(a.p); orient(a);
       if (a.p.y < -85 || a.life > 6) { scene.remove(a.m); arrows.splice(i, 1); }
     }
   }
@@ -1263,8 +1286,7 @@ function onShot(msg) {
   const op = new T.Vector3(-num(o[0], 0), num(o[1], 1.4), -num(o[2], 0));
   const vv = new T.Vector3(-num(v[0], 0), num(v[1], 0), -num(v[2], 0));
   if (vv.length() > 130 || Math.hypot(op.x - opp.x, op.z - opp.z) > 5) return;
-  const w = msg.data.vo, vo = Array.isArray(w) && w.length === 2 ? new T.Vector3(-num(w[0], 0), 0, -num(w[1], 0)) : null;
-  spawnArrow('opp', op, vv, num(msg.data.id, 0), vo && vo.length() < 2 ? vo : null);
+  spawnArrow('opp', op, vv, num(msg.data.id, 0));
   sfx('twang', 0.35);
 }
 function onHit(msg) {
