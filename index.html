@@ -43,14 +43,13 @@ body{position:fixed;inset:0;touch-action:none;-webkit-user-select:none;user-sele
 .them{color:var(--crimson)}
 .vs{color:var(--mute);font-size:12px;letter-spacing:.12em}
 
-#hp{left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 22px);transform:translateX(-50%);display:flex;align-items:center;gap:10px;font-family:var(--display);font-weight:700;font-size:14px;letter-spacing:.06em;color:var(--teal);text-shadow:0 1px 6px rgba(0,0,0,.8);white-space:nowrap;transition:color .3s}
+#hp{left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 8px);transform:translateX(-50%);display:flex;align-items:center;gap:10px;font-family:var(--display);font-weight:700;font-size:14px;letter-spacing:.06em;color:var(--teal);text-shadow:0 1px 6px rgba(0,0,0,.8);white-space:nowrap;transition:color .3s}
 .hpbar{position:relative;width:150px;height:10px;border-radius:5px;background:rgba(14,12,22,.6);border:1px solid var(--line);overflow:hidden}
 #hpFill{position:absolute;left:0;top:0;bottom:0;width:100%;background:currentColor;box-shadow:0 0 8px currentColor;transition:width .35s ease-out}
 .hpbar::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent calc(33.33% - 1px),rgba(14,12,22,.9) 0 33.33%,transparent 0 calc(66.67% - 1px),rgba(14,12,22,.9) 0 66.67%,transparent 0)}
 #hp.low{color:var(--crimson)}
 #hp.hit .hpbar{animation:hpShake .3s}
 @keyframes hpShake{25%{transform:translateX(-3px)}75%{transform:translateX(3px)}}
-@media (orientation:portrait){#hp{bottom:calc(env(safe-area-inset-bottom,0px) + 214px)}}
 #cross{left:50%;top:50%;width:72px;height:72px;margin:-36px 0 0 -36px;opacity:.95}
 #cross .ring{transition:stroke .15s}
 #big{left:0;right:0;top:26%;text-align:center;font-family:var(--display);font-weight:800;font-size:clamp(44px,10vw,92px);line-height:1;text-shadow:0 4px 24px rgba(0,0,0,.65);opacity:0;transform:scale(.9);transition:opacity .18s,transform .18s}
@@ -60,7 +59,7 @@ body{position:fixed;inset:0;touch-action:none;-webkit-user-select:none;user-sele
 #hurt{inset:0;background:radial-gradient(ellipse at center,transparent 40%,rgba(210,35,25,.7));opacity:0;transition:opacity .6s}
 #hurt.on{opacity:1;transition:none}
 
-#stick{left:calc(env(safe-area-inset-left,0px) + 24px);bottom:calc(env(safe-area-inset-bottom,0px) + 22px);width:160px;height:46px;border-radius:23px;border:1px solid var(--line);background:rgba(14,12,22,.35)}
+#stick{left:calc(env(safe-area-inset-left,0px) + 24px);bottom:calc(env(safe-area-inset-bottom,0px) + 36px);width:160px;height:46px;border-radius:23px;border:1px solid var(--line);background:rgba(14,12,22,.35)}
 #knob{position:absolute;top:6px;left:56px;width:48px;height:34px;border-radius:17px;background:rgba(239,230,214,.28)}
 #stick::before,#stick::after{content:"";position:absolute;top:50%;width:0;height:0;border:6px solid transparent;margin-top:-6px;opacity:.5}
 #stick::before{left:10px;border-right-color:var(--bone)}
@@ -68,10 +67,6 @@ body{position:fixed;inset:0;touch-action:none;-webkit-user-select:none;user-sele
 #stick.round{width:124px;height:124px;border-radius:50%}
 #stick.round #knob{top:40px;left:40px;width:44px;height:44px;border-radius:50%}
 #stick.round::before,#stick.round::after{display:none}
-.hint{font-size:14px;font-weight:500;color:var(--bone);text-shadow:0 1px 6px rgba(0,0,0,.8);transition:opacity .6s;max-width:42vw}
-#hintL{left:calc(env(safe-area-inset-left,0px) + 26px);bottom:calc(env(safe-area-inset-bottom,0px) + 158px)}
-#hintR{right:calc(env(safe-area-inset-right,0px) + 26px);bottom:calc(env(safe-area-inset-bottom,0px) + 30px);text-align:right}
-#turn{left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 84px);transform:translateX(-50%);font-size:13px;padding:5px 12px;border-radius:999px;background:rgba(14,12,22,.6);border:1px solid var(--line);white-space:nowrap}
 
 #quit{position:fixed;z-index:6;top:calc(env(safe-area-inset-top,0px) + 8px);left:calc(env(safe-area-inset-left,0px) + 10px);width:40px;height:40px;border-radius:12px;border:1px solid var(--line);background:rgba(14,12,22,.55);color:var(--bone);font-size:18px;line-height:1;cursor:pointer}
 
@@ -143,9 +138,6 @@ p{margin:0}
 <div class="hud" id="toast"></div>
 <div class="hud" id="hurt"></div>
 <div class="hud" id="stick" hidden><div id="knob"></div></div>
-<div class="hud hint" id="hintL" hidden></div>
-<div class="hud hint" id="hintR" hidden>Maintiens pour bander l'arc,<br>glisse pour viser, relâche pour tirer.<br>Vise la tête : un seul tir suffit.</div>
-<div class="hud" id="turn" hidden>Tourne ton téléphone à l'horizontale</div>
 <button id="quit" aria-label="Quitter la partie" hidden>✕</button>
 
 <section class="panel" id="menu">
@@ -718,7 +710,7 @@ const me = { x: 0, z: 12, vx: 0, vz: 0, yaw: 0, pitch: 0.04, draw: 0, drawing: f
 const opp = { x: 0, z: -12, tx: 0, tz: -12, vx: 0, vz: 0, yaw: 0, tyaw: 0, pitch: 0.04, tpitch: 0.04, draw: 0, nock: true, taken: 0 };
 let mode = null;      // 'bot' | 'online' | null
 let phase = 'idle';   // idle | countdown | fight | ending | over
-let cd = 0, endT = 0, hintT = 0, fov = 52, headshot = false;
+let cd = 0, endT = 0, fov = 52, headshot = false;
 const arrows = [];
 let shotSeq = 0;
 function placeIdle() {
@@ -753,7 +745,6 @@ const panels = ['#menu', '#lobby', '#over'];
 function showPanel(id) { panels.forEach(p => { $(p).hidden = p !== id; }); }
 function setPlayingHud(on) {
   ['#score', '#hp', '#cross', '#stick', '#quit'].forEach(s => { $(s).toggleAttribute('hidden', !on); });
-  if (!on) { $('#hintL').hidden = $('#hintR').hidden = true; $('#turn').hidden = true; }
 }
 
 // ---------- match flow
@@ -770,16 +761,12 @@ function resetMatch(k) {
   aimId = null; moveId = null; moveIn.x = moveIn.y = 0; headshot = false;
   phase = 'countdown'; cd = 3; big('3', 0.8); sfx('tick');
   $('#stick').classList.toggle('round', !map.lateral);
-  $('#hintL').textContent = map.lateral ? 'Glisse à gauche ou à droite pour esquiver' : 'Joystick : cours partout, cache-toi derrière les arbres';
-  hintT = 7; $('#hintL').hidden = $('#hintR').hidden = false;
-  $('#hintL').style.opacity = $('#hintR').style.opacity = 1;
   hpShown = HP_MAX; showPanel(null); setPlayingHud(true); renderScore();
   $('#themName').textContent = mode === 'bot' ? 'Bot' : 'Rival';
   if (mode === 'practice') {
     phase = 'fight'; cd = 0; big('Entraînement', 1.0, 'var(--ember)');
     $('#score').hidden = $('#hp').hidden = true;
-    $('#hintR').innerHTML = "Maintiens pour bander l'arc,<br>glisse pour viser, relâche pour tirer.<br>La cible est sur le grand chêne.";
-  } else $('#hintR').innerHTML = "Maintiens pour bander l'arc,<br>glisse pour viser, relâche pour tirer.<br>Vise la tête : un seul tir suffit.";
+  }
   try { navigator.wakeLock && navigator.wakeLock.request('screen').catch(() => {}); } catch (e) {}
 }
 function checkEnd() {
@@ -811,8 +798,6 @@ function updatePhase(dt) {
   } else if (phase === 'ending') {
     endT -= dt; if (endT <= 0) finish();
   }
-  if (hintT > 0) { hintT -= dt; if (hintT <= 0) { $('#hintL').style.opacity = $('#hintR').style.opacity = 0; } }
-  $('#turn').hidden = !(portrait && mode && phase !== 'idle' && phase !== 'over');
 }
 const playing = () => mode && (phase === 'countdown' || phase === 'fight' || phase === 'ending');
 const canMove = () => mode && (phase === 'fight' || phase === 'ending' || (phase === 'countdown' && map.lateral));
