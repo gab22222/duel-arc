@@ -162,6 +162,12 @@ p{margin:0}
         <button data-aim="expo" aria-pressed="false">Exponentielle</button>
       </div>
     </div>
+    <div class="opt"><span>Fumée des touches</span>
+      <div class="seg tintsel" role="group" aria-label="Fumée colorée quand une flèche touche">
+        <button data-tint="on" aria-pressed="true">Colorée</button>
+        <button data-tint="off" aria-pressed="false">Grise</button>
+      </div>
+    </div>
     <button class="btn primary" id="btnCreate">Créer une partie <span>tu reçois un code</span></button>
     <div class="row">
       <input id="code" maxlength="6" placeholder="CODE" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Code de la partie">
@@ -246,6 +252,14 @@ function setAimCurve(k) {
   aimCurve = k === 'expo' ? 'expo' : 'linear';
   try { localStorage.setItem('duelarc-aim', aimCurve); } catch (e) {}
   document.querySelectorAll('.aimsel button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.aim === aimCurve)));
+}
+// une flèche qui touche un joueur colore sa traînée (bleu ou rouge selon le tireur) ; activé par défaut
+let tintHits = true;
+try { if (localStorage.getItem('duelarc-tint') === 'off') tintHits = false; } catch (e) {}
+function setTintHits(on) {
+  tintHits = on;
+  try { localStorage.setItem('duelarc-tint', on ? 'on' : 'off'); } catch (e) {}
+  document.querySelectorAll('.tintsel button').forEach(b => b.setAttribute('aria-pressed', String((b.dataset.tint === 'on') === on)));
 }
 const aimGain = v => clamp(Math.pow(Math.max(v, 0.001) / AIM_VREF, AIM_EXP), AIM_MIN, AIM_MAX);
 const MAPS = {
@@ -557,17 +571,21 @@ function makeArrow(owner, streak) {
   return g;
 }
 
-// ---------- traînée de fumée grise derrière les flèches (s'efface en 4 s)
+// ---------- traînée de fumée grise derrière les flèches (s'efface en 6 s), colorée si la flèche touche un joueur
 const SMOKE_N = 36000, SMOKE_LIFE = 6, SMOKE_STEP = 0.05;
 const smokePos = new Float32Array(SMOKE_N * 3), smokeBirth = new Float32Array(SMOKE_N).fill(-1e4);
+const smokeTint = new Float32Array(SMOKE_N), smokeArrow = new Int32Array(SMOKE_N); // 0 gris, 1 bleu (moi), 2 rouge (adversaire) ; flèche émettrice
+let arrowSerial = 0;
 const smokeGeo = new T.BufferGeometry();
 smokeGeo.setAttribute('position', new T.BufferAttribute(smokePos, 3));
 smokeGeo.setAttribute('birth', new T.BufferAttribute(smokeBirth, 1));
+smokeGeo.setAttribute('tint', new T.BufferAttribute(smokeTint, 1));
 const smokeMat = new T.ShaderMaterial({
-  uniforms: { uTime: { value: 0 }, uScale: { value: 400 }, uColor: { value: new T.Color(0xb4b4b4) }, uAlpha: { value: 0.14 } },
+  uniforms: { uTime: { value: 0 }, uScale: { value: 400 }, uColor: { value: new T.Color(0xb4b4b4) }, uMe: { value: new T.Color(0x2fa6d0) }, uOpp: { value: new T.Color(0xe2402f) }, uAlpha: { value: 0.14 } },
   vertexShader: `
-    attribute float birth; uniform float uTime; uniform float uScale; varying float vA;
+    attribute float birth; attribute float tint; uniform float uTime; uniform float uScale; varying float vA; varying float vT;
     void main() {
+      vT = tint;
       float age = uTime - birth;
       vA = (age < 0.0 || age > ${SMOKE_LIFE.toFixed(1)}) ? 0.0 : 1.0 - age / ${SMOKE_LIFE.toFixed(1)};
       vec4 mv = modelViewMatrix * vec4(position + vec3(0.0, age * 0.06, 0.0), 1.0);
@@ -575,27 +593,36 @@ const smokeMat = new T.ShaderMaterial({
       gl_Position = projectionMatrix * mv;
     }`,
   fragmentShader: `
-    uniform vec3 uColor; uniform float uAlpha; varying float vA;
+    uniform vec3 uColor; uniform vec3 uMe; uniform vec3 uOpp; uniform float uAlpha; varying float vA; varying float vT;
     void main() {
       vec2 c = gl_PointCoord - 0.5; float d = dot(c, c);
       if (d > 0.25 || vA <= 0.0) discard;
-      gl_FragColor = vec4(uColor, vA * uAlpha * (1.0 - d * 4.0));
+      vec3 col = vT > 1.5 ? uOpp : (vT > 0.5 ? uMe : uColor);
+      float a = vT > 0.5 ? uAlpha * 2.4 : uAlpha;
+      gl_FragColor = vec4(col, vA * a * (1.0 - d * 4.0));
     }`,
   transparent: true, depthWrite: false,
 });
 const smoke = new T.Points(smokeGeo, smokeMat); smoke.frustumCulled = false; scene.add(smoke);
 const smokeV = new T.Vector3();
-let smokeIdx = 0, smokeDirty = false;
+let smokeIdx = 0, smokeDirty = false, smokeTintDirty = false;
 function emitSmoke(a, back = 0) {
   smokeV.copy(a.v).normalize();
   const i = smokeIdx, k = 0.9 + back; smokeIdx = (smokeIdx + 1) % SMOKE_N;
   smokePos[i * 3] = a.p.x - smokeV.x * k; smokePos[i * 3 + 1] = a.p.y - smokeV.y * k; smokePos[i * 3 + 2] = a.p.z - smokeV.z * k;
-  smokeBirth[i] = t; smokeDirty = true;
+  smokeBirth[i] = t; smokeTint[i] = 0; smokeArrow[i] = a.sid; smokeDirty = true;
+}
+// colore toute la traînée encore visible d'une flèche qui vient de toucher un joueur
+function tintSmoke(a) {
+  if (!tintHits || !a.sid) return;
+  const v = a.owner === 'me' ? 1 : 2;
+  for (let i = 0; i < SMOKE_N; i++) if (smokeArrow[i] === a.sid && t - smokeBirth[i] < SMOKE_LIFE) smokeTint[i] = v;
+  smokeTintDirty = true;
 }
 function updateSmoke() {
   smokeMat.uniforms.uTime.value = t;
   smokeMat.uniforms.uScale.value = renderer.domElement.height / (2 * Math.tan(camera.fov * Math.PI / 360));
-  if (smokeDirty) { smokeGeo.attributes.position.needsUpdate = true; smokeGeo.attributes.birth.needsUpdate = true; smokeDirty = false; }
+  if (smokeDirty || smokeTintDirty) { smokeGeo.attributes.position.needsUpdate = true; smokeGeo.attributes.birth.needsUpdate = true; smokeGeo.attributes.tint.needsUpdate = true; smokeDirty = smokeTintDirty = false; }
 }
 
 // ---------- archers (face -Z)
@@ -642,7 +669,7 @@ function makeArcher(cloth, hoodCol, owner) {
   setPose(0, 0, true);
   function bowWorld(out) { root.updateMatrixWorld(true); return bow.localToWorld(out.set(0, 0, -0.35)); }
   scene.add(root);
-  return { root, setPose, bowWorld, updateHead, headPos };
+  return { root, upper, setPose, bowWorld, updateHead, headPos };
 }
 const meA = makeArcher(0x2f8f83, 0x1f5f58, 'me');
 const oppA = makeArcher(0xa8342a, 0x6e1f1a, 'opp');
@@ -1047,7 +1074,7 @@ function updateOpp(dt) {
 function orient(a) { a.m.quaternion.setFromUnitVectors(NEG_Z, tmpV.copy(a.v).normalize()); }
 function spawnArrow(owner, p, v, id = 0) {
   const m = makeArrow(owner, true); m.position.copy(p); scene.add(m);
-  const a = { owner, id, p, v, m, flying: true, pending: 0, life: 0, botSeen: false };
+  const a = { owner, id, sid: ++arrowSerial, p, v, m, flying: true, pending: 0, life: 0, botSeen: false };
   orient(a); arrows.push(a);
   if (owner === 'opp') sfx('whoosh', 0.7);
   const stuck = arrows.filter(x => !x.flying);
@@ -1066,18 +1093,36 @@ function hitZone(p, who, model) {
   const dy = p.y - clamp(p.y, 0, BODY_TOP);
   return d2 + dy * dy < BODY_R * BODY_R ? 1 : 0;
 }
+// la flèche traverse : la pointe et un bout de tige ressortent de l'autre côté (visible même de dos), l'empennage reste devant
+function pierceDepth(p, dir, model, head) {
+  let cx, cy, cz, r, flat;
+  if (head) { cx = model.headPos.x; cy = model.headPos.y; cz = model.headPos.z; r = HEAD_R * 0.8; flat = false; }
+  else { cx = model.root.position.x; cy = 0; cz = model.root.position.z; r = BODY_R; flat = true; }
+  const ox = p.x - cx, oy = flat ? 0 : p.y - cy, oz = p.z - cz, dy = flat ? 0 : dir.y;
+  const A = dir.x * dir.x + dy * dy + dir.z * dir.z, B = ox * dir.x + oy * dy + oz * dir.z, C = ox * ox + oy * oy + oz * oz - r * r;
+  const s = A > 1e-4 ? (-B + Math.sqrt(Math.max(0, B * B - A * C))) / A : 0; // sortie de l'autre côté
+  return clamp(s + (head ? 0.12 : 0.2), 0.12, 0.7);
+}
+// plante la flèche dans l'archer, accrochée au buste (qui se penche pour viser) ou au bas du corps
+function plantInArcher(a, model, head) {
+  stopArrow(a); a.pending = 0; a.m.visible = true;
+  orient(a); tmpV.copy(a.v).normalize();
+  a.m.position.copy(a.p).addScaledVector(tmpV, pierceDepth(a.p, tmpV, model, head));
+  model.root.updateMatrixWorld(true);
+  const part = head || model.root.worldToLocal(tmpA.copy(a.p)).y > 1.15 ? model.upper : model.root;
+  part.attach(a.m); a.part = part === model.upper ? 'u' : 'r';
+  tintSmoke(a);
+}
 function hitArcher(a, model, head) {
-  stopArrow(a);
-  orient(a); a.m.position.copy(a.p).addScaledVector(tmpV.copy(a.v).normalize(), 0.12);
-  model.root.attach(a.m);
+  plantInArcher(a, model, head);
   sfx('thunk', 0.8);
   if (!(phase === 'fight' || phase === 'ending')) return;
   if (a.owner === 'opp') { registerMeTaken(head ? WIN : me.taken + 1, head); return; }
   registerOppTaken(head ? WIN : opp.taken + 1, head);
   if (mode === 'online' && nroom) {
-    // après attach, position et rotation sont locales à l'archer touché : l'autre replante la flèche au même endroit
+    // après attach, position et rotation sont locales à la partie du corps touchée : l'autre replante la flèche au même endroit
     const lp = a.m.position; tmpV.set(0, 0, -1).applyQuaternion(a.m.quaternion);
-    nroom.emit('hit', { g: net.started, id: a.id, landed: opp.taken, head, lp: [r3(lp.x), r3(lp.y), r3(lp.z)], ld: [r3(tmpV.x), r3(tmpV.y), r3(tmpV.z)] }).catch(() => {});
+    nroom.emit('hit', { g: net.started, id: a.id, landed: opp.taken, head, part: a.part, lp: [r3(lp.x), r3(lp.y), r3(lp.z)], ld: [r3(tmpV.x), r3(tmpV.y), r3(tmpV.z)] }).catch(() => {});
     pres({ landed: opp.taken });
   }
 }
@@ -1113,7 +1158,7 @@ function collide(a) {
   const z = mode === 'practice' ? 0 : hitZone(p, who, model);
   if (z) {
     // en ligne, une flèche adverse qui m'atteint attend la confirmation du tireur (elle sera replantée à l'endroit qu'il a vu)
-    if (a.owner === 'opp' && mode === 'online') { a.flying = false; a.pending = 1.2; a.m.visible = false; return; }
+    if (a.owner === 'opp' && mode === 'online') { a.flying = false; a.pending = 1.2; a.zone = z; a.m.visible = false; return; }
     hitArcher(a, model, z === 2); return;
   }
   if (obstacles.length && inObstacle(p)) { stopArrow(a); a.m.position.copy(p); sfx('thunk', a.owner === 'me' ? 0.3 : 0.5); return; }
@@ -1325,7 +1370,11 @@ function applyOppPres(p) {
   opp.tpitch = clamp(num(p.pitch, 0), -0.5, 0.8);
   opp.draw = clamp(num(p.draw, 0), 0, 1);
   opp.nock = p.nock !== false;
-  if (net.started && p.started === net.started) registerMeTaken(num(p.landed, 0));
+  if (net.started && p.started === net.started) {
+    const before = me.taken; registerMeTaken(num(p.landed, 0));
+    // le message « touché » s'est perdu : on plante quand même la flèche qu'on a vue arriver
+    if (me.taken > before) for (const a of arrows) if (a.owner === 'opp' && a.pending > 0) plantInArcher(a, meA, a.zone === 2);
+  }
 }
 function fromOpp(msg) { return msg && !msg.sameTab && msg.peer === oppPeer && mode === 'online' && msg.data && msg.data.g === net.started && net.started; }
 function onShot(msg) {
@@ -1342,13 +1391,13 @@ function onHit(msg) {
   if (!fromOpp(msg)) return;
   const d = msg.data;
   const i = arrows.findIndex(a => a.owner === 'opp' && a.id === d.id && d.id);
-  if (i >= 0) { const a = arrows[i]; if (a.m.parent) a.m.parent.remove(a.m); arrows.splice(i, 1); }
+  if (i >= 0) { const a = arrows[i]; tintSmoke(a); if (a.m.parent) a.m.parent.remove(a.m); arrows.splice(i, 1); }
   if (Array.isArray(d.lp) && Array.isArray(d.ld) && d.lp.length === 3 && d.ld.length === 3) {
     const lp = new T.Vector3(num(d.lp[0], 0), num(d.lp[1], 1), num(d.lp[2], 0));
     const ld = new T.Vector3(num(d.ld[0], 0), num(d.ld[1], 0), num(d.ld[2], -1));
     if (lp.length() < 3 && ld.lengthSq() > 0.01) {
       const m = makeArrow('opp', false); m.position.copy(lp); m.quaternion.setFromUnitVectors(NEG_Z, ld.normalize());
-      meA.root.add(m);
+      (d.part === 'u' ? meA.upper : meA.root).add(m);
       arrows.push({ owner: 'opp', id: d.id, p: lp, v: ld, m, flying: false, pending: 0, life: 0 });
     }
   }
@@ -1408,6 +1457,8 @@ function renderOverStatus() {
 document.querySelectorAll('.mapsel button').forEach(b => b.addEventListener('click', () => chooseMap(b.dataset.map)));
 document.querySelectorAll('.aimsel button').forEach(b => b.addEventListener('click', () => setAimCurve(b.dataset.aim)));
 setAimCurve(aimCurve);
+document.querySelectorAll('.tintsel button').forEach(b => b.addEventListener('click', () => setTintHits(b.dataset.tint === 'on')));
+setTintHits(tintHits);
 $('#btnCreate').addEventListener('click', () => enterRoom(randCode(), true));
 $('#btnJoin').addEventListener('click', () => {
   const c = $('#code').value.toUpperCase().replace(/[^A-Z0-9]/g, '');
