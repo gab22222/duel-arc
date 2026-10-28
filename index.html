@@ -45,6 +45,7 @@ body{position:fixed;inset:0;touch-action:none;-webkit-user-select:none;user-sele
 .them{color:var(--crimson)}
 .them2{color:#e8b93a}
 .mapsel button:disabled{opacity:.35;cursor:default}
+#lobby .mapsel,#over .mapsel{grid-template-columns:repeat(3,1fr)}
 .vs{color:var(--mute);font-size:12px;letter-spacing:.12em}
 
 #hp{left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 8px);transform:translateX(-50%);display:flex;align-items:center;gap:10px;font-family:var(--display);font-weight:700;font-size:14px;letter-spacing:.06em;color:var(--teal);text-shadow:0 1px 6px rgba(0,0,0,.8);white-space:nowrap;transition:color .3s}
@@ -249,6 +250,7 @@ p{margin:0}
     <div class="seg mapsel" role="group" aria-label="Carte">
       <button data-map="canyon" aria-pressed="true">Canyon<small>face à face</small></button>
       <button data-map="forest" aria-pressed="false">Forêt<small>déplacements libres</small></button>
+      <button data-map="japan" aria-pressed="false" disabled>Japon<small>temples, à 3</small></button>
     </div>
     <div class="opt wpnrow" hidden><span>Arme</span>
       <div class="seg wpnsel" role="group" aria-label="Arme en forêt">
@@ -288,6 +290,7 @@ p{margin:0}
     <div class="seg mapsel" role="group" aria-label="Carte">
       <button data-map="canyon" aria-pressed="true">Canyon<small>face à face</small></button>
       <button data-map="forest" aria-pressed="false">Forêt<small>déplacements libres</small></button>
+      <button data-map="japan" aria-pressed="false" disabled>Japon<small>temples, à 3</small></button>
     </div>
     <div class="opt wpnrow" hidden><span>Arme</span>
       <div class="seg wpnsel" role="group" aria-label="Arme en forêt">
@@ -376,6 +379,8 @@ const MAPS = {
   forest: { key: 'forest', spawnZ: 17, lateral: false, xlim: 14.5, zlim: 20.5, maxv: 3.1, acc: 22, yawLim: Infinity },
   // 1v1v1 : forêt géante de 124 m de côté (plus de 3 fois plus grande dans chaque direction), apparitions à 94 m les unes des autres
   forestXL: { key: 'forestXL', spawnZ: 17, lateral: false, xlim: 62, zlim: 62, maxv: 3.1, acc: 22, yawLim: Infinity, big: true, spawnR: 54 },
+  // 1v1v1 : jardins de temples japonais de 140 m de côté ; chacun apparaît dans une cour fermée, porte tournée vers l'extérieur
+  japan: { key: 'japan', spawnZ: 17, lateral: false, xlim: 70, zlim: 70, maxv: 3.1, acc: 22, yawLim: Infinity, big: true, spawnR: 58, spawnOut: true },
 };
 // arme en forêt : arc (par défaut), arbalète, carabine, batte, pistolet, revolver, deagle, vector, M4, Barrett, fusil à pompe, bière, lance-grenades, minigun ou paintball ; le canyon reste toujours à l'arc
 // kind : projectile ; aimT : temps pour bander / épauler ; zoomX : lunette (null = zoom léger de l'arc)
@@ -460,6 +465,7 @@ function skyTex(stops) {
 const SKY = {
   canyon: skyTex([[0, '#11132e'], [0.3, '#36284f'], [0.44, '#a85462'], [0.49, '#f0a46a'], [0.505, '#f7c27e'], [0.53, '#b4685a'], [1, '#2a1c2c']]),
   get forestXL() { return this.forest; },
+  japan: skyTex([[0, '#2b2b5a'], [0.28, '#6c5a8e'], [0.42, '#c98aa6'], [0.49, '#f4c7a1'], [0.51, '#f6d5b5'], [0.54, '#c9a7a8'], [1, '#3a2c33']]),
   forest: skyTex([[0, '#2c4a5e'], [0.3, '#5f8796'], [0.46, '#b9cbb6'], [0.5, '#d8dfc2'], [0.53, '#93a796'], [1, '#33402f']]),
 };
 const skyMat = new T.MeshBasicMaterial({ map: SKY.canyon, side: T.BackSide, fog: false, depthWrite: false });
@@ -482,7 +488,7 @@ function rough(geo, amt) {
   return geo;
 }
 const std = (color, extra) => new T.MeshStandardMaterial(Object.assign({ color, flatShading: true, roughness: 1, metalness: 0 }, extra || {}));
-const OBST = { canyon: [], forest: [], forestXL: [] };
+const OBST = { canyon: [], forest: [], forestXL: [], japan: [] };
 const OB_CELL = 8, obNear = []; // grille des obstacles de la forêt géante (cases de 8 m)
 // forme réelle d'un tronc : les triangles de son flanc tels qu'ils sont dessinés (cylindre irrégulier qui s'affine)
 function trunkTris(geo, h, x, z) {
@@ -716,6 +722,222 @@ const bigForestG = new T.Group(); scene.add(bigForestG); bigForestG.visible = fa
   bigForestG.add(grass);
   gridObstacles(O);
 }
+// ---------- map 4 : jardins de temples japonais (1v1v1). Pagode à cinq toits au centre, grands pavillons, torii rouges,
+// lanternes de pierre, bosquets de bambous, étang, cerisiers en fleur et pétales qui tombent. Chacun apparaît au milieu
+// d'une cour fermée par des murs blancs, la porte tournée vers l'extérieur : les trois apparitions forment un triangle
+// équilatéral de 100 m de côté et les murs, les pavillons et la brume cachent tout le monde au départ.
+// Même graine chez tous les joueurs ; tout est fusionné par matière pour rester fluide sur téléphone.
+const japanG = new T.Group(); scene.add(japanG); japanG.visible = false;
+const petals = (() => {
+  const N = 260, mesh = new T.InstancedMesh(new T.PlaneGeometry(0.07, 0.05), new T.MeshBasicMaterial({ color: 0xf6b9cb, side: T.DoubleSide, transparent: true, opacity: 0.9 }), N);
+  mesh.frustumCulled = false; mesh.instanceMatrix.setUsage(T.DynamicDrawUsage); japanG.add(mesh);
+  const P = Array.from({ length: N }, () => ({ x: rand(-22, 22), y: rand(0, 9), z: rand(-22, 22), w: rand(0, 6), s: rand(0.6, 1.4), f: rand(0.4, 0.9) }));
+  return { mesh, P };
+})();
+const petalM = new T.Matrix4(), petalQ = new T.Quaternion(), petalE = new T.Euler(), petalS = new T.Vector3(), petalV = new T.Vector3();
+function updatePetals(dt) {
+  if (!japanG.visible) return;
+  const c = camera.position;
+  petals.P.forEach((p, i) => {
+    p.w += dt * 1.7; p.y -= p.f * dt; p.x += Math.sin(p.w) * 0.35 * dt + 0.25 * dt; p.z += Math.cos(p.w * 0.7) * 0.3 * dt;
+    // les pétales restent autour de la caméra : ceux qui sortent du cube de 44 m repartent de l'autre côté, en haut
+    if (p.y < 0.02 || Math.abs(p.x - c.x) > 22 || Math.abs(p.z - c.z) > 22) { p.y = rand(6, 10); p.x = c.x + rand(-22, 22); p.z = c.z + rand(-22, 22); }
+    petalM.compose(petalV.set(p.x, p.y, p.z), petalQ.setFromEuler(petalE.set(p.w, p.w * 0.6, 0)), petalS.setScalar(p.s));
+    petals.mesh.setMatrixAt(i, petalM);
+  });
+  petals.mesh.instanceMatrix.needsUpdate = true;
+}
+{
+  const F = MAPS.japan, O = OBST.japan;
+  const R = mulberry32(20261103), rr = (a, b) => a + R() * (b - a);
+  const plaster = std(0xece6d8), tile = std(0x3b3f4a), tileD = std(0x2c3038), vermil = std(0xb8321f), lacquer = std(0x7e2418), wood = std(0x5c3a26), woodL = std(0x8a6242),
+    stone = std(0x9c9a92), stoneD = std(0x77756e), gold = std(0xd1a443, { metalness: .5, roughness: .4 }), bark = std(0x4a3328),
+    pink1 = std(0xf4b6c8, { emissive: 0x5a2436 }), pink2 = std(0xf8cbd8, { emissive: 0x5e2a3c }), pink3 = std(0xe99ab5, { emissive: 0x521e30 }), /* roses même à l'ombre */ bambooM = std(0x7fa04a), bambooL = std(0x9cbc5c), leafM = std(0x5f8f3c),
+    water = new T.MeshStandardMaterial({ color: 0x5d8f97, roughness: .12, metalness: .25 }), lamp = new T.MeshBasicMaterial({ color: 0xffc977 }), moss = std(0x6f8a4a);
+  const parts = new Map(), M = new T.Matrix4(), Q = new T.Quaternion(), S = new T.Vector3(), P = new T.Vector3(), Y = new T.Vector3(0, 1, 0);
+  const put = (geo, mat, x, y, z, ry = 0, sx = 1, sy = 1, sz = 1) => {
+    const g = geo.index ? geo.toNonIndexed() : geo; M.compose(P.set(x, y, z), Q.setFromAxisAngle(Y, ry), S.set(sx, sy, sz)); g.applyMatrix4(M);
+    if (!parts.has(mat)) parts.set(mat, []); parts.get(mat).push(g);
+  };
+  // boîte d'obstacle orientée : centre, demi-longueurs, angle (comme rotation.y d'un objet)
+  const box = (x, z, hx, hz, h, ry) => O.push({ type: 'box', x, z, hx, hz, h, ax: Math.cos(ry), az: -Math.sin(ry), r: Math.hypot(hx, hz) });
+  const rot = (x, z, ry) => [x * Math.cos(ry) + z * Math.sin(ry), -x * Math.sin(ry) + z * Math.cos(ry)]; // repère local -> monde (même sens que rotation.y)
+  // toit à quatre pans (pyramide écrasée), avec un débord en bois sombre dessous
+  function roof(x, y, z, w, d, h, ry) {
+    put(new T.ConeGeometry(Math.SQRT1_2, 1, 4, 1).rotateY(Math.PI / 4), tile, x, y + h / 2, z, ry, w, h, d);
+    put(new T.BoxGeometry(1, 1, 1), tileD, x, y + 0.08, z, ry, w * 0.93, 0.16, d * 0.93);
+  }
+  // mur blanc à chaperon de tuiles, découpé en tronçons de 8 m au plus (pour la grille des obstacles)
+  function wall(x1, z1, x2, z2, h = 3.2) {
+    const L = Math.hypot(x2 - x1, z2 - z1), n = Math.ceil(L / 8), ry = Math.atan2(-(z2 - z1), x2 - x1);
+    for (let i = 0; i < n; i++) {
+      const t = (i + 0.5) / n, x = x1 + (x2 - x1) * t, z = z1 + (z2 - z1) * t, l = L / n;
+      put(new T.BoxGeometry(l, h, 0.6), plaster, x, h / 2, z, ry);
+      put(new T.BoxGeometry(l, 0.45, 0.7), stoneD, x, 0.22, z, ry);
+      put(new T.BoxGeometry(l + 0.2, 0.28, 1.25), tile, x, h + 0.12, z, ry);
+      put(new T.BoxGeometry(l + 0.2, 0.12, 0.3), tileD, x, h + 0.33, z, ry);
+      box(x, z, l / 2, 0.3, h + 0.4, ry);
+    }
+  }
+  function torii(x, z, ry, s = 1) {
+    for (const sx of [-1, 1]) { const [ox, oz] = rot(sx * 2.2 * s, 0, ry); put(new T.CylinderGeometry(0.2 * s, 0.24 * s, 4.6 * s, 10), vermil, x + ox, 2.3 * s, z + oz); O.push({ type: 'trunk', x: x + ox, z: z + oz, r: 0.26 * s, h: 4.6 * s }); }
+    put(new T.BoxGeometry(5.4 * s, 0.28 * s, 0.3 * s), vermil, x, 3.75 * s, z, ry);
+    put(new T.BoxGeometry(6.4 * s, 0.32 * s, 0.5 * s), lacquer, x, 4.6 * s, z, ry);
+    put(new T.BoxGeometry(6.8 * s, 0.16 * s, 0.6 * s), tileD, x, 4.83 * s, z, ry);
+    put(new T.BoxGeometry(0.25 * s, 0.75 * s, 0.22 * s), lacquer, x, 4.2 * s, z, ry);
+  }
+  function lantern(x, z) {
+    const ry = rr(0, 1.6);
+    put(new T.CylinderGeometry(0.34, 0.42, 0.25, 8), stone, x, 0.12, z);
+    put(new T.CylinderGeometry(0.11, 0.14, 0.9, 8), stone, x, 0.7, z);
+    put(new T.BoxGeometry(0.62, 0.12, 0.62), stone, x, 1.2, z, ry);
+    put(new T.BoxGeometry(0.42, 0.42, 0.42), stone, x, 1.47, z, ry);
+    put(new T.BoxGeometry(0.44, 0.2, 0.2), lamp, x, 1.47, z, ry);
+    put(new T.ConeGeometry(0.55, 0.38, 4).rotateY(Math.PI / 4), stoneD, x, 1.87, z, ry);
+    put(new T.SphereGeometry(0.09, 6, 4), stoneD, x, 2.1, z);
+    O.push({ type: 'trunk', x, z, r: 0.42, h: 2.2 });
+  }
+  function sakura(x, z, r) {
+    const h = 5.2 + r * 2.5, tg = rough(new T.CylinderGeometry(r * 0.55, r * 1.05, h, 7, 3), r * 0.25);
+    O.push({ type: 'trunk', x, z, r: r * 1.05, h, tris: trunkTris(tg, h, x, z) });
+    put(tg, bark, x, h / 2, z);
+    for (let i = 0; i < 6; i++) {
+      const a = i / 6 * Math.PI * 2 + rr(0, 0.8), d = rr(0.6, 1.9), m = [pink1, pink2, pink3][i % 3];
+      put(new T.IcosahedronGeometry(rr(1.05, 1.5) * (0.8 + r), 0), m, x + Math.cos(a) * d, h + rr(0, 1.3), z + Math.sin(a) * d, rr(0, 3), 1, 0.65, 1);
+    }
+  }
+  function bamboo(x, z) {
+    const n = 9 + Math.floor(rr(0, 6));
+    for (let i = 0; i < n; i++) {
+      const a = rr(0, 6.3), d = rr(0, 1.1), h = rr(6, 9.5), bx = x + Math.cos(a) * d, bz = z + Math.sin(a) * d;
+      put(new T.CylinderGeometry(0.055, 0.07, h, 6), i % 3 ? bambooM : bambooL, bx, h / 2, bz);
+      put(new T.ConeGeometry(0.7, 1.6, 5), leafM, bx, h - 0.4, bz, rr(0, 3));
+    }
+    O.push({ type: 'trunk', x, z, r: 1.3, h: 9 });
+  }
+  function rockStone(x, z, r) {
+    const ry = rr(0, 6);
+    put(rough(new T.DodecahedronGeometry(r, 1), r * 0.2), stoneD, x, 0.1, z, ry, 1, 0.65, 1);
+    put(new T.DodecahedronGeometry(r * 0.7, 0), moss, x, 0.1 + r * 0.5, z, ry, 1, 0.3, 1);
+    O.push({ type: 'rock', x, z, r, cy: 0.1, sy: 0.65 });
+  }
+  // grand pavillon : soubassement de pierre, piliers vermillon, murs blancs, double toit de tuiles
+  function hall(x, z, ry, w = 12, d = 9) {
+    put(new T.BoxGeometry(w + 1.6, 0.9, d + 1.6), stone, x, 0.45, z, ry);
+    put(new T.BoxGeometry(w, 4, d), plaster, x, 2.9, z, ry);
+    for (const [px, pz] of [[-w / 2, -d / 2], [w / 2, -d / 2], [-w / 2, d / 2], [w / 2, d / 2], [0, -d / 2], [0, d / 2], [-w / 4, -d / 2], [w / 4, -d / 2], [-w / 4, d / 2], [w / 4, d / 2]]) {
+      const [ox, oz] = rot(px, pz, ry); put(new T.CylinderGeometry(0.2, 0.22, 4, 8), vermil, x + ox, 2.9, z + oz);
+    }
+    put(new T.BoxGeometry(w + 0.4, 0.35, d + 0.4), lacquer, x, 5.05, z, ry);
+    roof(x, 5.2, z, w + 4.5, d + 4, 3.2, ry);
+    put(new T.BoxGeometry(w * 0.55, 0.3, 0.4), tileD, x, 8.2, z, ry);
+    roof(x, 6.6, z, w * 0.62, d * 0.55, 2.4, ry);
+    box(x, z, (w + 1.6) / 2, (d + 1.6) / 2, 9, ry);
+  }
+  // pagode à cinq toits avec flèche dorée
+  function pagoda(x, z, ry) {
+    put(new T.BoxGeometry(10, 1.2, 10), stone, x, 0.6, z, ry);
+    let y = 1.2;
+    for (let i = 0; i < 5; i++) {
+      const s = 6.6 - i * 0.95, hgt = i ? 2.1 : 2.8;
+      put(new T.BoxGeometry(s, hgt, s), i % 2 ? plaster : lacquer, x, y + hgt / 2, z, ry);
+      for (const [px, pz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) { const [ox, oz] = rot(px * s / 2, pz * s / 2, ry); put(new T.CylinderGeometry(0.16, 0.16, hgt, 6), vermil, x + ox, y + hgt / 2, z + oz); }
+      y += hgt; roof(x, y, z, s + 3.4, s + 3.4, 1.5, ry); y += 0.9;
+    }
+    put(new T.CylinderGeometry(0.12, 0.16, 5, 8), gold, x, y + 2.5, z);
+    for (let i = 0; i < 6; i++) put(new T.CylinderGeometry(0.42 - i * 0.04, 0.42 - i * 0.04, 0.1, 10), gold, x, y + 0.8 + i * 0.55, z);
+    box(x, z, 5, 5, y + 5, ry);
+  }
+  // sol : gravier ratissé clair dans le jardin, mousse par plaques, terre au-delà des murs d'enceinte
+  const gGeo = new T.PlaneGeometry(300, 300, 110, 110); gGeo.rotateX(-Math.PI / 2);
+  { const p = gGeo.attributes.position, col = [];
+    for (let i = 0; i < p.count; i++) {
+      const x = p.getX(i), z = p.getZ(i), inside = Math.abs(x) < F.xlim + 2 && Math.abs(z) < F.zlim + 2;
+      p.setY(i, inside ? (hash(x, 0, z) - 0.5) * 0.05 - 0.02 : (hash(x, 1, z) - 0.5) * 0.8 + 0.2);
+      const k = hash(z, 2, x), mossy = Math.sin(x * 0.11) * Math.cos(z * 0.13) + Math.sin(x * 0.037 + z * 0.05) > 0.7;
+      if (!inside) col.push(0.33 + k * 0.05, 0.3 + k * 0.05, 0.26 + k * 0.04);
+      else if (mossy) col.push(0.36 + k * 0.06, 0.45 + k * 0.08, 0.27 + k * 0.05);
+      else col.push(0.74 + k * 0.06, 0.7 + k * 0.06, 0.62 + k * 0.05);
+    }
+    gGeo.setAttribute('color', new T.Float32BufferAttribute(col, 3)); gGeo.computeVertexNormals(); }
+  japanG.add(new T.Mesh(gGeo, new T.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 1 })));
+  const spots = [];
+  const free = (x, z, d) => Math.abs(x) < F.xlim - 1 && Math.abs(z) < F.zlim - 1 && spots.every(sp => Math.hypot(sp.x - x, sp.z - z) > Math.max(d, sp.d));
+  // les trois cours d'apparition : murs de 16 m, porte de 4 m vers l'extérieur, petit sanctuaire au fond, torii devant la porte
+  for (let i = 0; i < 3; i++) {
+    const a = i * 2 * Math.PI / 3, ux = Math.sin(a), uz = Math.cos(a), vx = Math.cos(a), vz = -Math.sin(a), cx = F.spawnR * ux, cz = F.spawnR * uz, H = 8;
+    const pt = (u, v) => [cx + ux * u + vx * v, cz + uz * u + vz * v];
+    wall(...pt(-H, -H), ...pt(-H, H)); wall(...pt(-H, -H), ...pt(H, -H)); wall(...pt(-H, H), ...pt(H, H));
+    wall(...pt(H, -H), ...pt(H, -2)); wall(...pt(H, 2), ...pt(H, H));
+    const ry = Math.atan2(-vz, vx); // axe local x le long de v
+    const [gx, gz] = pt(H, 0);
+    for (const v of [-2.2, 2.2]) { const [qx, qz] = pt(H, v); put(new T.BoxGeometry(0.5, 4, 0.5), wood, qx, 2, qz, ry); } // piliers de la porte
+    roof(gx, 4, gz, 6, 2.6, 1.4, ry);
+    const [sx, sz] = pt(-4.6, 0); hall(sx, sz, ry, 6, 4);
+    const [tx, tz] = pt(H + 4, 0); torii(tx, tz, ry, 0.85);
+    for (const v of [-4.5, 4.5]) { const [lx, lz] = pt(1.5, v); lantern(lx, lz); }
+    const [kx, kz] = pt(-1, -5.5); sakura(kx, kz, 0.42);
+    spots.push({ x: cx, z: cz, d: 14 }, { x: tx, z: tz, d: 4 });
+  }
+  // pagode au centre, trois pavillons sur les lignes entre les apparitions (ils coupent la vue), trois autres plus loin
+  pagoda(0, 0, 0.3); spots.push({ x: 0, z: 0, d: 10 });
+  for (let i = 0; i < 3; i++) {
+    const a = i * 2 * Math.PI / 3 + Math.PI / 3, x = 29 * Math.sin(a), z = 29 * Math.cos(a);
+    hall(x, z, a); spots.push({ x, z, d: 12 });
+    const b = a - 0.45, x2 = 46 * Math.sin(b), z2 = 46 * Math.cos(b);
+    hall(x2, z2, b + 0.4, 10, 7.5); spots.push({ x: x2, z: z2, d: 10 });
+    const [tx, tz] = [17 * Math.sin(a + 0.5), 17 * Math.cos(a + 0.5)]; torii(tx, tz, a + 0.5); spots.push({ x: tx, z: tz, d: 4 });
+  }
+  // étang (on ne peut pas y entrer) bordé de pierres, avec nénuphars
+  { const px = -20, pz = -34;
+    put(new T.CircleGeometry(7, 28).rotateX(-Math.PI / 2), water, px, 0.04, pz);
+    for (let i = 0; i < 18; i++) { const a = i / 18 * Math.PI * 2; put(rough(new T.DodecahedronGeometry(rr(0.5, 0.9), 0), 0.1), stoneD, px + Math.cos(a) * 7.2, 0.15, pz + Math.sin(a) * 7.2, rr(0, 6), 1, 0.6, 1); }
+    for (let i = 0; i < 9; i++) put(new T.CircleGeometry(rr(0.35, 0.6), 8).rotateX(-Math.PI / 2), leafM, px + rr(-5, 5), 0.06, pz + rr(-5, 5));
+    O.push({ type: 'rock', x: px, z: pz, r: 7.4, cy: 0, sy: 0.07 }); spots.push({ x: px, z: pz, d: 10 }); }
+  // cerisiers, bambous, lanternes, rochers et torii répartis dans le jardin
+  let tries = 0; const want = { sakura: 150, bamboo: 32, lantern: 42, rock: 30, torii: 8 };
+  for (const kind of ['torii', 'bamboo', 'sakura', 'lantern', 'rock']) {
+    let n = 0;
+    while (n < want[kind] && tries++ < 40000) {
+      const x = rr(-F.xlim + 2, F.xlim - 2), z = rr(-F.zlim + 2, F.zlim - 2), d = kind === 'bamboo' ? 4 : kind === 'torii' ? 6 : kind === 'sakura' ? 4.2 : 2.6;
+      if (!free(x, z, d)) continue;
+      spots.push({ x, z, d }); n++;
+      if (kind === 'sakura') sakura(x, z, rr(0.32, 0.6));
+      else if (kind === 'bamboo') bamboo(x, z);
+      else if (kind === 'lantern') lantern(x, z);
+      else if (kind === 'rock') rockStone(x, z, rr(0.6, 1.2));
+      else torii(x, z, rr(0, 3.1));
+    }
+  }
+  // dalles de pierre en anneau autour de la pagode
+  for (let i = 0; i < 70; i++) { const a = i / 70 * Math.PI * 2, r = 38 + Math.sin(i * 1.7) * 0.6; put(new T.BoxGeometry(1.1, 0.06, 0.8), stone, r * Math.sin(a), 0.03, r * Math.cos(a), -a); }
+  // enceinte : mur blanc tout autour (décor, la limite de jeu est juste devant), cerisiers et collines au-delà, mont enneigé au loin
+  const E = F.xlim + 1.5;
+  for (const [x1, z1, x2, z2] of [[-E, -E, E, -E], [E, -E, E, E], [E, E, -E, E], [-E, E, -E, -E]]) {
+    const L = Math.hypot(x2 - x1, z2 - z1), ry = Math.atan2(-(z2 - z1), x2 - x1), n = 12;
+    for (let i = 0; i < n; i++) { const t = (i + 0.5) / n, x = x1 + (x2 - x1) * t, z = z1 + (z2 - z1) * t, l = L / n;
+      put(new T.BoxGeometry(l, 3.6, 0.7), plaster, x, 1.8, z, ry); put(new T.BoxGeometry(l + 0.2, 0.3, 1.4), tile, x, 3.72, z, ry); }
+  }
+  for (let i = 0; i < 260; i++) {
+    const x = rr(-120, 120), z = rr(-120, 120);
+    if (Math.abs(x) < E + 3 && Math.abs(z) < E + 3) continue;
+    const r = rr(0.35, 0.6), h = 4.2 + r * 2; put(new T.CylinderGeometry(r * 0.55, r * 1.05, h, 6), bark, x, h / 2, z);
+    for (let k = 0; k < 3; k++) put(new T.IcosahedronGeometry(rr(1.4, 2), 0), [pink1, pink2, pink3][k], x + rr(-1.5, 1.5), h + rr(0, 1), z + rr(-1.5, 1.5), 0, 1, 0.7, 1);
+  }
+  for (const mat of parts.keys()) {
+    const geos = parts.get(mat); let len = 0; for (const g of geos) len += g.attributes.position.count * 3;
+    const pos = new Float32Array(len), nor = new Float32Array(len); let o = 0;
+    for (const g of geos) { pos.set(g.attributes.position.array, o); if (g.attributes.normal) nor.set(g.attributes.normal.array, o); o += g.attributes.position.count * 3; g.dispose(); }
+    const geo = new T.BufferGeometry(); geo.setAttribute('position', new T.BufferAttribute(pos, 3)); geo.setAttribute('normal', new T.BufferAttribute(nor, 3)); geo.computeBoundingSphere();
+    japanG.add(new T.Mesh(geo, mat));
+  }
+  // montagnes au loin (hors brume) et mont enneigé
+  const far = new T.MeshBasicMaterial({ color: 0x8e7c9a, fog: false }), far2 = new T.MeshBasicMaterial({ color: 0xa48fa8, fog: false }), snow = new T.MeshBasicMaterial({ color: 0xf3e3ea, fog: false });
+  for (let i = 0; i < 14; i++) { const a = i / 14 * Math.PI * 2 + 0.2, d = rr(250, 320), h = rr(30, 60); const m = new T.Mesh(new T.ConeGeometry(rr(60, 100), h, 6), i % 2 ? far : far2); m.position.set(Math.sin(a) * d, h / 2 - 6, Math.cos(a) * d); japanG.add(m); }
+  const fuji = new T.Mesh(new T.ConeGeometry(130, 95, 24, 1, true), far); fuji.position.set(60, 40, -340); japanG.add(fuji);
+  const cap = new T.Mesh(new T.ConeGeometry(40, 29, 24), snow); cap.position.set(60, 73.5, -340); japanG.add(cap);
+  gridObstacles(O);
+}
 // ---------- cible d'entraînement (sur le chêne central, face au sud)
 const TARGET = { x: 0, y: 1.5, z: 1.3, r: 0.5 };
 const targetG = new T.Group(); targetG.position.set(TARGET.x, TARGET.y, TARGET.z); targetG.visible = false; scene.add(targetG);
@@ -745,16 +967,17 @@ const MAPLOOK = {
   canyon: { fog: 0xb4685a, near: 40, far: 200, hs: 0xffd8b8, hg: 0x3b2a44, sun: 0xffb27a, sunI: 0.95 },
   forest: { fog: 0x9fb2a3, near: 10, far: 72, hs: 0xe4f0d6, hg: 0x3a4630, sun: 0xfff0c8, sunI: 0.8 },
   forestXL: { fog: 0x9fb2a3, near: 12, far: 70, hs: 0xe4f0d6, hg: 0x3a4630, sun: 0xfff0c8, sunI: 0.8 },
+  japan: { fog: 0xd8b9bb, near: 14, far: 78, hs: 0xffe6ee, hg: 0x4a3a40, sun: 0xffd2b0, sunI: 0.85 },
 };
 function applyMap(k) {
   mapKey = k; map = MAPS[k]; obstacles = OBST[k];
-  canyonG.visible = k === 'canyon'; forestG.visible = k === 'forest'; bigForestG.visible = k === 'forestXL';
+  canyonG.visible = k === 'canyon'; forestG.visible = k === 'forest'; bigForestG.visible = k === 'forestXL'; japanG.visible = k === 'japan';
   skyMat.map = SKY[k]; skyMat.needsUpdate = true;
   const L = MAPLOOK[k];
   scene.fog.color.setHex(L.fog); scene.fog.near = L.near; scene.fog.far = L.far;
   hemi.color.setHex(L.hs); hemi.groundColor.setHex(L.hg); sunL.color.setHex(L.sun); sunL.intensity = L.sunI;
   if (!map.big) try { localStorage.setItem('duelarc-map', k); } catch (e) {}
-  const shown = map.big ? 'forest' : k; // la forêt géante (1v1v1) apparaît comme « Forêt » dans les menus
+  const shown = k === 'forestXL' ? 'forest' : k; // la forêt géante (1v1v1) apparaît comme « Forêt » dans les menus
   document.querySelectorAll('.mapsel button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.map === shown)));
   document.querySelectorAll('.wpnrow').forEach(r => { r.hidden = map.lateral; });
   dressArchers();
@@ -783,6 +1006,10 @@ function updateFlags(t) {
 // obstacles : troncs (forme exacte pour les flèches, cylindre englobant avec marge pour joueurs et caméra) et rochers (sphères aplaties)
 function hitObstacle(o, p, m) {
   const dx = p.x - o.x, dz = p.z - o.z, r = o.r + m;
+  if (o.type === 'box') { // mur ou bâtiment : boîte orientée (axe local x = (ax, az)), du sol à la hauteur h
+    if (p.y >= o.h) return false;
+    return Math.abs(dx * o.ax + dz * o.az) < o.hx + m && Math.abs(-dx * o.az + dz * o.ax) < o.hz + m;
+  }
   if (o.type === 'trunk') {
     if (p.y >= o.h) return false;
     if (o.tris && !m) return dx * dx + dz * dz < r * r * 1.5 && inTrunkShape(o, p);
@@ -804,6 +1031,14 @@ function inObstacle(p, m = 0) {
 }
 function resolveMove(o) {
   for (let it = 0; it < 2; it++) for (const ob of nearObstacles(o.x, o.z)) {
+    if (ob.type === 'box') { // on ressort du côté le plus proche
+      const dx = o.x - ob.x, dz = o.z - ob.z, ex = ob.hx + PLAYER_R, ez = ob.hz + PLAYER_R;
+      let lx = dx * ob.ax + dz * ob.az, lz = -dx * ob.az + dz * ob.ax;
+      if (Math.abs(lx) >= ex || Math.abs(lz) >= ez) continue;
+      if (ex - Math.abs(lx) < ez - Math.abs(lz)) lx = (Math.sign(lx) || 1) * ex; else lz = (Math.sign(lz) || 1) * ez;
+      o.x = ob.x + lx * ob.ax - lz * ob.az; o.z = ob.z + lx * ob.az + lz * ob.ax;
+      continue;
+    }
     const rr = ob.r + PLAYER_R, dx = o.x - ob.x, dz = o.z - ob.z, d2 = dx * dx + dz * dz;
     if (d2 < rr * rr) { const d = Math.sqrt(d2) || 0.001, push = (rr - d) / d; o.x += (dx || 0.001) * push; o.z += dz * push; }
   }
@@ -1518,7 +1753,7 @@ const foeByPeer = id => foes.find(f => f.peer === id);
 const entryByKey = k => k === 'me' ? ME : FOES[k];
 const isDead = e => e.s.taken >= WIN;
 // à 3 : pas de miroir, chacun part d'un des trois côtés de la forêt, tourné vers le centre
-function spawnOf(slot) { const R = map.spawnR || 13.5, a = slot * 2 * Math.PI / 3; return { x: R * Math.sin(a), z: R * Math.cos(a), yaw: a }; }
+function spawnOf(slot) { const R = map.spawnR || 13.5, a = slot * 2 * Math.PI / 3; return { x: R * Math.sin(a), z: R * Math.cos(a), yaw: a + (map.spawnOut ? Math.PI : 0) }; } // triangle équilatéral
 // un éliminé tombe sur le côté
 function deadPose(A, dead) { A.root.rotation.z += ((dead ? 1.45 : 0) - A.root.rotation.z) * 0.15; A.root.position.y = dead ? 0.12 : 0; }
 let mode = null;      // 'bot' | 'online' | null
@@ -2480,7 +2715,8 @@ function chooseMap(k) {
   if (!MAPS[k]) return;
   if (mode === 'online') {
     if (!(phase === 'idle' || phase === 'over')) return;
-    if (k === 'canyon' && peersNow.length > 1) return; // à 3, la forêt seulement
+    if (k === 'canyon' && peersNow.length > 1) return; // à 3 : forêt ou Japon
+    if (k === 'japan' && peersNow.length < 2) return;
     mapV = Math.max(mapV, ...peersNow.map(x => num(x.presence.mapV, 0))) + 1;
     applyMap(k); pres({ mapK: k, wpn: weapon, mapV });
   } else applyMap(k);
@@ -2509,7 +2745,7 @@ function evaluateReady() {
   if (ps.every(p => p.rdy === true && okTok(p.tok))) {
     const toks = [net.tok, ...ps.map(p => p.tok)].sort();
     const lead = toks[0] === net.tok ? { mapK: mapKey, wpn: weapon } : ps.find(p => p.tok === toks[0]);
-    const k = toks.length === 3 ? 'forestXL' : lead.mapK === 'canyon' ? 'canyon' : 'forest'; // à 3 : la forêt géante
+    const k = toks.length === 3 ? (lead.mapK === 'japan' ? 'japan' : 'forestXL') : lead.mapK === 'canyon' ? 'canyon' : 'forest'; // à 3 : forêt géante ou Japon
     startOnline(toks.join('|'), k, wpnKey(lead.wpn));
   }
 }
@@ -2533,6 +2769,7 @@ function renderLobby() {
   $('#lobbyDot').classList.toggle('ok', ok);
   // à 3, le canyon (deux piliers face à face) n'est pas proposé
   document.querySelectorAll('#lobby .mapsel [data-map=canyon], #over .mapsel [data-map=canyon]').forEach(b => { b.disabled = n > 1; });
+  document.querySelectorAll('#lobby .mapsel [data-map=japan], #over .mapsel [data-map=japan]').forEach(b => { b.disabled = n < 2; }); // le Japon : à 3 seulement
   // qui est là : toi + les autres, et qui est prêt ; la partie part dès que tous ceux présents sont prêts
   const L = lobbyPlayers(), mine = L.find(x => x.me), esc = v => v.replace(/&/g, '&amp;').replace(/</g, '&lt;');
   const slot = (x, i) => x ? `<div class="rslot on${x.rdy ? ' rdy' : ''}${x.me ? ' mine' : ''}" style="--pc:${PALETTE[x.col].css}"><i></i><b>${esc(x.name)}</b><small>${x.me ? 'Toi · ' : ''}${x.rdy ? 'Prêt ✓' : 'Connecté'}</small></div>`
@@ -2541,7 +2778,7 @@ function renderLobby() {
   $('#youAre').innerHTML = `Tu es <b style="color:${PALETTE[mine.col].css}">${esc(mine.name)}</b> (${PALETTE[mine.col].label})`;
   $('#nameIn').placeholder = 'Joueur ' + mine.n;
   $('#rosterN').textContent = n + 1; $('#rosterN').classList.toggle('full', n === 2);
-  let s = !ok ? 'Seul pour l’instant : donne le chiffre aux autres.' : n === 1 ? 'À 2 : la partie part dès que vous êtes prêts tous les deux. Pour jouer à 3, attends le 3e joueur avant d’appuyer sur Prêt.' : '3 joueurs : chacun pour soi, dans la forêt géante.';
+  let s = !ok ? 'Seul pour l’instant : donne le chiffre aux autres.' : n === 1 ? 'À 2 : la partie part dès que vous êtes prêts tous les deux. Pour jouer à 3, attends le 3e joueur avant d’appuyer sur Prêt.' : (mapKey === 'japan' ? '3 joueurs : chacun pour soi, dans les jardins de temples.' : '3 joueurs : chacun pour soi, dans la forêt géante.');
   if (ok && rdy && !net.rp) s = n === 1 ? 'Ton adversaire est prêt : appuie sur Prêt pour lancer à 2.' : rdy === n ? 'Les deux autres sont prêts : appuie sur Prêt pour lancer à 3.' : 'Un adversaire est prêt.';
   if (net.rp) s = ok ? `Prêt. On attend que ${n === 1 ? 'l’autre appuie' : 'les autres appuient'} aussi…` : 'Prêt. En attente d’un adversaire…';
   $('#lobbyStatus').textContent = s;
@@ -2612,7 +2849,7 @@ function frame(now) {
   opp2A.root.visible = mode === 'online' && trio() && phase !== 'idle';
   updatePhase(dt);
   if (mode && phase !== 'idle') { updateMe(dt); updateOpp(dt); }
-  updateArrows(dt); updateSplash(dt); updateBlasts(dt);
+  updateArrows(dt); updateSplash(dt); updateBlasts(dt); updatePetals(dt);
   updateFlags(t);
   updateCamera(dt);
   netTick(now);
