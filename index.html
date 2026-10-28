@@ -119,6 +119,17 @@ p{margin:0}
 .note:empty{display:none}
 .codebig{font-family:var(--display);font-weight:800;font-size:56px;letter-spacing:.22em;color:var(--ember);line-height:1;font-variant-numeric:tabular-nums}
 .status{display:flex;align-items:center;gap:8px;font-size:16px}
+.roster{display:grid;gap:8px;padding:10px 12px;border:1px solid var(--line);border-radius:14px;background:rgba(0,0,0,.25)}
+.rcount{font-family:var(--display);font-size:15px;letter-spacing:.08em;text-transform:uppercase;color:var(--mute)}
+.rcount b{font-size:30px;color:var(--bone);letter-spacing:0;margin-right:2px}
+.rcount b.full{color:var(--teal)}
+.rslots{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.rslot{display:grid;justify-items:center;gap:3px;padding:8px 4px;border-radius:11px;border:1.5px dashed rgba(239,230,214,.22);color:var(--mute);font-size:13px;text-align:center}
+.rslot i{width:22px;height:22px;border-radius:50%;border:2px dashed rgba(239,230,214,.3)}
+.rslot b{font-size:14px;color:inherit}
+.rslot.on{border-style:solid;border-color:rgba(63,193,176,.55);color:var(--bone);background:rgba(63,193,176,.08)}
+.rslot.on i{border:0;background:var(--teal);box-shadow:0 0 10px var(--teal)}
+.rslot.rdy small{color:var(--teal);font-weight:700}
 .dot{width:9px;height:9px;border-radius:50%;background:var(--mute);flex:0 0 auto}
 .dot.ok{background:var(--teal);box-shadow:0 0 8px var(--teal)}
 .final{font-family:var(--display);font-size:22px;letter-spacing:.06em}
@@ -252,6 +263,10 @@ p{margin:0}
         <button data-wpn="minigun" aria-pressed="false">Minigun</button>
         <button data-wpn="paintball" aria-pressed="false">Paintball</button>
       </div>
+    </div>
+    <div class="roster" aria-live="polite">
+      <div class="rcount"><b id="rosterN">1</b> / 3 joueurs dans le salon</div>
+      <div class="rslots" id="rslots"></div>
     </div>
     <div class="status"><i class="dot" id="lobbyDot"></i><span id="lobbyStatus">En attente de ton adversaire…</span></div>
     <button class="btn primary" id="btnReady" disabled>Prêt</button>
@@ -2456,19 +2471,24 @@ function renderLobby() {
   $('#lobbyDot').classList.toggle('ok', ok);
   // à 3, le canyon (deux piliers face à face) n'est pas proposé
   document.querySelectorAll('#lobby .mapsel [data-map=canyon], #over .mapsel [data-map=canyon]').forEach(b => { b.disabled = n > 1; });
-  let s = !ok ? 'En attente de ton adversaire…' : n === 1 ? 'Adversaire connecté' : '3 joueurs : chacun pour soi, dans la forêt géante';
-  if (ok && rdy) s = n === 1 ? 'Ton adversaire est prêt' : rdy === n ? 'Les deux autres sont prêts' : 'Un adversaire est prêt';
-  if (net.rp) s = ok ? 'Prêt. On attend que les autres appuient aussi…' : 'Prêt. En attente de ton adversaire…';
+  // qui est là : toi + les autres, et qui est prêt ; la partie part dès que tous ceux présents sont prêts
+  const slot = (name, on, ready) => `<div class="rslot${on ? ' on' : ''}${ready ? ' rdy' : ''}"><i></i><b>${name}</b><small>${!on ? 'En attente…' : ready ? 'Prêt ✓' : 'Connecté'}</small></div>`;
+  $('#rslots').innerHTML = slot('Toi', true, net.rp) + [0, 1].map(i => slot('Joueur ' + (i + 2), !!peersNow[i], !!(peersNow[i] && peersNow[i].presence.rdy === true))).join('');
+  $('#rosterN').textContent = n + 1; $('#rosterN').classList.toggle('full', n === 2);
+  let s = !ok ? 'Seul pour l’instant : donne le chiffre aux autres.' : n === 1 ? 'À 2 : la partie part dès que vous êtes prêts tous les deux. Pour jouer à 3, attends le 3e joueur avant d’appuyer sur Prêt.' : '3 joueurs : chacun pour soi, dans la forêt géante.';
+  if (ok && rdy && !net.rp) s = n === 1 ? 'Ton adversaire est prêt : appuie sur Prêt pour lancer à 2.' : rdy === n ? 'Les deux autres sont prêts : appuie sur Prêt pour lancer à 3.' : 'Un adversaire est prêt.';
+  if (net.rp) s = ok ? `Prêt. On attend que ${n === 1 ? 'l’autre appuie' : 'les autres appuient'} aussi…` : 'Prêt. En attente d’un adversaire…';
   $('#lobbyStatus').textContent = s;
-  const b = $('#btnReady'); b.disabled = !ok || net.rp; b.textContent = net.rp ? 'En attente…' : 'Prêt';
+  const b = $('#btnReady'); b.disabled = !ok || net.rp; b.textContent = net.rp ? 'En attente…' : n === 2 ? 'Prêt – lancer à 3' : n === 1 ? 'Prêt – lancer à 2' : 'Prêt';
 }
 function renderOverStatus() {
   if (mode === 'bot') { $('#overStatus').textContent = ''; return; }
   if (mode !== 'online') return;
   let s = '';
   if (!peersNow.length) s = 'Tes adversaires ont quitté la partie.';
-  else if (net.rp) s = 'En attente de la réponse des autres…';
-  else if (peersNow.some(x => x.presence.rdy === true)) s = 'Revanche demandée.';
+  else s = `${peersNow.length + 1} joueurs dans le salon. `;
+  if (peersNow.length && net.rp) s += 'En attente de la réponse des autres…';
+  else if (peersNow.some(x => x.presence.rdy === true)) s += 'Revanche demandée.';
   $('#overStatus').textContent = s;
   $('#btnAgain').disabled = net.rp || !peersNow.length;
   $('#btnAgain').textContent = net.rp ? 'En attente…' : 'Revanche';

@@ -24,6 +24,7 @@ Deux cartes :
 Pour jouer : https://gab22222.github.io/duel-arc/
 
 - Un joueur appuie sur **Créer une partie** et reçoit un chiffre (de 0 à 9) qu'il donne aux autres, qui le tapent puis appuient sur **Rejoindre**.
+- Le salon affiche clairement **combien de joueurs sont là (1, 2 ou 3 sur 3)**, avec une case par joueur (« Toi », « Joueur 2 », « Joueur 3 ») qui passe de « En attente… » à « Connecté » puis « Prêt ✓ ». Le bouton dit « Prêt – lancer à 2 » ou « Prêt – lancer à 3 » : la partie part dès que tous ceux présents sont prêts, donc pour jouer à 3 on attend que le 3e soit là avant d'appuyer.
 - **À 3 (1v1v1)** : si trois joueurs sont dans le salon, la partie démarre quand les trois ont appuyé sur **Prêt**. On joue dans une forêt géante de 124 m de côté (plus de 3 fois plus grande que la forêt du duel dans chaque direction, environ 400 arbres et rochers) : chacun apparaît à 94 m des autres, hors de vue dans la brume et derrière les arbres. Un mini radar en haut à droite, orienté vers où l'on regarde, montre la position des deux autres, relevée toutes les 5 s (un arc se remplit jusqu'au prochain relevé). Le dernier debout gagne. Les adversaires sont en rouge et en jaune.
 - Gauche : glisser pour se déplacer (joystick en forêt). Droite : maintenir pour bander l'arc, glisser pour viser, relâcher pour tirer.
 - Aucun compte n'est nécessaire. Le multijoueur passe par un relais MQTT public (broker.emqx.io).
