@@ -209,7 +209,7 @@ p{margin:0}
     </div>
     <button class="btn primary" id="btnCreate">Créer une partie <span>tu reçois un code</span></button>
     <div class="row">
-      <input id="code" maxlength="6" placeholder="CODE" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Code de la partie">
+      <input id="code" maxlength="1" placeholder="0–9" inputmode="numeric" pattern="[0-9]" autocomplete="off" spellcheck="false" aria-label="Chiffre de la partie">
       <button class="btn" id="btnJoin">Rejoindre</button>
     </div>
     <div class="row two">
@@ -227,9 +227,9 @@ p{margin:0}
 
 <section class="panel" id="lobby" hidden>
   <div class="sheet">
-    <div class="eyebrow">Code de la partie</div>
-    <div class="codebig" id="lobbyCode">----</div>
-    <p class="sub">Tes adversaires ouvrent la même page, tapent ce code et appuient sur Rejoindre. Jusqu'à 3 joueurs : à 3, chacun pour soi dans une forêt géante, avec un radar ; le dernier debout gagne.</p>
+    <div class="eyebrow">Chiffre de la partie</div>
+    <div class="codebig" id="lobbyCode">-</div>
+    <p class="sub">Tes adversaires ouvrent la même page, tapent ce chiffre et appuient sur Rejoindre. Jusqu'à 3 joueurs : à 3, chacun pour soi dans une forêt géante, avec un radar ; le dernier debout gagne.</p>
     <div class="seg mapsel" role="group" aria-label="Carte">
       <button data-map="canyon" aria-pressed="true">Canyon<small>face à face</small></button>
       <button data-map="forest" aria-pressed="false">Forêt<small>déplacements libres</small></button>
@@ -2284,7 +2284,7 @@ function netTick(now) {
   const key = JSON.stringify(p);
   if (key !== lastSent) { lastSent = key; pres(p); }
 }
-function randCode() { const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ'; let s = ''; for (let i = 0; i < 4; i++) s += A[Math.floor(Math.random() * A.length)]; return s; }
+function randCode() { return String(Math.floor(Math.random() * 10)); } // un seul chiffre, de 0 à 9
 function menuNote(t) { $('#menuNote').textContent = t; }
 let joining = false;
 async function enterRoom(code, creator) {
@@ -2485,8 +2485,8 @@ setCamCenter(camCenter);
 setTintHits(tintHits);
 $('#btnCreate').addEventListener('click', () => enterRoom(randCode(), true));
 $('#btnJoin').addEventListener('click', () => {
-  const c = $('#code').value.toUpperCase().replace(/[^A-Z0-9]/g, '');
-  if (c.length < 3) { menuNote('Tape le code à 4 lettres que ton adversaire voit sur son écran.'); return; }
+  const c = $('#code').value.replace(/[^0-9]/g, '');
+  if (c.length !== 1) { menuNote('Tape le chiffre que ton adversaire voit sur son écran.'); return; }
   enterRoom(c, false);
 });
 $('#code').addEventListener('keydown', e => { if (e.key === 'Enter') $('#btnJoin').click(); });
