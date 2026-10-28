@@ -12,6 +12,7 @@ Deux cartes :
   - **Pistolet** : on maintient pour tirer en continu (une balle toutes les 0,25 s, chargeur infini), balles sans chute ni temps de vol, 50 HP au corps et 100 HP à la tête. Un petit bouton au-dessus du joystick visse ou dévisse le silencieux, ce qui change le bruit du tir.
   - **Revolver** : gris métal, tenu à deux mains. Une balle toutes les 2 s, chargeur infini, sans chute ni temps de vol. Une balle dans la tête tue d'un coup, une balle dans le corps enlève 100 HP. Gros recul à chaque tir (canon qui se relève, buste et vue qui sautent), purement visuel : la visée ne bouge pas.
   - **Deagle** (Desert Eagle .50 AE) : sa vraie forme (culasse carrée striée, canon triangulaire avec rail, pontet carré) en inox avec plaquettes de crosse noires. Une balle toutes les 1,5 s, chargeur infini, sans chute ni temps de vol et parfaitement précise. Une balle dans la tête tue d'un coup, une balle dans le corps enlève 150 HP. Détonation très forte et gros recul, purement visuel.
+  - **Vector** (Kriss Vector) : sa vraie silhouette en polymère noir (le « V » incliné sous le canon, long chargeur devant la poignée, rail, crosse) avec un petit laser rouge : un fin rayon et un point rouge là où il touche, visibles aussi sur l'arme de l'adversaire. On maintient pour tirer en continu, une balle toutes les 0,15 s, chargeur infini, sans chute ni temps de vol et parfaitement précise. 25 HP au corps, 100 HP à la tête.
 
 Pour jouer : https://gab22222.github.io/duel-arc/
 
