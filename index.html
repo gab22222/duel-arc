@@ -34,6 +34,7 @@ body{position:fixed;inset:0;touch-action:none;-webkit-user-select:none;user-sele
 #touch{position:fixed;inset:0;z-index:1}
 .hud{position:fixed;z-index:2;pointer-events:none}
 
+#radar{top:calc(env(safe-area-inset-top,0px) + 54px);right:12px;width:120px;height:120px;border-radius:50%;pointer-events:none}
 #score{top:calc(env(safe-area-inset-top,0px) + 10px);left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:14px;padding:6px 16px;background:rgba(14,12,22,.55);border:1px solid var(--line);border-radius:999px;font-family:var(--display);font-weight:700;letter-spacing:.06em;font-size:15px;white-space:nowrap}
 .side{display:flex;align-items:center;gap:8px}
 .pips{display:flex;gap:7px}
@@ -156,6 +157,7 @@ p{margin:0}
 <div class="hud" id="toast"></div>
 <div class="hud" id="hurt"></div>
 <div class="hud" id="stick" hidden><div id="knob"></div></div>
+<canvas class="hud" id="radar" width="240" height="240" hidden></canvas>
 <button id="quit" aria-label="Quitter la partie" hidden>✕</button>
 <button id="sil" aria-pressed="false" hidden>Silencieux</button>
 
@@ -227,7 +229,7 @@ p{margin:0}
   <div class="sheet">
     <div class="eyebrow">Code de la partie</div>
     <div class="codebig" id="lobbyCode">----</div>
-    <p class="sub">Tes adversaires ouvrent la même page, tapent ce code et appuient sur Rejoindre. Jusqu'à 3 joueurs : à 3, chacun pour soi en forêt, le dernier debout gagne.</p>
+    <p class="sub">Tes adversaires ouvrent la même page, tapent ce code et appuient sur Rejoindre. Jusqu'à 3 joueurs : à 3, chacun pour soi dans une forêt géante, avec un radar ; le dernier debout gagne.</p>
     <div class="seg mapsel" role="group" aria-label="Carte">
       <button data-map="canyon" aria-pressed="true">Canyon<small>face à face</small></button>
       <button data-map="forest" aria-pressed="false">Forêt<small>déplacements libres</small></button>
@@ -351,6 +353,8 @@ const aimGain = v => clamp(Math.pow(Math.max(v, 0.001) / AIM_VREF, AIM_EXP), AIM
 const MAPS = {
   canyon: { key: 'canyon', spawnZ: 12, lateral: true, xlim: 2.1, zlim: 12, maxv: 1.8, acc: 15, yawLim: 0.5 },
   forest: { key: 'forest', spawnZ: 17, lateral: false, xlim: 14.5, zlim: 20.5, maxv: 3.1, acc: 22, yawLim: Infinity },
+  // 1v1v1 : forêt géante de 124 m de côté (plus de 3 fois plus grande dans chaque direction), apparitions à 94 m les unes des autres
+  forestXL: { key: 'forestXL', spawnZ: 17, lateral: false, xlim: 62, zlim: 62, maxv: 3.1, acc: 22, yawLim: Infinity, big: true, spawnR: 54 },
 };
 // arme en forêt : arc (par défaut), arbalète, carabine, batte, pistolet, revolver, deagle, vector, M4, Barrett, fusil à pompe, bière, lance-grenades, minigun ou paintball ; le canyon reste toujours à l'arc
 // kind : projectile ; aimT : temps pour bander / épauler ; zoomX : lunette (null = zoom léger de l'arc)
@@ -434,6 +438,7 @@ function skyTex(stops) {
 }
 const SKY = {
   canyon: skyTex([[0, '#11132e'], [0.3, '#36284f'], [0.44, '#a85462'], [0.49, '#f0a46a'], [0.505, '#f7c27e'], [0.53, '#b4685a'], [1, '#2a1c2c']]),
+  get forestXL() { return this.forest; },
   forest: skyTex([[0, '#2c4a5e'], [0.3, '#5f8796'], [0.46, '#b9cbb6'], [0.5, '#d8dfc2'], [0.53, '#93a796'], [1, '#33402f']]),
 };
 const skyMat = new T.MeshBasicMaterial({ map: SKY.canyon, side: T.BackSide, fog: false, depthWrite: false });
@@ -456,7 +461,8 @@ function rough(geo, amt) {
   return geo;
 }
 const std = (color, extra) => new T.MeshStandardMaterial(Object.assign({ color, flatShading: true, roughness: 1, metalness: 0 }, extra || {}));
-const OBST = { canyon: [], forest: [] };
+const OBST = { canyon: [], forest: [], forestXL: [] };
+const OB_CELL = 8, obNear = []; // grille des obstacles de la forêt géante (cases de 8 m)
 // forme réelle d'un tronc : les triangles de son flanc tels qu'ils sont dessinés (cylindre irrégulier qui s'affine)
 function trunkTris(geo, h, x, z) {
   const p = geo.attributes.position, n = geo.parameters.radialSegments, hs = geo.parameters.heightSegments, tris = [];
@@ -610,6 +616,85 @@ const forestG = new T.Group(); scene.add(forestG); forestG.visible = false;
   }
   forestG.add(grass);
 }
+// ---------- map 3 : forêt géante du 1v1v1 (même graine chez tous les joueurs : mêmes arbres au même endroit).
+// Plusieurs centaines d'arbres et de rochers : tout est fusionné en un objet par matière pour rester fluide sur téléphone.
+const bigForestG = new T.Group(); scene.add(bigForestG); bigForestG.visible = false;
+{
+  const F = MAPS.forestXL, O = OBST.forestXL;
+  const R = mulberry32(31102026), rr = (a, b) => a + R() * (b - a);
+  const bark = std(0x5a3e2b), bark2 = std(0x6e4c33), pine = std(0x2f5a3c), pine2 = std(0x3d6b44), leaf = std(0x5d7f3a), rockM = std(0x7d8279), mossM = std(0x56703f);
+  const parts = new Map(), M = new T.Matrix4(), Q = new T.Quaternion(), S = new T.Vector3(), P = new T.Vector3(), Y = new T.Vector3(0, 1, 0);
+  const put = (geo, mat, x, y, z, ry = 0, sx = 1, sy = 1, sz = 1) => {
+    const g = geo.index ? geo.toNonIndexed() : geo; M.compose(P.set(x, y, z), Q.setFromAxisAngle(Y, ry), S.set(sx, sy, sz)); g.applyMatrix4(M);
+    if (!parts.has(mat)) parts.set(mat, []); parts.get(mat).push(g);
+  };
+  function pineTree(x, z, r, solid) {
+    const h = 9, tg = rough(new T.CylinderGeometry(r * 0.7, r * 1.05, h, 7, 3), r * 0.15);
+    if (solid) O.push({ type: 'trunk', x, z, r: r * 1.05, h, tris: trunkTris(tg, h, x, z) });
+    put(tg, R() < 0.5 ? bark : bark2, x, h / 2, z);
+    const s = 0.8 + r * 0.9;
+    for (let i = 0; i < 3; i++) put(new T.ConeGeometry((2.4 - i * 0.55) * s, 2.8 * s, 7), i % 2 ? pine2 : pine, x, 4.4 + i * 1.55 * s + 1.4 * s, z, rr(0, 3));
+  }
+  function oakTree(x, z, r, solid) {
+    const h = 8, tg = rough(new T.CylinderGeometry(r * 0.8, r * 1.15, h, 8, 3), r * 0.2);
+    if (solid) O.push({ type: 'trunk', x, z, r: r * 1.15, h, tris: trunkTris(tg, h, x, z) });
+    put(tg, bark2, x, h / 2, z);
+    for (let i = 0; i < 4; i++) put(new T.IcosahedronGeometry(rr(1.3, 1.9) * (0.7 + r), 0), i % 2 ? leaf : pine2, x + rr(-1.2, 1.2), rr(6.8, 8.4), z + rr(-1.2, 1.2));
+  }
+  function rock(x, z, r) {
+    const rot = rr(0, 6);
+    put(rough(new T.DodecahedronGeometry(r, 1), r * 0.18), rockM, x, 0.15, z, rot, 1, 0.75, 1);
+    put(new T.DodecahedronGeometry(r * 0.75, 0), mossM, x, 0.15 + r * 0.6, z, rot, 1, 0.35, 1);
+    O.push({ type: 'rock', x, z, r, cy: 0.15, sy: 0.75 });
+  }
+  // sol : zone de jeu plate, bosses au-delà
+  const gGeo = new T.PlaneGeometry(260, 260, 96, 96); gGeo.rotateX(-Math.PI / 2);
+  { const p = gGeo.attributes.position, col = [];
+    for (let i = 0; i < p.count; i++) {
+      const x = p.getX(i), z = p.getZ(i), inside = Math.abs(x) < F.xlim + 1 && Math.abs(z) < F.zlim + 1;
+      p.setY(i, inside ? (hash(x, 0, z) - 0.5) * 0.08 - 0.02 : (hash(x, 1, z) - 0.5) * 0.6 + 0.1);
+      const k = hash(z, 2, x); col.push(0.27 + k * 0.08, 0.36 + k * 0.1, 0.18 + k * 0.05);
+    }
+    gGeo.setAttribute('color', new T.Float32BufferAttribute(col, 3)); gGeo.computeVertexNormals(); }
+  bigForestG.add(new T.Mesh(gGeo, new T.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 1 })));
+  // arbres et rochers de la zone de jeu (dégagés autour des trois apparitions), quelques grands chênes repères
+  const spawns = [0, 1, 2].map(i => { const a = i * 2 * Math.PI / 3; return { x: F.spawnR * Math.sin(a), z: F.spawnR * Math.cos(a) }; });
+  const spots = spawns.map(sp => ({ x: sp.x, z: sp.z, d: 6 }));
+  const free = (x, z, d) => spots.every(sp => Math.hypot(sp.x - x, sp.z - z) > Math.max(d, sp.d));
+  oakTree(0, 0, 1.1, true); spots.push({ x: 0, z: 0, d: 5 });
+  let n = 0, tries = 0;
+  while (n < 380 && tries++ < 20000) {
+    const x = rr(-F.xlim + 0.8, F.xlim - 0.8), z = rr(-F.zlim + 0.8, F.zlim - 0.8);
+    const isRock = R() < 0.25, d = isRock ? 3.2 : 3.6;
+    if (!free(x, z, d)) continue;
+    spots.push({ x, z, d }); n++;
+    if (isRock) rock(x, z, rr(0.85, 1.35));
+    else (R() < 0.3 ? oakTree : pineTree)(x, z, rr(0.4, 0.85), true);
+  }
+  // lisière décorative tout autour
+  for (let i = 0; i < 520; i++) {
+    const x = rr(-110, 110), z = rr(-110, 110);
+    if (Math.abs(x) < F.xlim + 2.5 && Math.abs(z) < F.zlim + 2.5) continue;
+    (R() < 0.75 ? pineTree : oakTree)(x, z, rr(0.4, 0.9), false);
+  }
+  // fusion : un seul objet par matière
+  for (const [mat, geos] of parts) {
+    let len = 0; for (const g of geos) len += g.attributes.position.count * 3;
+    const pos = new Float32Array(len), nor = new Float32Array(len); let o = 0;
+    for (const g of geos) { pos.set(g.attributes.position.array, o); if (g.attributes.normal) nor.set(g.attributes.normal.array, o); o += g.attributes.position.count * 3; g.dispose(); }
+    const geo = new T.BufferGeometry(); geo.setAttribute('position', new T.BufferAttribute(pos, 3)); geo.setAttribute('normal', new T.BufferAttribute(nor, 3)); geo.computeBoundingSphere();
+    bigForestG.add(new T.Mesh(geo, mat));
+  }
+  // herbes
+  const grass = new T.InstancedMesh(new T.ConeGeometry(0.07, 0.38, 3), std(0x6d8f3f), 4000);
+  const m4 = new T.Matrix4(), q = new T.Quaternion(), sc = new T.Vector3();
+  for (let i = 0; i < 4000; i++) {
+    q.setFromAxisAngle(Y, rr(0, 6)); sc.setScalar(rr(0.6, 1.4));
+    m4.compose(new T.Vector3(rr(-F.xlim - 3, F.xlim + 3), 0.15, rr(-F.zlim - 3, F.zlim + 3)), q, sc); grass.setMatrixAt(i, m4);
+  }
+  bigForestG.add(grass);
+  gridObstacles(O);
+}
 // ---------- cible d'entraînement (sur le chêne central, face au sud)
 const TARGET = { x: 0, y: 1.5, z: 1.3, r: 0.5 };
 const targetG = new T.Group(); targetG.position.set(TARGET.x, TARGET.y, TARGET.z); targetG.visible = false; scene.add(targetG);
@@ -638,17 +723,19 @@ let practicePrevMap = null;
 const MAPLOOK = {
   canyon: { fog: 0xb4685a, near: 40, far: 200, hs: 0xffd8b8, hg: 0x3b2a44, sun: 0xffb27a, sunI: 0.95 },
   forest: { fog: 0x9fb2a3, near: 10, far: 72, hs: 0xe4f0d6, hg: 0x3a4630, sun: 0xfff0c8, sunI: 0.8 },
+  forestXL: { fog: 0x9fb2a3, near: 12, far: 70, hs: 0xe4f0d6, hg: 0x3a4630, sun: 0xfff0c8, sunI: 0.8 },
 };
 function applyMap(k) {
   mapKey = k; map = MAPS[k]; obstacles = OBST[k];
-  canyonG.visible = k === 'canyon'; forestG.visible = k === 'forest';
+  canyonG.visible = k === 'canyon'; forestG.visible = k === 'forest'; bigForestG.visible = k === 'forestXL';
   skyMat.map = SKY[k]; skyMat.needsUpdate = true;
   const L = MAPLOOK[k];
   scene.fog.color.setHex(L.fog); scene.fog.near = L.near; scene.fog.far = L.far;
   hemi.color.setHex(L.hs); hemi.groundColor.setHex(L.hg); sunL.color.setHex(L.sun); sunL.intensity = L.sunI;
-  try { localStorage.setItem('duelarc-map', k); } catch (e) {}
-  document.querySelectorAll('.mapsel button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.map === k)));
-  document.querySelectorAll('.wpnrow').forEach(r => { r.hidden = k !== 'forest'; });
+  if (!map.big) try { localStorage.setItem('duelarc-map', k); } catch (e) {}
+  const shown = map.big ? 'forest' : k; // la forêt géante (1v1v1) apparaît comme « Forêt » dans les menus
+  document.querySelectorAll('.mapsel button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.map === shown)));
+  document.querySelectorAll('.wpnrow').forEach(r => { r.hidden = map.lateral; });
   dressArchers();
 }
 const curW = () => map.lateral ? 'bow' : weapon;
@@ -673,20 +760,29 @@ function updateFlags(t) {
   }
 }
 // obstacles : troncs (forme exacte pour les flèches, cylindre englobant avec marge pour joueurs et caméra) et rochers (sphères aplaties)
-function inObstacle(p, m = 0) {
-  for (const o of obstacles) {
-    const dx = p.x - o.x, dz = p.z - o.z, r = o.r + m;
-    if (o.type === 'trunk') {
-      if (p.y >= o.h) continue;
-      if (o.tris && !m) { if (dx * dx + dz * dz < r * r * 1.5 && inTrunkShape(o, p)) return true; }
-      else if (dx * dx + dz * dz < r * r) return true;
-    }
-    else { const dy = (p.y - o.cy) / o.sy; if (dx * dx + dz * dz + dy * dy < r * r) return true; }
+function hitObstacle(o, p, m) {
+  const dx = p.x - o.x, dz = p.z - o.z, r = o.r + m;
+  if (o.type === 'trunk') {
+    if (p.y >= o.h) return false;
+    if (o.tris && !m) return dx * dx + dz * dz < r * r * 1.5 && inTrunkShape(o, p);
+    return dx * dx + dz * dz < r * r;
   }
+  const dy = (p.y - o.cy) / o.sy; return dx * dx + dz * dz + dy * dy < r * r;
+}
+// grande forêt : les obstacles sont rangés dans une grille de cases de 8 m, on ne teste que les 9 cases autour du point
+function gridObstacles(list) { const g = new Map(); for (const o of list) { const k = Math.floor(o.x / OB_CELL) * 1000 + Math.floor(o.z / OB_CELL); if (!g.has(k)) g.set(k, []); g.get(k).push(o); } list.grid = g; }
+function nearObstacles(x, z) {
+  const g = obstacles.grid; if (!g) return obstacles;
+  obNear.length = 0; const cx = Math.floor(x / OB_CELL), cz = Math.floor(z / OB_CELL);
+  for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) { const l = g.get((cx + i) * 1000 + cz + j); if (l) for (const o of l) obNear.push(o); }
+  return obNear;
+}
+function inObstacle(p, m = 0) {
+  for (const o of nearObstacles(p.x, p.z)) if (hitObstacle(o, p, m)) return true;
   return false;
 }
 function resolveMove(o) {
-  for (let it = 0; it < 2; it++) for (const ob of obstacles) {
+  for (let it = 0; it < 2; it++) for (const ob of nearObstacles(o.x, o.z)) {
     const rr = ob.r + PLAYER_R, dx = o.x - ob.x, dz = o.z - ob.z, d2 = dx * dx + dz * dz;
     if (d2 < rr * rr) { const d = Math.sqrt(d2) || 0.001, push = (rr - d) / d; o.x += (dx || 0.001) * push; o.z += dz * push; }
   }
@@ -1369,7 +1465,7 @@ const foeByPeer = id => foes.find(f => f.peer === id);
 const entryByKey = k => k === 'me' ? ME : FOES[k];
 const isDead = e => e.s.taken >= WIN;
 // à 3 : pas de miroir, chacun part d'un des trois côtés de la forêt, tourné vers le centre
-function spawnOf(slot) { const R = 13.5, a = slot * 2 * Math.PI / 3; return { x: R * Math.sin(a), z: R * Math.cos(a), yaw: a }; }
+function spawnOf(slot) { const R = map.spawnR || 13.5, a = slot * 2 * Math.PI / 3; return { x: R * Math.sin(a), z: R * Math.cos(a), yaw: a }; }
 // un éliminé tombe sur le côté
 function deadPose(A, dead) { A.root.rotation.z += ((dead ? 1.45 : 0) - A.root.rotation.z) * 0.15; A.root.position.y = dead ? 0.12 : 0; }
 let mode = null;      // 'bot' | 'online' | null
@@ -2057,7 +2153,41 @@ function updateCamera(dt) {
 }
 const ringEl = $('#ring'), knobEl = $('#knob');
 const scopeEl = $('#scope'), crossEl = $('#cross');
+// radar du 1v1v1 : orienté vers où je regarde, je suis au centre ; la position des deux autres est relevée toutes les 5 s
+const radarEl = $('#radar'), radarG = radarEl.getContext('2d'), RADAR_RANGE = 90, RADAR_EVERY = 5;
+let radarSnap = [], radarAt = -99;
+function drawRadar() {
+  const on = !!mode && trio() && map.big && (phase === 'countdown' || phase === 'fight' || phase === 'ending');
+  radarEl.hidden = !on; if (!on) return;
+  if (t - radarAt >= RADAR_EVERY || t < radarAt) { radarAt = t; radarSnap = foes.map(f => ({ x: f.s.x, z: f.s.z, dead: isDead(f), col: f.key === 'opp' ? '#d4473a' : '#e8b93a' })); }
+  const g = radarG, W = 240, C = W / 2, Rpx = C - 6, k = Rpx / RADAR_RANGE;
+  const fx = -Math.sin(me.yaw), fz = -Math.cos(me.yaw), rx = Math.cos(me.yaw), rz = -Math.sin(me.yaw);
+  const toScreen = (x, z) => { const dx = x - me.x, dz = z - me.z; return [C + (dx * rx + dz * rz) * k, C - (dx * fx + dz * fz) * k]; };
+  g.clearRect(0, 0, W, W);
+  g.save(); g.beginPath(); g.arc(C, C, Rpx, 0, Math.PI * 2); g.fillStyle = 'rgba(12,16,14,.62)'; g.fill(); g.clip();
+  // bords de la forêt et anneaux de distance (30 et 60 m)
+  g.strokeStyle = 'rgba(239,230,214,.28)'; g.lineWidth = 2; g.beginPath();
+  [[-1, -1], [1, -1], [1, 1], [-1, 1]].forEach(([a, b], i) => { const [x, y] = toScreen(a * map.xlim, b * map.zlim); i ? g.lineTo(x, y) : g.moveTo(x, y); }); g.closePath(); g.stroke();
+  g.strokeStyle = 'rgba(239,230,214,.12)'; for (const r of [30, 60]) { g.beginPath(); g.arc(C, C, r * k, 0, Math.PI * 2); g.stroke(); }
+  // ennemis à leur dernière position relevée (collés au bord s'ils sont hors de portée), avec une onde à chaque relevé
+  const age = t - radarAt;
+  for (const e of radarSnap) {
+    if (e.dead) continue;
+    let [x, y] = toScreen(e.x, e.z); const d = Math.hypot(x - C, y - C);
+    if (d > Rpx - 8) { x = C + (x - C) * (Rpx - 8) / d; y = C + (y - C) * (Rpx - 8) / d; }
+    if (age < 1) { g.globalAlpha = 1 - age; g.strokeStyle = e.col; g.lineWidth = 3; g.beginPath(); g.arc(x, y, 8 + age * 22, 0, Math.PI * 2); g.stroke(); g.globalAlpha = 1; }
+    g.fillStyle = e.col; g.beginPath(); g.arc(x, y, 8, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = 'rgba(0,0,0,.6)'; g.lineWidth = 2; g.stroke();
+  }
+  // moi : flèche au centre, pointe vers le haut
+  g.fillStyle = '#3fc1b0'; g.beginPath(); g.moveTo(C, C - 11); g.lineTo(C + 8, C + 8); g.lineTo(C, C + 4); g.lineTo(C - 8, C + 8); g.closePath(); g.fill();
+  g.restore();
+  // bord, et arc qui se remplit jusqu'au prochain relevé
+  g.strokeStyle = 'rgba(239,230,214,.35)'; g.lineWidth = 2; g.beginPath(); g.arc(C, C, Rpx, 0, Math.PI * 2); g.stroke();
+  g.strokeStyle = '#3fc1b0'; g.lineWidth = 4; g.beginPath(); g.arc(C, C, Rpx, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.min(1, age / RADAR_EVERY)); g.stroke();
+}
 function drawHud() {
+  drawRadar();
   const scoped = !!mode && phase !== 'idle' && !!curWpn().zoomX && me.drawing && me.draw > 0.6;
   scopeEl.hidden = !scoped; crossEl.style.visibility = scoped ? 'hidden' : '';
   if (!mode || phase === 'idle') return;
@@ -2302,7 +2432,7 @@ function evaluateReady() {
   if (ps.every(p => p.rdy === true && okTok(p.tok))) {
     const toks = [net.tok, ...ps.map(p => p.tok)].sort();
     const lead = toks[0] === net.tok ? { mapK: mapKey, wpn: weapon } : ps.find(p => p.tok === toks[0]);
-    const k = toks.length === 3 ? 'forest' : (MAPS[lead.mapK] ? lead.mapK : mapKey);
+    const k = toks.length === 3 ? 'forestXL' : lead.mapK === 'canyon' ? 'canyon' : 'forest'; // à 3 : la forêt géante
     startOnline(toks.join('|'), k, wpnKey(lead.wpn));
   }
 }
@@ -2326,7 +2456,7 @@ function renderLobby() {
   $('#lobbyDot').classList.toggle('ok', ok);
   // à 3, le canyon (deux piliers face à face) n'est pas proposé
   document.querySelectorAll('#lobby .mapsel [data-map=canyon], #over .mapsel [data-map=canyon]').forEach(b => { b.disabled = n > 1; });
-  let s = !ok ? 'En attente de ton adversaire…' : n === 1 ? 'Adversaire connecté' : '3 joueurs : chacun pour soi, en forêt';
+  let s = !ok ? 'En attente de ton adversaire…' : n === 1 ? 'Adversaire connecté' : '3 joueurs : chacun pour soi, dans la forêt géante';
   if (ok && rdy) s = n === 1 ? 'Ton adversaire est prêt' : rdy === n ? 'Les deux autres sont prêts' : 'Un adversaire est prêt';
   if (net.rp) s = ok ? 'Prêt. On attend que les autres appuient aussi…' : 'Prêt. En attente de ton adversaire…';
   $('#lobbyStatus').textContent = s;
