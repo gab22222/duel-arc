@@ -182,6 +182,7 @@ p{margin:0}
         <button data-wpn="barrett" aria-pressed="false">Barrett</button>
         <button data-wpn="shotgun" aria-pressed="false">Pompe</button>
         <button data-wpn="beer" aria-pressed="false">Bière</button>
+        <button data-wpn="grenade" aria-pressed="false">Grenades</button>
       </div>
     </div>
     <div class="opt"><span>Visée</span>
@@ -243,6 +244,7 @@ p{margin:0}
         <button data-wpn="barrett" aria-pressed="false">Barrett</button>
         <button data-wpn="shotgun" aria-pressed="false">Pompe</button>
         <button data-wpn="beer" aria-pressed="false">Bière</button>
+        <button data-wpn="grenade" aria-pressed="false">Grenades</button>
       </div>
     </div>
     <div class="status"><i class="dot" id="lobbyDot"></i><span id="lobbyStatus">En attente de ton adversaire…</span></div>
@@ -274,6 +276,7 @@ p{margin:0}
         <button data-wpn="barrett" aria-pressed="false">Barrett</button>
         <button data-wpn="shotgun" aria-pressed="false">Pompe</button>
         <button data-wpn="beer" aria-pressed="false">Bière</button>
+        <button data-wpn="grenade" aria-pressed="false">Grenades</button>
       </div>
     </div>
     <p class="sub" id="overStatus"></p>
@@ -343,7 +346,7 @@ const MAPS = {
   canyon: { key: 'canyon', spawnZ: 12, lateral: true, xlim: 2.1, zlim: 12, maxv: 1.8, acc: 15, yawLim: 0.5 },
   forest: { key: 'forest', spawnZ: 17, lateral: false, xlim: 14.5, zlim: 20.5, maxv: 3.1, acc: 22, yawLim: Infinity },
 };
-// arme en forêt : arc (par défaut), arbalète, carabine, batte, pistolet, revolver, deagle, vector, M4, Barrett, fusil à pompe ou bière ; le canyon reste toujours à l'arc
+// arme en forêt : arc (par défaut), arbalète, carabine, batte, pistolet, revolver, deagle, vector, M4, Barrett, fusil à pompe, bière ou lance-grenades ; le canyon reste toujours à l'arc
 // kind : projectile ; aimT : temps pour bander / épauler ; zoomX : lunette (null = zoom léger de l'arc)
 const WPN = {
   bow: { kind: 'arrow', aimT: DRAW_T, zoomX: null },
@@ -358,7 +361,11 @@ const WPN = {
   barrett: { kind: 'barrett', aimT: 0.4, zoomX: 4, rate: 3 },                       // Barrett .50 : lunette x4, une balle toutes les 3 s, tue d'un coup où qu'elle touche
   shotgun: { kind: 'shotgun', aimT: 0.15, zoomX: null, rate: 1.2 },                  // fusil à pompe : 9 plombs en gerbe fixe, dégâts selon la distance
   beer: { kind: 'beer', aimT: 0.45, zoomX: null, rate: 1 },                          // bouteille de bière lancée : tombe comme une flèche, éclate au contact, tue d'un coup
+  grenade: { kind: 'grenade', aimT: 0.2, zoomX: null, rate: 1.2 },                   // lance-grenades : tir en cloche, explose au contact, dégâts selon la distance
 };
+// grenade : 32 m/s, tombe comme une flèche ; à l'explosion, 300 HP jusqu'à 0,6 m du corps, puis de moins en moins jusqu'à 0 à 5 m
+const GREN_V = 32, GREN_R = 5;
+function grenadeDamage(d) { return d <= 0.6 ? WIN : Math.max(0, WIN * (1 - (d - 0.6) / (GREN_R - 0.6))); }
 // fusil à pompe : un plomb au centre et 8 en couronne à 2,6° (la gerbe remplit exactement le cercle du viseur), portée 60 m ;
 // tous les plombs au but : 300 HP jusqu'à 6 m, puis de moins en moins (60 HP à 30 m, 20 HP à 50 m) ; un plomb dans la tête compte x1,5
 const SG_SPREAD = 0.045, SG_PELLETS = 9, SG_RANGE = 60;
@@ -366,7 +373,7 @@ function sgTotal(d) { return d <= 6 ? WIN : d <= 30 ? WIN + (0.6 - WIN) * (d - 6
 const isBullet = k => k === 'bullet' || k === 'pistol' || k === 'revolver' || k === 'deagle' || k === 'vector' || k === 'm4' || k === 'barrett' || k === 'shotgun'; // pas de chute, pas de temps de vol
 const hasLaser = w => w === 'vector' || w === 'm4';
 const bigGun = k => k === 'revolver' || k === 'deagle'; // armes de poing à gros recul (visuel)
-const kicks = k => k === 'pistol' || k === 'vector' || k === 'm4' || k === 'barrett' || k === 'shotgun' || k === 'beer' || bigGun(k); // (bière : le geste du lancer) // l'arme bouge au tir
+const kicks = k => k === 'pistol' || k === 'vector' || k === 'm4' || k === 'barrett' || k === 'shotgun' || k === 'beer' || k === 'grenade' || bigGun(k); // (bière : le geste du lancer) // l'arme bouge au tir
 // dégâts en « touches » (1 touche = 100 HP, WIN touches = mort)
 function hitDamage(a, head) {
   if (a.kind === 'pistol') return head ? 1 : 0.5;
@@ -830,6 +837,71 @@ function updateSplash(dt) {
   }
 }
 function shatter(a) { stopArrow(a); a.m.visible = false; a.gone = true; shatterAt(a.p, a.v); sfx('glass', a.owner === 'me' ? 0.6 : 1); }
+// grenade de 40 mm : douille en laiton, ogive vert olive, pointe grise ; le long de -Z
+const grenBrass = std(0xb8913a, { metalness: .7, roughness: .35 }), grenOlive = std(0x59603a, { roughness: .6 }), grenTip = std(0x8b8f88, { metalness: .4, roughness: .5 });
+function makeGrenade() {
+  const g = new T.Group(), add = (geo, mat, z) => { const m = new T.Mesh(geo, mat); m.rotation.x = -Math.PI / 2; m.position.z = z; g.add(m); return m; };
+  add(new T.CylinderGeometry(0.02, 0.02, 0.04, 12), grenBrass, 0.03);
+  add(new T.CylinderGeometry(0.014, 0.02, 0.035, 12), grenOlive, -0.0075);
+  add(new T.CylinderGeometry(0.005, 0.014, 0.012, 10), grenTip, -0.031);
+  return g;
+}
+// explosion : boule de feu, nuage de fumée qui monte, éclats et étincelles ; dégâts autour du point d'impact
+const fireMat = new T.SpriteMaterial({ map: (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d'), gr = g.createRadialGradient(32, 32, 0, 32, 32, 32); gr.addColorStop(0, 'rgba(255,248,200,1)'); gr.addColorStop(0.25, 'rgba(255,190,60,1)'); gr.addColorStop(0.55, 'rgba(245,110,25,.95)'); gr.addColorStop(0.8, 'rgba(190,50,15,.6)'); gr.addColorStop(1, 'rgba(90,20,5,0)'); g.fillStyle = gr; g.fillRect(0, 0, 64, 64); return new T.CanvasTexture(c); })(), depthWrite: false, transparent: true });
+const blastSmokeMat = new T.SpriteMaterial({ map: (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d'), gr = g.createRadialGradient(32, 32, 0, 32, 32, 32); gr.addColorStop(0, 'rgba(40,37,34,.95)'); gr.addColorStop(0.55, 'rgba(62,58,53,.7)'); gr.addColorStop(1, 'rgba(80,76,70,0)'); g.fillStyle = gr; g.fillRect(0, 0, 64, 64); return new T.CanvasTexture(c); })(), depthWrite: false, transparent: true });
+const blasts = Array.from({ length: 4 }, () => {
+  const f = new T.Sprite(fireMat.clone()), sm = new T.Sprite(blastSmokeMat.clone()); f.visible = sm.visible = false; f.renderOrder = 2; sm.renderOrder = 1; scene.add(sm, f); // le feu devant la fumée
+  return { f, sm, t: 9, p: new T.Vector3() };
+});
+let blastNext = 0;
+const sparkCol = new T.Color(0xffb040), dirtCol = new T.Color(0x3b342c);
+function explodeFx(p) {
+  const b = blasts[blastNext]; blastNext = (blastNext + 1) % blasts.length;
+  b.t = 0; b.p.copy(p); b.f.visible = b.sm.visible = true;
+  for (let i = 0; i < 16; i++) {
+    const k = shardNext; shardNext = (shardNext + 1) % (SPLASH_N / 2);
+    splash[k] = { mesh: shardMesh, i: k, p: p.clone(), v: new T.Vector3(rand(-6, 6), rand(2, 8), rand(-6, 6)), r: new T.Vector3(rand(0, 6), rand(0, 6), rand(0, 6)), w: rand(8, 20), life: rand(0.8, 1.4), s: rand(0.8, 1.6) };
+  }
+  for (let i = 0; i < 30; i++) {
+    const k = dropNext; dropNext = (dropNext + 1) % (SPLASH_N / 2); const j = SPLASH_N / 2 + k;
+    dropMesh.setColorAt(k, i % 3 ? sparkCol : dirtCol);
+    splash[j] = { mesh: dropMesh, i: k, p: p.clone(), v: new T.Vector3(rand(-7, 7), rand(1, 7), rand(-7, 7)), r: new T.Vector3(), w: 0, life: rand(0.3, 0.8), s: rand(0.5, 1.1), drop: true };
+  }
+  dropMesh.instanceColor.needsUpdate = true;
+  const d = Math.hypot(p.x - me.x, p.z - me.z);
+  sfx('boom', clamp(1 - d / 60, 0.25, 1));
+  if (d < 14) { camKick = t; camKickA = 0.1 * (1 - d / 14); } // le souffle secoue la vue
+}
+function updateBlasts(dt) {
+  for (const b of blasts) {
+    if (!b.f.visible && !b.sm.visible) continue;
+    b.t += dt;
+    const kf = b.t / 0.35, ks = b.t / 1.8;
+    if (kf < 1) { b.f.position.copy(b.p); b.f.position.y += 0.6 + kf * 0.6; b.f.scale.setScalar(0.8 + 3.4 * Math.sqrt(kf)); b.f.material.opacity = 1 - kf * kf * kf; } else b.f.visible = false;
+    if (ks < 1) { b.sm.position.copy(b.p); b.sm.position.y += 0.8 + ks * 1.8; b.sm.scale.setScalar(1.4 + 3.6 * Math.sqrt(ks)); b.sm.material.opacity = 0.9 * (1 - ks); } else b.sm.visible = false;
+  }
+}
+// distance d'un point au corps d'un joueur (capsule verticale des pieds aux épaules)
+function bodyDist(p, who) { return Math.max(0, Math.hypot(p.x - who.x, p.z - who.z) - BODY_R, p.y - BODY_TOP - HEAD_R, -p.y); }
+function explode(a) {
+  stopArrow(a); a.m.visible = false; a.gone = true;
+  const p = a.p; if (!map.lateral && p.y < 0.05) p.y = 0.05;
+  explodeFx(p);
+  if (!(phase === 'fight' || phase === 'ending')) return;
+  // en ligne, seul le tireur compte les dégâts et les annonce (comme pour une balle)
+  if (mode === 'online' && nroom && a.owner !== 'me') return;
+  for (const tg of [ME, ...foes]) {
+    if (tg.key === a.owner || isDead(tg)) continue;
+    const dmg = grenadeDamage(bodyDist(p, tg.s));
+    if (dmg <= 0) continue;
+    if (!(mode === 'online' && nroom)) { registerTaken(tg, tg.s.taken + dmg, false, a.owner); continue; }
+    const mine = dealt[myId] || (dealt[myId] = {});
+    mine[tg.peer] = Math.min(WIN, num(mine[tg.peer], 0) + dmg);
+    recountTaken(tg, false, 'me');
+    nroom.emit('hit', { g: net.started, id: a.id, k: KIND_CODE[a.kind], v: tg.peer, n: mine[tg.peer], head: false }).catch(() => {});
+    pres({ dealt: { ...mine } });
+  }
+}
 // laser du Vector et du M4 : géométrie d'un mètre le long de +Z (étirée à la bonne longueur), point rouge lumineux
 const beamGeo = new T.CylinderGeometry(0.0035, 0.0035, 1, 5).rotateX(Math.PI / 2).translate(0, 0, 0.5);
 const beamMat = new T.MeshBasicMaterial({ color: 0xff2414, transparent: true, opacity: 0.6, depthWrite: false });
@@ -1014,6 +1086,21 @@ function makeArcher(cloth, hoodCol, owner) {
   const butt = spart(new T.BoxGeometry(0.045, 0.1, 0.19), walnut, 0, -0.032, 0.23); butt.rotation.x = 0.1;    // crosse
   const pad = spart(new T.BoxGeometry(0.047, 0.11, 0.022), padM, 0, -0.043, 0.33); pad.rotation.x = 0.1;      // plaque de couche
   const sgMuzzle = new T.Vector3(0, 0.042, -0.655), handSR = new T.Vector3(0.12, 0.13, -0.09), handSL = new T.Vector3(0.12, 0.165, -0.48);
+  // lance-grenades M79 : canon court et large en acier, hausse à lamelle relevée, garde-main et crosse en bois, plaque de couche
+  const glG = new T.Group(); glG.position.copy(rifle.position); glG.visible = false; upper.add(glG);
+  const glSteel = std(0x343a33, { metalness: .45, roughness: .45 }), glWood = std(0x8a5a2e, { roughness: .65 });
+  const gpart = (geo, mat, x, y, z) => { const m = new T.Mesh(geo, mat); m.position.set(x, y, z); glG.add(m); return m; };
+  const glBarrel = gpart(new T.CylinderGeometry(0.026, 0.026, 0.36, 14), glSteel, 0, 0.032, -0.3); glBarrel.rotation.x = Math.PI / 2;
+  const glBore = gpart(new T.CylinderGeometry(0.021, 0.021, 0.004, 14), std(0x090909), 0, 0.032, -0.482); glBore.rotation.x = Math.PI / 2;
+  gpart(new T.BoxGeometry(0.05, 0.06, 0.12), glSteel, 0, 0.02, -0.07);                                   // boîtier (ouverture à bascule)
+  gpart(new T.BoxGeometry(0.03, 0.055, 0.005), glSteel, 0, 0.085, -0.12);                                // hausse à lamelle relevée
+  gpart(new T.BoxGeometry(0.004, 0.02, 0.012), glSteel, 0, 0.066, -0.465);                               // guidon
+  gpart(new T.BoxGeometry(0.05, 0.03, 0.17), glWood, 0, -0.006, -0.27);                                  // garde-main
+  gpart(new T.BoxGeometry(0.009, 0.008, 0.07), glSteel, 0, -0.026, -0.02);                               // pontet
+  const glWrist = gpart(new T.BoxGeometry(0.042, 0.054, 0.11), glWood, 0, -0.006, 0.06); glWrist.rotation.x = 0.18;
+  const glButt = gpart(new T.BoxGeometry(0.046, 0.1, 0.19), glWood, 0, -0.03, 0.19); glButt.rotation.x = 0.1;
+  const glPad = gpart(new T.BoxGeometry(0.048, 0.11, 0.022), std(0x141415, { roughness: .9 }), 0, -0.041, 0.29); glPad.rotation.x = 0.1;
+  const glMuzzle = new T.Vector3(0, 0.032, -0.49), handGR = new T.Vector3(0.12, 0.13, -0.12), handGL = new T.Vector3(0.12, 0.15, -0.45);
   // bouteille de bière tenue dans la main droite : armée au-dessus de l'épaule, lancée par-dessus
   const bottle = makeBottle(); bottle.visible = false; upper.add(bottle);
   const beerFront = new T.Vector3(0.2, 0.05, -0.38), beerBack = new T.Vector3(0.3, 0.42, 0.18), beerFollow = new T.Vector3(0.12, 0.0, -0.55), beerHand = new T.Vector3();
@@ -1047,13 +1134,14 @@ function makeArcher(cloth, hoodCol, owner) {
   function setWeapon(w) {
     wpn = w; const bowOn = w === 'bow';
     bow.visible = quiver.visible = bowOn; quiverArrows.forEach(f => { f.visible = bowOn; });
-    rifle.visible = w === 'rifle'; xbow.visible = w === 'crossbow'; batSwing.visible = w === 'bat'; pistolG.visible = w === 'pistol'; revG.visible = w === 'revolver'; dgG.visible = w === 'deagle'; vecG.visible = w === 'vector'; m4G.visible = w === 'm4'; bwG.visible = w === 'barrett'; sgG.visible = w === 'shotgun'; bottle.visible = w === 'beer'; if (!hasLaser(w)) laser(null);
+    rifle.visible = w === 'rifle'; xbow.visible = w === 'crossbow'; batSwing.visible = w === 'bat'; pistolG.visible = w === 'pistol'; revG.visible = w === 'revolver'; dgG.visible = w === 'deagle'; vecG.visible = w === 'vector'; m4G.visible = w === 'm4'; bwG.visible = w === 'barrett'; sgG.visible = w === 'shotgun'; bottle.visible = w === 'beer'; glG.visible = w === 'grenade'; if (!hasLaser(w)) laser(null);
     if (bowOn) armL.set(shL, grip);
     else if (w === 'pistol' || bigGun(w)) { armL.set(shL, tmpA.copy(handP).add(tmpB.set(-0.02, -0.03, 0.03))); armR.set(shR, handP); }
     else if (w === 'vector') { armL.set(shL, handVL); armR.set(shR, handVR); }
     else if (w === 'm4') { armL.set(shL, handML); armR.set(shR, handMR); }
     else if (w === 'barrett') { armL.set(shL, handBL); armR.set(shR, handBR); }
     else if (w === 'shotgun') { armL.set(shL, handSL); armR.set(shR, handSR); }
+    else if (w === 'grenade') { armL.set(shL, handGL); armR.set(shR, handGR); }
     else if (w === 'beer') { armL.set(shL, tmpA.set(-0.18, 0.12, -0.4)); armR.set(shR, beerFront); }
     else if (w === 'bat') { armL.set(shL, tmpA.copy(handB).add(tmpB.set(-0.02, -0.02, 0.02))); armR.set(shR, handB); }
     else { armL.set(shL, handL); armR.set(shR, handR); }
@@ -1063,6 +1151,8 @@ function makeArcher(cloth, hoodCol, owner) {
     if (wpn === 'rifle') { rifle.position.z = -0.18 + draw * 0.04; return; }
     if (wpn === 'crossbow') { xbow.position.z = -0.18 + draw * 0.04; xBolt.visible = isNocked; return; }
     // revolver : gros relevé du canon et le buste qui encaisse, retour en 0,45 s (purement visuel)
+    // lance-grenades : coup sourd dans l'épaule, le canon se relève
+    if (wpn === 'grenade') { const k = 1 - Math.pow(1 - clamp((t - pKick) / 0.4, 0, 1), 2), r = 1 - k; upper.rotation.x = pitch + r * 0.08; glG.rotation.x = r * 0.28; glG.position.z = rifle.position.z + draw * 0.03 + r * 0.05; return; }
     // bière : le bras arme la bouteille au-dessus de l'épaule, puis l'accompagne vers l'avant au lâcher ; nouvelle bouteille en main
     if (wpn === 'beer') {
       const e = t - pKick;
@@ -1114,6 +1204,7 @@ function makeArcher(cloth, hoodCol, owner) {
     if (wpn === 'm4') return m4G.localToWorld(out.set(0, 0.018, -0.545));
     if (wpn === 'barrett') return bwG.localToWorld(out.copy(bwMuzzle));
     if (wpn === 'shotgun') return sgG.localToWorld(out.copy(sgMuzzle));
+    if (wpn === 'grenade') return glG.localToWorld(out.copy(glMuzzle));
     if (wpn === 'beer') return upper.localToWorld(out.copy(beerFront).add(tmpB.set(0, 0.12, -0.05)));
     if (wpn === 'pistol') return pistolG.localToWorld(out.set(0, 0.038, sil.visible ? -0.3 : -0.16));
     return bow.localToWorld(out.set(0, 0, -0.35));
@@ -1156,6 +1247,8 @@ function sfx(k, v = 1) {
     else if (k === 'whoosh') hiss('bandpass', 700, 2600, 0.45, 0.22 * v);
     else if (k === 'pbang') { hiss('highpass', 4200, 1400, 0.14, 0.5 * v); tone('square', 240, 70, 0.09, 0.22 * v); hiss('lowpass', 2500, 300, 0.12, 0.35 * v); }
     else if (k === 'psil') { hiss('bandpass', 1600, 500, 0.07, 0.16 * v); tone('sine', 150, 70, 0.06, 0.1 * v); }
+    else if (k === 'thoomp') { tone('sine', 170, 65, 0.13, 0.55 * v); hiss('lowpass', 1000, 200, 0.12, 0.35 * v); }
+    else if (k === 'boom') { hiss('lowpass', 3200, 70, 1.3, 1.0 * v); tone('sine', 58, 20, 1.0, 1.0 * v); tone('square', 120, 35, 0.15, 0.3 * v); hiss('highpass', 2500, 800, 0.2, 0.35 * v); }
     else if (k === 'glass') { // verre qui éclate : craquement aigu, tintements, giclée de bière
       hiss('highpass', 7000, 3000, 0.22, 0.55 * v); hiss('bandpass', 3500, 1800, 0.12, 0.3 * v);
       tone('sine', 3300, 3000, 0.14, 0.07 * v, 0.03); tone('sine', 4300, 4000, 0.1, 0.05 * v, 0.07); tone('sine', 2700, 2500, 0.16, 0.05 * v, 0.12);
@@ -1399,8 +1492,8 @@ function flightEnd(o, v, g = G) {
   return simP;
 }
 // vitesse et gravité d'un projectile : la balle file droit, le carreau vole comme une flèche tirée à fond
-function shotSpeed(kind, draw) { return isBullet(kind) ? BULLET_V : kind === 'bolt' ? VMAX : kind === 'beer' ? 16 + 14 * draw : VMIN + (VMAX - VMIN) * draw; }
-function shotSfx(kind, sil, v = 1) { sfx(kind === 'pistol' ? (sil ? 'psil' : 'pbang') : kind === 'revolver' ? 'rbang' : kind === 'deagle' ? 'dbang' : kind === 'vector' ? 'vbang' : kind === 'm4' ? 'mbang' : kind === 'barrett' ? 'fbang' : kind === 'shotgun' ? 'sbang' : kind === 'beer' ? 'whoosh' : kind === 'bullet' ? 'bang' : 'twang', v); }
+function shotSpeed(kind, draw) { return isBullet(kind) ? BULLET_V : kind === 'bolt' ? VMAX : kind === 'beer' ? 16 + 14 * draw : kind === 'grenade' ? GREN_V : VMIN + (VMAX - VMIN) * draw; }
+function shotSfx(kind, sil, v = 1) { sfx(kind === 'pistol' ? (sil ? 'psil' : 'pbang') : kind === 'revolver' ? 'rbang' : kind === 'deagle' ? 'dbang' : kind === 'vector' ? 'vbang' : kind === 'm4' ? 'mbang' : kind === 'barrett' ? 'fbang' : kind === 'shotgun' ? 'sbang' : kind === 'beer' ? 'whoosh' : kind === 'grenade' ? 'thoomp' : kind === 'bullet' ? 'bang' : 'twang', v); }
 function fire() {
   const kind = curWpn().kind, g = isBullet(kind) ? 0 : G;
   const speed = shotSpeed(kind, me.draw);
@@ -1426,7 +1519,7 @@ function fire() {
   // tir continu : cadence exacte, sans dériver avec la durée des images
   if (curWpn().auto) { const ns = me.nextShot; me.nextShot = (t - ns < me.reload ? ns : t) + me.reload; }
   if (kicks(kind)) meA.recoil();
-  if (bigGun(kind) || kind === 'barrett' || kind === 'shotgun') { camKick = t; camKickA = kind === 'barrett' ? 0.22 : kind === 'deagle' ? 0.16 : kind === 'shotgun' ? 0.11 : 0.13; }
+  if (bigGun(kind) || kind === 'barrett' || kind === 'shotgun' || kind === 'grenade') { camKick = t; camKickA = kind === 'barrett' ? 0.22 : kind === 'deagle' ? 0.16 : kind === 'shotgun' ? 0.11 : kind === 'grenade' ? 0.09 : 0.13; }
 }
 // ---------- batte : le coup part au relâcher, il touche ~0,1 s plus tard l'adversaire le plus proche devant soi
 function inBatReach(ax, az, yaw, tg) {
@@ -1636,11 +1729,12 @@ function updateOpp(dt) {
 
 // ---------- arrow physics
 function orient(a) { a.m.quaternion.setFromUnitVectors(NEG_Z, tmpV.copy(a.v).normalize()); }
-const KIND_CODE = { arrow: 'a', bolt: 'x', bullet: 'b', pistol: 'p', revolver: 'r', deagle: 'd', vector: 'v', m4: 'q', barrett: 'f', shotgun: 'g', beer: 'e' }, CODE_KIND = { a: 'arrow', x: 'bolt', b: 'bullet', p: 'pistol', r: 'revolver', d: 'deagle', v: 'vector', q: 'm4', f: 'barrett', g: 'shotgun', e: 'beer' };
+const KIND_CODE = { arrow: 'a', bolt: 'x', bullet: 'b', pistol: 'p', revolver: 'r', deagle: 'd', vector: 'v', m4: 'q', barrett: 'f', shotgun: 'g', beer: 'e', grenade: 'n' }, CODE_KIND = { a: 'arrow', x: 'bolt', b: 'bullet', p: 'pistol', r: 'revolver', d: 'deagle', v: 'vector', q: 'm4', f: 'barrett', g: 'shotgun', e: 'beer', n: 'grenade' };
 const BOLT_LEN = 0.45; // un carreau est une flèche raccourcie
 function makeProjectile(owner, kind, streak) {
   if (isBullet(kind)) return makeBullet(owner);
   if (kind === 'beer') return makeBeerProjectile();
+  if (kind === 'grenade') return makeGrenade();
   const m = makeArrow(owner, streak); if (kind === 'bolt') m.scale.set(1, 1, BOLT_LEN); return m;
 }
 function spawnArrow(owner, p, v, id = 0, kind = 'arrow', noSmoke = false) {
@@ -1648,7 +1742,7 @@ function spawnArrow(owner, p, v, id = 0, kind = 'arrow', noSmoke = false) {
   const m = makeProjectile(owner, kind, true); m.position.copy(p); scene.add(m);
   // g : gravité propre au projectile (la balle n'en a pas) ; tail : distance de la pointe à l'arrière, d'où sort la fumée
   // kill : le carreau d'arbalète tue d'un coup, où qu'il touche
-  const a = { owner, id, kind, g: bullet ? 0 : G, tail: bullet ? 0.05 : kind === 'bolt' ? 0.9 * BOLT_LEN : 0.9, kill: kind === 'bolt' || kind === 'barrett' || kind === 'beer', sid: ++arrowSerial, p, v, m, flying: true, pending: 0, life: 0, botSeen: false, o0: p.clone(), noSmoke: noSmoke || kind === 'beer', maxD: kind === 'shotgun' ? SG_RANGE : 0 };
+  const a = { owner, id, kind, g: bullet ? 0 : G, tail: bullet || kind === 'grenade' ? 0.05 : kind === 'bolt' ? 0.9 * BOLT_LEN : 0.9, kill: kind === 'bolt' || kind === 'barrett' || kind === 'beer', sid: ++arrowSerial, p, v, m, flying: true, pending: 0, life: 0, botSeen: false, o0: p.clone(), noSmoke: noSmoke || kind === 'beer', maxD: kind === 'shotgun' ? SG_RANGE : 0 };
   orient(a); arrows.push(a);
   if (owner !== 'me' && !bullet) sfx('whoosh', 0.7);
   if (bullet) flyNow(a);
@@ -1776,6 +1870,11 @@ function canyonRock(p) {
 }
 function collide(a) {
   const p = a.p;
+  // grenade : explose au premier contact (joueur, arbre, rocher, sol)
+  if (a.kind === 'grenade') {
+    if ((mode !== 'practice' && [ME, ...foes].some(tg => tg.key !== a.owner && !isDead(tg) && hitZone(p, tg.s, tg.A))) || (obstacles.length && inObstacle(p)) || (!map.lateral && p.y < 0)) explode(a);
+    return;
+  }
   if (mode === 'practice') { if (hitTarget(a)) return; }
   else for (const tg of [ME, ...foes]) {
     if (tg.key === a.owner || isDead(tg)) continue;
@@ -2201,7 +2300,7 @@ function frame(now) {
   opp2A.root.visible = mode === 'online' && trio() && phase !== 'idle';
   updatePhase(dt);
   if (mode && phase !== 'idle') { updateMe(dt); updateOpp(dt); }
-  updateArrows(dt); updateSplash(dt);
+  updateArrows(dt); updateSplash(dt); updateBlasts(dt);
   updateFlags(t);
   updateCamera(dt);
   netTick(now);
