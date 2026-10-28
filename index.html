@@ -174,6 +174,7 @@ p{margin:0}
         <button data-wpn="bat" aria-pressed="false">Batte</button>
         <button data-wpn="pistol" aria-pressed="false">Pistolet</button>
         <button data-wpn="revolver" aria-pressed="false">Revolver</button>
+        <button data-wpn="deagle" aria-pressed="false">Deagle</button>
       </div>
     </div>
     <div class="opt"><span>Visée</span>
@@ -229,6 +230,7 @@ p{margin:0}
         <button data-wpn="bat" aria-pressed="false">Batte</button>
         <button data-wpn="pistol" aria-pressed="false">Pistolet</button>
         <button data-wpn="revolver" aria-pressed="false">Revolver</button>
+        <button data-wpn="deagle" aria-pressed="false">Deagle</button>
       </div>
     </div>
     <div class="status"><i class="dot" id="lobbyDot"></i><span id="lobbyStatus">En attente de ton adversaire…</span></div>
@@ -254,6 +256,7 @@ p{margin:0}
         <button data-wpn="bat" aria-pressed="false">Batte</button>
         <button data-wpn="pistol" aria-pressed="false">Pistolet</button>
         <button data-wpn="revolver" aria-pressed="false">Revolver</button>
+        <button data-wpn="deagle" aria-pressed="false">Deagle</button>
       </div>
     </div>
     <p class="sub" id="overStatus"></p>
@@ -323,7 +326,7 @@ const MAPS = {
   canyon: { key: 'canyon', spawnZ: 12, lateral: true, xlim: 2.1, zlim: 12, maxv: 1.8, acc: 15, yawLim: 0.5 },
   forest: { key: 'forest', spawnZ: 17, lateral: false, xlim: 14.5, zlim: 20.5, maxv: 3.1, acc: 22, yawLim: Infinity },
 };
-// arme en forêt : arc (par défaut), arbalète, carabine, batte, pistolet ou revolver ; le canyon reste toujours à l'arc
+// arme en forêt : arc (par défaut), arbalète, carabine, batte, pistolet, revolver ou deagle ; le canyon reste toujours à l'arc
 // kind : projectile ; aimT : temps pour bander / épauler ; zoomX : lunette (null = zoom léger de l'arc)
 const WPN = {
   bow: { kind: 'arrow', aimT: DRAW_T, zoomX: null },
@@ -332,11 +335,14 @@ const WPN = {
   bat: { kind: 'melee', aimT: 0.15, zoomX: null, melee: true },     // batte : corps à corps, déplacements x3
   pistol: { kind: 'pistol', aimT: 0.15, zoomX: null, auto: true, rate: 0.25 }, // pistolet : tir continu tant qu'on maintient
   revolver: { kind: 'revolver', aimT: 0.15, zoomX: null, rate: 2 }, // revolver : une balle toutes les 2 s, tête = mort, corps = 100 HP
+  deagle: { kind: 'deagle', aimT: 0.15, zoomX: null, rate: 1.5 },   // Desert Eagle : une balle toutes les 1,5 s, tête = mort, corps = 150 HP
 };
-const isBullet = k => k === 'bullet' || k === 'pistol' || k === 'revolver'; // pas de chute, pas de temps de vol
+const isBullet = k => k === 'bullet' || k === 'pistol' || k === 'revolver' || k === 'deagle'; // pas de chute, pas de temps de vol
+const bigGun = k => k === 'revolver' || k === 'deagle'; // armes de poing à gros recul (visuel)
 // dégâts en « touches » (1 touche = 100 HP, WIN touches = mort)
 function hitDamage(a, head) {
   if (a.kind === 'pistol') return head ? 1 : 0.5;
+  if (a.kind === 'deagle') return head ? WIN : 1.5;
   return head || a.kill ? WIN : 1;
 }
 let silencer = false; // pistolet : silencieux vissé ou non (change le bruit du tir)
@@ -799,6 +805,25 @@ function makeArcher(cloth, hoodCol, owner) {
   const hammer = rpart(new T.BoxGeometry(0.012, 0.03, 0.016), gunmetal, 0, 0.064, 0.045); hammer.rotation.x = -0.5; // chien
   const guard = rpart(new T.TorusGeometry(0.02, 0.004, 6, 12, Math.PI), gunmetal, 0, 0.005, 0.0); guard.rotation.set(0, Math.PI / 2, Math.PI);
   const rgrip = rpart(new T.BoxGeometry(0.032, 0.1, 0.045), gunDark, 0, -0.03, 0.045); rgrip.rotation.x = 0.35;
+  // Desert Eagle .50 AE en inox : culasse carrée striée à l'arrière, canon à profil triangulaire avec son rail sur le dessus,
+  // pontet carré, chien rond, plaquettes de crosse en caoutchouc noir
+  const dgG = new T.Group(); dgG.position.copy(handP); dgG.visible = false; upper.add(dgG);
+  const inox = std(0xc4c8cd, { metalness: .4, roughness: .3 }), inoxD = std(0x9298a0, { metalness: .4, roughness: .4 }), gripBlk = std(0x18181a, { roughness: .85 });
+  const dpart = (geo, mat, x, y, z) => { const m = new T.Mesh(geo, mat); m.position.set(x, y, z); dgG.add(m); return m; };
+  dpart(new T.BoxGeometry(0.034, 0.046, 0.13), inox, 0, 0.046, 0.0);                                    // culasse (arrière)
+  for (let i = 0; i < 5; i++) for (const sx of [-1, 1]) dpart(new T.BoxGeometry(0.002, 0.03, 0.004), inoxD, sx * 0.0172, 0.046, 0.042 + i * 0.008); // stries
+  const tri = dpart(new T.CylinderGeometry(0.027, 0.027, 0.13, 3), inox, 0, 0.055, -0.13); tri.rotation.set(Math.PI / 2, 0, Math.PI); tri.scale.set(0.75, 1, 1); // canon triangulaire, pointe en bas
+  dpart(new T.BoxGeometry(0.012, 0.007, 0.15), inoxD, 0, 0.073, -0.115);                                 // rail sur le canon
+  const bore = dpart(new T.CylinderGeometry(0.008, 0.008, 0.004, 10), gripBlk, 0, 0.056, -0.196); bore.rotation.x = Math.PI / 2; // bouche
+  dpart(new T.BoxGeometry(0.008, 0.012, 0.01), inox, 0, 0.081, -0.18);                                   // guidon
+  dpart(new T.BoxGeometry(0.022, 0.01, 0.012), inoxD, 0, 0.074, 0.058);                                  // hausse
+  dpart(new T.BoxGeometry(0.03, 0.022, 0.16), inox, 0, 0.013, -0.04);                                    // carcasse
+  dpart(new T.BoxGeometry(0.008, 0.035, 0.008), inox, 0, -0.012, -0.075);                                // pontet carré : avant
+  dpart(new T.BoxGeometry(0.008, 0.006, 0.065), inox, 0, -0.028, -0.045);                                //  et dessous
+  dpart(new T.BoxGeometry(0.006, 0.022, 0.006), gripBlk, 0, -0.006, -0.04);                              // détente
+  const dHam = dpart(new T.CylinderGeometry(0.009, 0.009, 0.008, 10), inoxD, 0, 0.066, 0.07); dHam.rotation.z = Math.PI / 2; // chien
+  const dGrip = dpart(new T.BoxGeometry(0.036, 0.115, 0.05), gripBlk, 0, -0.038, 0.038); dGrip.rotation.x = -0.28;
+  const dBack = dpart(new T.BoxGeometry(0.03, 0.115, 0.012), inox, 0, -0.035, 0.068); dBack.rotation.x = -0.28; // dos de crosse en inox
   let pKick = -9;
   function setSilencer(on) { sil.visible = on; }
   function recoil() { pKick = t; }
@@ -819,9 +844,9 @@ function makeArcher(cloth, hoodCol, owner) {
   function setWeapon(w) {
     wpn = w; const bowOn = w === 'bow';
     bow.visible = quiver.visible = bowOn; quiverArrows.forEach(f => { f.visible = bowOn; });
-    rifle.visible = w === 'rifle'; xbow.visible = w === 'crossbow'; batSwing.visible = w === 'bat'; pistolG.visible = w === 'pistol'; revG.visible = w === 'revolver';
+    rifle.visible = w === 'rifle'; xbow.visible = w === 'crossbow'; batSwing.visible = w === 'bat'; pistolG.visible = w === 'pistol'; revG.visible = w === 'revolver'; dgG.visible = w === 'deagle';
     if (bowOn) armL.set(shL, grip);
-    else if (w === 'pistol' || w === 'revolver') { armL.set(shL, tmpA.copy(handP).add(tmpB.set(-0.02, -0.03, 0.03))); armR.set(shR, handP); }
+    else if (w === 'pistol' || bigGun(w)) { armL.set(shL, tmpA.copy(handP).add(tmpB.set(-0.02, -0.03, 0.03))); armR.set(shR, handP); }
     else if (w === 'bat') { armL.set(shL, tmpA.copy(handB).add(tmpB.set(-0.02, -0.02, 0.02))); armR.set(shR, handB); }
     else { armL.set(shL, handL); armR.set(shR, handR); }
   }
@@ -830,6 +855,7 @@ function makeArcher(cloth, hoodCol, owner) {
     if (wpn === 'rifle') { rifle.position.z = -0.18 + draw * 0.04; return; }
     if (wpn === 'crossbow') { xbow.position.z = -0.18 + draw * 0.04; xBolt.visible = isNocked; return; }
     // revolver : gros relevé du canon et le buste qui encaisse, retour en 0,45 s (purement visuel)
+    if (wpn === 'deagle') { const k = 1 - Math.pow(1 - clamp((t - pKick) / 0.4, 0, 1), 2), r = 1 - k; upper.rotation.x = pitch + r * 0.16; dgG.rotation.x = r * 1.05; dgG.position.z = handP.z + r * 0.08; dgG.position.y = handP.y + r * 0.035; return; }
     if (wpn === 'revolver') { const k = 1 - Math.pow(1 - clamp((t - pKick) / 0.45, 0, 1), 2), r = 1 - k; upper.rotation.x = pitch + r * 0.14; revG.rotation.x = r * 0.95; revG.position.z = handP.z + r * 0.07; revG.position.y = handP.y + r * 0.03; return; }
     if (wpn === 'pistol') { const k = clamp((t - pKick) / 0.12, 0, 1); pistolG.rotation.x = (1 - k) * 0.25; pistolG.position.z = handP.z + (1 - k) * 0.03; return; }
     if (wpn === 'bat') {
@@ -853,6 +879,7 @@ function makeArcher(cloth, hoodCol, owner) {
     if (wpn === 'crossbow') return xbow.localToWorld(out.copy(xTip));
     if (wpn === 'bat') return upper.localToWorld(out.copy(handB));
     if (wpn === 'revolver') return revG.localToWorld(out.set(0, 0.05, -0.23));
+    if (wpn === 'deagle') return dgG.localToWorld(out.set(0, 0.056, -0.2));
     if (wpn === 'pistol') return pistolG.localToWorld(out.set(0, 0.038, sil.visible ? -0.3 : -0.16));
     return bow.localToWorld(out.set(0, 0, -0.35));
   }
@@ -894,6 +921,7 @@ function sfx(k, v = 1) {
     else if (k === 'whoosh') hiss('bandpass', 700, 2600, 0.45, 0.22 * v);
     else if (k === 'pbang') { hiss('highpass', 4200, 1400, 0.14, 0.5 * v); tone('square', 240, 70, 0.09, 0.22 * v); hiss('lowpass', 2500, 300, 0.12, 0.35 * v); }
     else if (k === 'psil') { hiss('bandpass', 1600, 500, 0.07, 0.16 * v); tone('sine', 150, 70, 0.06, 0.1 * v); }
+    else if (k === 'dbang') { hiss('lowpass', 7500, 220, 0.55, 0.9 * v); tone('sine', 80, 26, 0.42, 0.75 * v); tone('square', 210, 50, 0.09, 0.26 * v); tone('sine', 60, 30, 0.3, 0.3 * v, 0.09); }
     else if (k === 'rbang') { hiss('lowpass', 6000, 300, 0.4, 0.75 * v); tone('sine', 95, 32, 0.32, 0.6 * v); tone('square', 180, 60, 0.07, 0.2 * v); }
     else if (k === 'bang') { hiss('lowpass', 5000, 400, 0.32, 0.6 * v); tone('sine', 120, 40, 0.25, 0.5 * v); }
     else if (k === 'thunk') { tone('sine', 150, 55, 0.14, 0.4 * v); hiss('lowpass', 1200, 300, 0.08, 0.2 * v); }
@@ -1124,7 +1152,7 @@ function flightEnd(o, v, g = G) {
 }
 // vitesse et gravité d'un projectile : la balle file droit, le carreau vole comme une flèche tirée à fond
 function shotSpeed(kind, draw) { return isBullet(kind) ? BULLET_V : kind === 'bolt' ? VMAX : VMIN + (VMAX - VMIN) * draw; }
-function shotSfx(kind, sil, v = 1) { sfx(kind === 'pistol' ? (sil ? 'psil' : 'pbang') : kind === 'revolver' ? 'rbang' : kind === 'bullet' ? 'bang' : 'twang', v); }
+function shotSfx(kind, sil, v = 1) { sfx(kind === 'pistol' ? (sil ? 'psil' : 'pbang') : kind === 'revolver' ? 'rbang' : kind === 'deagle' ? 'dbang' : kind === 'bullet' ? 'bang' : 'twang', v); }
 function fire() {
   const kind = curWpn().kind, g = isBullet(kind) ? 0 : G;
   const speed = shotSpeed(kind, me.draw);
@@ -1149,8 +1177,8 @@ function fire() {
   me.reload = curWpn().rate || RELOAD; shotSfx(kind, silencer);
   // tir continu : cadence exacte, sans dériver avec la durée des images
   if (curWpn().auto) { const ns = me.nextShot; me.nextShot = (t - ns < me.reload ? ns : t) + me.reload; }
-  if (kind === 'pistol' || kind === 'revolver') meA.recoil();
-  if (kind === 'revolver') camKick = t;
+  if (kind === 'pistol' || bigGun(kind)) meA.recoil();
+  if (bigGun(kind)) { camKick = t; camKickA = kind === 'deagle' ? 0.16 : 0.13; }
 }
 // ---------- batte : le coup part au relâcher, il touche ~0,1 s plus tard l'adversaire le plus proche devant soi
 function inBatReach(ax, az, yaw, tg) {
@@ -1320,7 +1348,7 @@ function botUpdate(dt) {
         const kind = curWpn().kind;
         spawnArrow('opp', o.clone(), new T.Vector3(sol.hx * c, Math.sin(sol.pitch) * speed, sol.hz * c), 0, kind);
         shotSfx(kind, false, isBullet(kind) ? 0.5 : 0.35);
-        if (kind === 'pistol' || kind === 'revolver') oppA.recoil();
+        if (kind === 'pistol' || bigGun(kind)) oppA.recoil();
         if (--bot.burst > 0) { bot.hold = 0.18 - curWpn().rate; bot.ex = gauss() * 0.4; bot.ey = gauss() * 0.3; } // balle suivante 0,25 s plus tard
         else { bot.drawing = false; opp.draw = 0; bot.reload = curWpn().auto ? RELOAD : Math.max(RELOAD, curWpn().rate || 0); bot.shootT = rand(0.8, 2.3); }
       } else if (bot.hold > 1.6) { bot.drawing = false; opp.draw = 0; bot.shootT = rand(0.3, 1); }
@@ -1358,7 +1386,7 @@ function updateOpp(dt) {
 
 // ---------- arrow physics
 function orient(a) { a.m.quaternion.setFromUnitVectors(NEG_Z, tmpV.copy(a.v).normalize()); }
-const KIND_CODE = { arrow: 'a', bolt: 'x', bullet: 'b', pistol: 'p', revolver: 'r' }, CODE_KIND = { a: 'arrow', x: 'bolt', b: 'bullet', p: 'pistol', r: 'revolver' };
+const KIND_CODE = { arrow: 'a', bolt: 'x', bullet: 'b', pistol: 'p', revolver: 'r', deagle: 'd' }, CODE_KIND = { a: 'arrow', x: 'bolt', b: 'bullet', p: 'pistol', r: 'revolver', d: 'deagle' };
 const BOLT_LEN = 0.45; // un carreau est une flèche raccourcie
 function makeProjectile(owner, kind, streak) {
   if (isBullet(kind)) return makeBullet(owner);
@@ -1439,7 +1467,7 @@ function hitArcher(a, tgt, head) {
 function registerTaken(e, n, head, byKey) {
   n = Math.min(WIN, Math.round(n * 2) / 2); // demi-touches : 50 HP au pistolet
   if (!(phase === 'fight' || phase === 'ending') || !(n > e.s.taken)) return;
-  const wasHead = head || ((curW() === 'bow' || curW() === 'rifle' || curW() === 'revolver') && n === WIN && n - e.s.taken >= 2);
+  const wasHead = head || ((curW() === 'bow' || curW() === 'rifle' || bigGun(curW())) && n === WIN && n - e.s.taken >= 2);
   e.s.taken = n;
   if (e === ME) {
     if (wasHead && n >= WIN) headshot = true; // « tir à la tête » sur l'écran de fin seulement si la tête a achevé
@@ -1514,7 +1542,7 @@ function updateArrows(dt) {
 
 // ---------- camera
 const look = new T.Vector3(), pivot = new T.Vector3(), camTry = new T.Vector3();
-let orbitT = 0, camKick = -9;
+let orbitT = 0, camKick = -9, camKickA = 0.13;
 function updateCamera(dt) {
   const inGame = mode && phase !== 'idle';
   if (inGame) {
@@ -1532,9 +1560,9 @@ function updateCamera(dt) {
     }
     forward(me.yaw, me.pitch, camF);
     camera.lookAt(look.copy(camera.position).add(camF));
-    // recul du revolver : la vue saute vers le haut et revient (la visée, elle, ne bouge pas)
+    // recul du revolver et du deagle : la vue saute vers le haut et revient (la visée, elle, ne bouge pas)
     const ck = clamp((t - camKick) / 0.5, 0, 1);
-    if (ck < 1) camera.rotateX(0.13 * (1 - ck) * (1 - ck));
+    if (ck < 1) camera.rotateX(camKickA * (1 - ck) * (1 - ck));
   } else {
     orbitT += dt * 0.06;
     fov = portrait ? 70 : 50;
@@ -1737,7 +1765,7 @@ function onShot(msg) {
   spawnArrow(f.key, op, vv, num(msg.data.id, 0), kind);
   shotSfx(kind, msg.data.s === 1, isBullet(kind) ? 0.5 : 0.35);
   if (kind === 'pistol') { f.A.setSilencer(msg.data.s === 1); f.A.recoil(); }
-  if (kind === 'revolver') f.A.recoil();
+  if (bigGun(kind)) f.A.recoil();
 }
 function onHit(msg) {
   if (!fromOpp(msg)) return;
