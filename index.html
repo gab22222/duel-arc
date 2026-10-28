@@ -127,9 +127,14 @@ p{margin:0}
 .rslot{display:grid;justify-items:center;gap:3px;padding:8px 4px;border-radius:11px;border:1.5px dashed rgba(239,230,214,.22);color:var(--mute);font-size:13px;text-align:center}
 .rslot i{width:22px;height:22px;border-radius:50%;border:2px dashed rgba(239,230,214,.3)}
 .rslot b{font-size:14px;color:inherit}
-.rslot.on{border-style:solid;border-color:rgba(63,193,176,.55);color:var(--bone);background:rgba(63,193,176,.08)}
-.rslot.on i{border:0;background:var(--teal);box-shadow:0 0 10px var(--teal)}
-.rslot.rdy small{color:var(--teal);font-weight:700}
+.rslot.on{border-style:solid;border-color:var(--pc);color:var(--bone);background:rgba(255,255,255,.04)}
+.rslot.on i{border:0;background:var(--pc);box-shadow:0 0 10px var(--pc)}
+.rslot.mine{background:rgba(255,255,255,.09);border-width:2.5px}
+.rslot b{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.youare{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--mute);flex-wrap:wrap}
+.youare #nameIn{flex:1;min-width:110px;font:700 15px var(--body);padding:7px 10px;border-radius:9px;border:1px solid var(--line);background:rgba(0,0,0,.32);color:var(--bone);-webkit-user-select:text;user-select:text}
+.youare #nameIn::placeholder{color:rgba(239,230,214,.35)}
+.rslot.rdy small{color:var(--pc);font-weight:700}
 .dot{width:9px;height:9px;border-radius:50%;background:var(--mute);flex:0 0 auto}
 .dot.ok{background:var(--teal);box-shadow:0 0 8px var(--teal)}
 .final{font-family:var(--display);font-size:22px;letter-spacing:.06em}
@@ -154,7 +159,7 @@ p{margin:0}
   <div class="side me">Toi <div class="pips" id="pipsMe"><i class="pip"></i><i class="pip"></i><i class="pip"></i></div></div>
   <div class="vs">contre</div>
   <div class="side them"><div class="pips" id="pipsThem"><i class="pip"></i><i class="pip"></i><i class="pip"></i></div> <span id="themName">Rival</span></div>
-  <div class="side them2" id="side2" hidden><div class="pips" id="pipsThem2"><i class="pip"></i><i class="pip"></i><i class="pip"></i></div> <span>Jaune</span></div>
+  <div class="side them2" id="side2" hidden><div class="pips" id="pipsThem2"><i class="pip"></i><i class="pip"></i><i class="pip"></i></div> <span id="them2Name">Jaune</span></div>
 </div>
 <div class="hud" id="hp" hidden><div class="hpbar"><i id="hpFill"></i></div><span id="hpTxt">300 HP</span></div>
 <svg class="hud" id="cross" viewBox="0 0 72 72" hidden>
@@ -267,6 +272,7 @@ p{margin:0}
     <div class="roster" aria-live="polite">
       <div class="rcount"><b id="rosterN">1</b> / 3 joueurs dans le salon</div>
       <div class="rslots" id="rslots"></div>
+      <div class="youare"><span id="youAre">Tu es Joueur 1</span><input id="nameIn" maxlength="12" placeholder="Joueur 1" autocomplete="off" spellcheck="false" aria-label="Ton pseudo (facultatif)"></div>
     </div>
     <div class="status"><i class="dot" id="lobbyDot"></i><span id="lobbyStatus">En attente de ton adversaire…</span></div>
     <button class="btn primary" id="btnReady" disabled>Prêt</button>
@@ -1397,12 +1403,44 @@ function makeArcher(cloth, hoodCol, owner) {
     return bow.localToWorld(out.set(0, 0, -0.35));
   }
   scene.add(root);
-  return { root, upper, setPose, setWeapon, swing, setSilencer, recoil, bowWorld, updateHead, headPos, laser, laserFrom, get wpn() { return wpn; } };
+  function setColors(c, h) { clothM.color.setHex(c); hoodM.color.setHex(h); }
+  return { root, upper, setPose, setWeapon, swing, setSilencer, recoil, bowWorld, updateHead, headPos, laser, laserFrom, setColors, get wpn() { return wpn; } };
 }
 const meA = makeArcher(0x2f8f83, 0x1f5f58, 'me');
 const oppA = makeArcher(0xa8342a, 0x6e1f1a, 'opp');
 const opp2A = makeArcher(0xc99a2e, 0x7d5a14, 'opp2'); opp2A.root.visible = false;
 archers.push(meA, oppA, opp2A); dressArchers();
+// couleurs des joueurs : en ligne, chacun garde la couleur de son numéro de salon (1 vert d'eau, 2 rouge, 3 jaune) chez tout le monde
+const PALETTE = [
+  { cloth: 0x2f8f83, hood: 0x1f5f58, fletch: 0x6ff0de, streak: 0x8ff5e6, smoke: 0x2fa6d0, css: '#5cc8ba', label: 'vert' },
+  { cloth: 0xa8342a, hood: 0x6e1f1a, fletch: 0xff6a50, streak: 0xffa070, smoke: 0xe2402f, css: '#ef5a45', label: 'rouge' },
+  { cloth: 0xc99a2e, hood: 0x7d5a14, fletch: 0xffd24a, streak: 0xffe08a, smoke: 0xf0c030, css: '#e8b93a', label: 'jaune' },
+];
+const colorOf = { me: 0, opp: 1, opp2: 2 };
+function applyColors(map) {
+  Object.assign(colorOf, map || { me: 0, opp: 1, opp2: 2 });
+  const A = { me: meA, opp: oppA, opp2: opp2A }, U = { me: 'uMe', opp: 'uOpp', opp2: 'uOpp2' };
+  for (const k in A) {
+    const P = PALETTE[colorOf[k]];
+    A[k].setColors(P.cloth, P.hood); fletchMat[k].color.setHex(P.fletch); streakMat[k].color.setHex(P.streak); smokeMat.uniforms[U[k]].value.setHex(P.smoke);
+  }
+  $('#score .side.me').style.color = PALETTE[colorOf.me].css; $('#score .side.them').style.color = PALETTE[colorOf.opp].css; $('#score .side.them2').style.color = PALETTE[colorOf.opp2].css;
+}
+// pseudos au-dessus des têtes (en ligne, pour les adversaires : pas le mien, il gênerait la visée) ; cachés derrière les arbres
+function makeTag() {
+  const c = document.createElement('canvas'); c.width = 256; c.height = 64;
+  const sp = new T.Sprite(new T.SpriteMaterial({ map: new T.CanvasTexture(c), transparent: true, depthWrite: false }));
+  sp.scale.set(1.1, 0.275, 1); sp.position.y = 2.2; sp.visible = false; sp.userData = { c, txt: '' };
+  return sp;
+}
+function setTag(sp, text, css) {
+  const key = text + css; if (sp.userData.txt === key) return; sp.userData.txt = key;
+  const g = sp.userData.c.getContext('2d'); g.clearRect(0, 0, 256, 64);
+  g.font = '700 38px system-ui, -apple-system, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.lineWidth = 7; g.strokeStyle = 'rgba(10,8,14,.85)'; g.strokeText(text, 128, 34); g.fillStyle = css; g.fillText(text, 128, 34);
+  sp.material.map.needsUpdate = true;
+}
+const tags = { opp: makeTag(), opp2: makeTag() }; oppA.root.add(tags.opp); opp2A.root.add(tags.opp2);
 
 // ---------- sound (synth, starts after first tap)
 let actx = null, noise = null;
@@ -1550,7 +1588,17 @@ function resetMatch(k) {
   phase = 'countdown'; cd = 3; big('3', 0.8); sfx('tick');
   $('#stick').classList.toggle('round', !map.lateral);
   hpShown = HP_MAX; showPanel(null); setPlayingHud(true); renderScore();
-  $('#themName').textContent = mode === 'bot' ? 'Bot' : trio() ? 'Rouge' : 'Rival';
+  // couleurs et noms : en ligne, ceux du salon (numéro et pseudo de chacun) ; sinon les couleurs d'origine
+  if (mode === 'online') {
+    const L = lobbyPlayers(), nOf = id => L.findIndex(x => x.id === id);
+    const map = { me: Math.max(0, nOf(myId)) % 3 };
+    for (const f of foes) { const i = nOf(f.peer); map[f.key] = (i < 0 ? (f.key === 'opp' ? 1 : 2) : i) % 3; f.name = i < 0 ? f.name : L[i].name; }
+    if (!foes.includes(FOES.opp2)) map.opp2 = [0, 1, 2].find(i => i !== map.me && i !== map.opp);
+    applyColors(map);
+  } else { applyColors(null); FOES.opp.name = 'Rouge'; FOES.opp2.name = 'Jaune'; }
+  $('#themName').textContent = mode === 'bot' ? 'Bot' : mode === 'online' ? FOES.opp.name : 'Rival';
+  $('#them2Name').textContent = FOES.opp2.name;
+  for (const k in tags) { const f = FOES[k]; tags[k].visible = mode === 'online' && foes.includes(f); setTag(tags[k], f.name, PALETTE[colorOf[k]].css); }
   if (mode === 'practice') {
     phase = 'fight'; cd = 0; big('Entraînement', 1.0, 'var(--ember)');
     $('#score').hidden = $('#hp').hidden = true;
@@ -1912,6 +1960,7 @@ function updateOpp(dt) {
     // en duel l'adversaire est vu en miroir (il se croit au sud) ; à 3 tout le monde partage le même repère
     f.A.root.position.set(s.x, 0, s.z); f.A.root.rotation.y = (trio() ? 0 : Math.PI) + s.yaw;
     deadPose(f.A, trio() && isDead(f));
+    tags[f.key].visible = mode === 'online' && phase !== 'idle' && !isDead(f); // pseudo au-dessus de la tête
     f.A.setPose(s.pitch, s.draw, s.nock);
     f.A.updateHead();
     updateLaser(f, isDead(f));
@@ -2174,7 +2223,7 @@ let radarSnap = [], radarAt = -99;
 function drawRadar() {
   const on = !!mode && trio() && map.big && (phase === 'countdown' || phase === 'fight' || phase === 'ending');
   radarEl.hidden = !on; if (!on) return;
-  if (t - radarAt >= RADAR_EVERY || t < radarAt) { radarAt = t; radarSnap = foes.map(f => ({ x: f.s.x, z: f.s.z, dead: isDead(f), col: f.key === 'opp' ? '#d4473a' : '#e8b93a' })); }
+  if (t - radarAt >= RADAR_EVERY || t < radarAt) { radarAt = t; radarSnap = foes.map(f => ({ x: f.s.x, z: f.s.z, dead: isDead(f), col: PALETTE[colorOf[f.key]].css })); }
   const g = radarG, W = 240, C = W / 2, Rpx = C - 6, k = Rpx / RADAR_RANGE;
   const fx = -Math.sin(me.yaw), fz = -Math.cos(me.yaw), rx = Math.cos(me.yaw), rz = -Math.sin(me.yaw);
   const toScreen = (x, z) => { const dx = x - me.x, dz = z - me.z; return [C + (dx * rx + dz * rz) * k, C - (dx * fx + dz * fz) * k]; };
@@ -2302,6 +2351,18 @@ function netTick(now) {
 function randCode() { return String(Math.floor(Math.random() * 10)); } // un seul chiffre, de 0 à 9
 function menuNote(t) { $('#menuNote').textContent = t; }
 let joining = false;
+// numéro dans le salon : ordre d'arrivée (heure d'entrée publiée par chacun, puis identifiant) ; même ordre chez tout le monde,
+// stable tant que les mêmes joueurs restent. Pseudo facultatif, sinon « Joueur 1, 2, 3 ».
+let myJoin = 0, myName = '';
+try { myName = (localStorage.getItem('duelarc-name') || '').slice(0, 12); } catch (e) {}
+const cleanName = v => String(v || '').replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, 12);
+function lobbyPlayers() {
+  const L = [{ id: myId, j: myJoin, nm: myName, me: true, rdy: net.rp }]
+    .concat(peersNow.map(x => ({ id: x.peer, j: num(x.presence.j, 9e15), nm: cleanName(x.presence.nm), me: false, rdy: x.presence.rdy === true })));
+  L.sort((a, b) => a.j - b.j || (a.id < b.id ? -1 : 1));
+  L.forEach((x, i) => { x.n = i + 1; x.col = i % 3; x.name = x.nm || 'Joueur ' + (i + 1); });
+  return L;
+}
 async function enterRoom(code, creator) {
   if (joining) return; joining = true;
   audioInit();
@@ -2318,7 +2379,8 @@ async function enterRoom(code, creator) {
     nroom.on('shot', onShot),
     nroom.on('hit', onHit),
   ];
-  pres({ rdy: false, tok: '', started: '', dealt: {}, mapK: mapKey, wpn: weapon, mapV });
+  myJoin = Date.now();
+  pres({ rdy: false, tok: '', started: '', dealt: {}, mapK: mapKey, wpn: weapon, mapV, j: myJoin, nm: myName });
   phase = 'idle';
   $('#lobbyCode').textContent = code;
   renderLobby(); showPanel('#lobby');
@@ -2472,8 +2534,12 @@ function renderLobby() {
   // à 3, le canyon (deux piliers face à face) n'est pas proposé
   document.querySelectorAll('#lobby .mapsel [data-map=canyon], #over .mapsel [data-map=canyon]').forEach(b => { b.disabled = n > 1; });
   // qui est là : toi + les autres, et qui est prêt ; la partie part dès que tous ceux présents sont prêts
-  const slot = (name, on, ready) => `<div class="rslot${on ? ' on' : ''}${ready ? ' rdy' : ''}"><i></i><b>${name}</b><small>${!on ? 'En attente…' : ready ? 'Prêt ✓' : 'Connecté'}</small></div>`;
-  $('#rslots').innerHTML = slot('Toi', true, net.rp) + [0, 1].map(i => slot('Joueur ' + (i + 2), !!peersNow[i], !!(peersNow[i] && peersNow[i].presence.rdy === true))).join('');
+  const L = lobbyPlayers(), mine = L.find(x => x.me), esc = v => v.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  const slot = (x, i) => x ? `<div class="rslot on${x.rdy ? ' rdy' : ''}${x.me ? ' mine' : ''}" style="--pc:${PALETTE[x.col].css}"><i></i><b>${esc(x.name)}</b><small>${x.me ? 'Toi · ' : ''}${x.rdy ? 'Prêt ✓' : 'Connecté'}</small></div>`
+    : `<div class="rslot"><i></i><b>Joueur ${i + 1}</b><small>En attente…</small></div>`;
+  $('#rslots').innerHTML = [0, 1, 2].map(i => slot(L[i], i)).join('');
+  $('#youAre').innerHTML = `Tu es <b style="color:${PALETTE[mine.col].css}">${esc(mine.name)}</b> (${PALETTE[mine.col].label})`;
+  $('#nameIn').placeholder = 'Joueur ' + mine.n;
   $('#rosterN').textContent = n + 1; $('#rosterN').classList.toggle('full', n === 2);
   let s = !ok ? 'Seul pour l’instant : donne le chiffre aux autres.' : n === 1 ? 'À 2 : la partie part dès que vous êtes prêts tous les deux. Pour jouer à 3, attends le 3e joueur avant d’appuyer sur Prêt.' : '3 joueurs : chacun pour soi, dans la forêt géante.';
   if (ok && rdy && !net.rp) s = n === 1 ? 'Ton adversaire est prêt : appuie sur Prêt pour lancer à 2.' : rdy === n ? 'Les deux autres sont prêts : appuie sur Prêt pour lancer à 3.' : 'Un adversaire est prêt.';
@@ -2513,6 +2579,13 @@ $('#code').addEventListener('keydown', e => { if (e.key === 'Enter') $('#btnJoin
 $('#btnBot').addEventListener('click', () => { audioInit(); menuNote(''); mode = 'bot'; resetMatch(); });
 $('#btnPractice').addEventListener('click', () => { audioInit(); menuNote(''); practicePrevMap = mapKey; mode = 'practice'; resetMatch('forest'); });
 $('#btnReady').addEventListener('click', pressReady);
+// pseudo facultatif : enregistré sur ce téléphone et envoyé aux autres
+$('#nameIn').value = myName;
+$('#nameIn').addEventListener('input', () => {
+  myName = cleanName($('#nameIn').value);
+  try { localStorage.setItem('duelarc-name', myName); } catch (e) {}
+  pres({ nm: myName }); renderLobby();
+});
 // visser / dévisser le silencieux du pistolet
 $('#sil').addEventListener('click', () => {
   silencer = !silencer; $('#sil').setAttribute('aria-pressed', String(silencer)); meA.setSilencer(silencer);
