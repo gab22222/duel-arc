@@ -55,6 +55,8 @@ body{position:fixed;inset:0;touch-action:none;-webkit-user-select:none;user-sele
 @keyframes hpShake{25%{transform:translateX(-3px)}75%{transform:translateX(3px)}}
 #cross{left:50%;top:50%;width:72px;height:72px;margin:-36px 0 0 -36px;opacity:.95}
 #cross .ring{transition:stroke .15s}
+#cross.sg path{display:none}
+#cross.sg circle{vector-effect:non-scaling-stroke}
 #scope{inset:0;background:radial-gradient(circle closest-side at 50% 50%,transparent 94%,rgba(0,0,0,.55) 95%,#050506 100%)}
 #scope::before,#scope::after{content:"";position:absolute;left:50%;top:50%;background:rgba(10,10,12,.85)}
 #scope::before{width:min(100vw,100vh);height:1.5px;transform:translate(-50%,-50%)}
@@ -178,6 +180,7 @@ p{margin:0}
         <button data-wpn="vector" aria-pressed="false">Vector</button>
         <button data-wpn="m4" aria-pressed="false">M4</button>
         <button data-wpn="barrett" aria-pressed="false">Barrett</button>
+        <button data-wpn="shotgun" aria-pressed="false">Pompe</button>
       </div>
     </div>
     <div class="opt"><span>Visée</span>
@@ -237,6 +240,7 @@ p{margin:0}
         <button data-wpn="vector" aria-pressed="false">Vector</button>
         <button data-wpn="m4" aria-pressed="false">M4</button>
         <button data-wpn="barrett" aria-pressed="false">Barrett</button>
+        <button data-wpn="shotgun" aria-pressed="false">Pompe</button>
       </div>
     </div>
     <div class="status"><i class="dot" id="lobbyDot"></i><span id="lobbyStatus">En attente de ton adversaire…</span></div>
@@ -266,6 +270,7 @@ p{margin:0}
         <button data-wpn="vector" aria-pressed="false">Vector</button>
         <button data-wpn="m4" aria-pressed="false">M4</button>
         <button data-wpn="barrett" aria-pressed="false">Barrett</button>
+        <button data-wpn="shotgun" aria-pressed="false">Pompe</button>
       </div>
     </div>
     <p class="sub" id="overStatus"></p>
@@ -335,7 +340,7 @@ const MAPS = {
   canyon: { key: 'canyon', spawnZ: 12, lateral: true, xlim: 2.1, zlim: 12, maxv: 1.8, acc: 15, yawLim: 0.5 },
   forest: { key: 'forest', spawnZ: 17, lateral: false, xlim: 14.5, zlim: 20.5, maxv: 3.1, acc: 22, yawLim: Infinity },
 };
-// arme en forêt : arc (par défaut), arbalète, carabine, batte, pistolet, revolver, deagle, vector, M4 ou Barrett ; le canyon reste toujours à l'arc
+// arme en forêt : arc (par défaut), arbalète, carabine, batte, pistolet, revolver, deagle, vector, M4, Barrett ou fusil à pompe ; le canyon reste toujours à l'arc
 // kind : projectile ; aimT : temps pour bander / épauler ; zoomX : lunette (null = zoom léger de l'arc)
 const WPN = {
   bow: { kind: 'arrow', aimT: DRAW_T, zoomX: null },
@@ -348,16 +353,22 @@ const WPN = {
   vector: { kind: 'vector', aimT: 0.15, zoomX: null, auto: true, rate: 0.15 }, // Kriss Vector à laser : tir continu, 25 HP au corps, 100 HP à la tête
   m4: { kind: 'm4', aimT: 0.2, zoomX: null, auto: true, rate: 0.5 },             // M4 à laser : tir continu, une balle toutes les 0,5 s, tête = mort, corps = 100 HP
   barrett: { kind: 'barrett', aimT: 0.4, zoomX: 4, rate: 3 },                       // Barrett .50 : lunette x4, une balle toutes les 3 s, tue d'un coup où qu'elle touche
+  shotgun: { kind: 'shotgun', aimT: 0.15, zoomX: null, rate: 1.2 },                  // fusil à pompe : 9 plombs en gerbe fixe, dégâts selon la distance
 };
-const isBullet = k => k === 'bullet' || k === 'pistol' || k === 'revolver' || k === 'deagle' || k === 'vector' || k === 'm4' || k === 'barrett'; // pas de chute, pas de temps de vol
+// fusil à pompe : un plomb au centre et 8 en couronne à 2,6° (la gerbe remplit exactement le cercle du viseur), portée 60 m ;
+// tous les plombs au but : 300 HP jusqu'à 6 m, puis de moins en moins (60 HP à 30 m, 20 HP à 50 m) ; un plomb dans la tête compte x1,5
+const SG_SPREAD = 0.045, SG_PELLETS = 9, SG_RANGE = 60;
+function sgTotal(d) { return d <= 6 ? WIN : d <= 30 ? WIN + (0.6 - WIN) * (d - 6) / 24 : Math.max(0.2, 0.6 - 0.4 * (d - 30) / 20); }
+const isBullet = k => k === 'bullet' || k === 'pistol' || k === 'revolver' || k === 'deagle' || k === 'vector' || k === 'm4' || k === 'barrett' || k === 'shotgun'; // pas de chute, pas de temps de vol
 const hasLaser = w => w === 'vector' || w === 'm4';
 const bigGun = k => k === 'revolver' || k === 'deagle'; // armes de poing à gros recul (visuel)
-const kicks = k => k === 'pistol' || k === 'vector' || k === 'm4' || k === 'barrett' || bigGun(k); // l'arme bouge au tir
+const kicks = k => k === 'pistol' || k === 'vector' || k === 'm4' || k === 'barrett' || k === 'shotgun' || bigGun(k); // l'arme bouge au tir
 // dégâts en « touches » (1 touche = 100 HP, WIN touches = mort)
 function hitDamage(a, head) {
   if (a.kind === 'pistol') return head ? 1 : 0.5;
   if (a.kind === 'deagle') return head ? WIN : 1.5;
   if (a.kind === 'vector') return head ? 1 : 0.25;
+  if (a.kind === 'shotgun') return sgTotal(a.p.distanceTo(a.o0)) / SG_PELLETS * (head ? 1.5 : 1);
   return head || a.kill ? WIN : 1;
 }
 let silencer = false; // pistolet : silencieux vissé ou non (change le bruit du tir)
@@ -917,6 +928,26 @@ function makeArcher(cloth, hoodCol, owner) {
   bpart(new T.BoxGeometry(0.056, 0.14, 0.035), parkD, 0, -0.02, 0.365);                                  // plaque de couche
   for (const sx of [-1, 1]) { const leg = bpart(new T.CylinderGeometry(0.006, 0.006, 0.28, 6), park, sx * 0.02, 0.03, -0.69); leg.rotation.x = Math.PI / 2; } // bipied replié le long du canon
   const bwMuzzle = new T.Vector3(0, 0.056, -0.98), handBR = new T.Vector3(0.12, 0.08, -0.11), handBL = new T.Vector3(0.12, 0.13, -0.56);
+  // fusil à pompe (type Remington 870) : boîtier en acier bleui, long canon avec bande ventilée et guidon à bille,
+  // tube magasin dessous, pompe et crosse en noyer, plaque de couche noire ; la pompe recule et revient après chaque tir
+  const sgG = new T.Group(); sgG.position.copy(rifle.position); sgG.visible = false; upper.add(sgG);
+  const blued = std(0x2b2f37, { metalness: .5, roughness: .4 }), walnut = std(0x6e4123, { roughness: .65 }), padM = std(0x141415, { roughness: .9 });
+  const spart = (geo, mat, x, y, z, parent = sgG) => { const m = new T.Mesh(geo, mat); m.position.set(x, y, z); parent.add(m); return m; };
+  spart(new T.BoxGeometry(0.044, 0.068, 0.2), blued, 0, 0.022, -0.05);                                    // boîtier
+  spart(new T.BoxGeometry(0.002, 0.026, 0.07), padM, 0.0225, 0.03, -0.06);                               // fenêtre d'éjection
+  const sgBarrel = spart(new T.CylinderGeometry(0.012, 0.012, 0.5, 10), blued, 0, 0.042, -0.4); sgBarrel.rotation.x = Math.PI / 2;
+  spart(new T.BoxGeometry(0.008, 0.006, 0.5), blued, 0, 0.057, -0.4);                                   // bande ventilée
+  spart(new T.SphereGeometry(0.0045, 8, 6), std(0xd8d2c4, { metalness: .6, roughness: .3 }), 0, 0.063, -0.645); // guidon à bille
+  const sgTube = spart(new T.CylinderGeometry(0.012, 0.012, 0.4, 10), blued, 0, 0.012, -0.35); sgTube.rotation.x = Math.PI / 2; // tube magasin
+  const pump = new T.Group(); sgG.add(pump);
+  spart(new T.BoxGeometry(0.05, 0.046, 0.17), walnut, 0, 0.014, -0.3, pump);                            // pompe en noyer
+  for (let i = 0; i < 6; i++) for (const sx of [-1, 1]) spart(new T.BoxGeometry(0.002, 0.036, 0.006), std(0x3d2412, { roughness: .8 }), sx * 0.0255, 0.014, -0.245 - i * 0.022, pump); // rainures
+  spart(new T.BoxGeometry(0.009, 0.008, 0.07), blued, 0, -0.024, 0.0);                                   // pontet
+  spart(new T.BoxGeometry(0.005, 0.02, 0.006), blued, 0, -0.012, -0.005);                                // détente
+  const wrist = spart(new T.BoxGeometry(0.04, 0.052, 0.11), walnut, 0, -0.006, 0.1); wrist.rotation.x = 0.18; // poignée de crosse
+  const butt = spart(new T.BoxGeometry(0.045, 0.1, 0.19), walnut, 0, -0.032, 0.23); butt.rotation.x = 0.1;    // crosse
+  const pad = spart(new T.BoxGeometry(0.047, 0.11, 0.022), padM, 0, -0.043, 0.33); pad.rotation.x = 0.1;      // plaque de couche
+  const sgMuzzle = new T.Vector3(0, 0.042, -0.655), handSR = new T.Vector3(0.12, 0.13, -0.09), handSL = new T.Vector3(0.12, 0.165, -0.48);
   // rayon laser (fin trait rouge) et point rouge là où il touche ; mis à jour par updateLaser
   const beam = new T.Mesh(beamGeo, beamMat), dot = new T.Sprite(dotMat);
   beam.visible = dot.visible = false; dot.scale.setScalar(0.09); scene.add(beam, dot);
@@ -947,12 +978,13 @@ function makeArcher(cloth, hoodCol, owner) {
   function setWeapon(w) {
     wpn = w; const bowOn = w === 'bow';
     bow.visible = quiver.visible = bowOn; quiverArrows.forEach(f => { f.visible = bowOn; });
-    rifle.visible = w === 'rifle'; xbow.visible = w === 'crossbow'; batSwing.visible = w === 'bat'; pistolG.visible = w === 'pistol'; revG.visible = w === 'revolver'; dgG.visible = w === 'deagle'; vecG.visible = w === 'vector'; m4G.visible = w === 'm4'; bwG.visible = w === 'barrett'; if (!hasLaser(w)) laser(null);
+    rifle.visible = w === 'rifle'; xbow.visible = w === 'crossbow'; batSwing.visible = w === 'bat'; pistolG.visible = w === 'pistol'; revG.visible = w === 'revolver'; dgG.visible = w === 'deagle'; vecG.visible = w === 'vector'; m4G.visible = w === 'm4'; bwG.visible = w === 'barrett'; sgG.visible = w === 'shotgun'; if (!hasLaser(w)) laser(null);
     if (bowOn) armL.set(shL, grip);
     else if (w === 'pistol' || bigGun(w)) { armL.set(shL, tmpA.copy(handP).add(tmpB.set(-0.02, -0.03, 0.03))); armR.set(shR, handP); }
     else if (w === 'vector') { armL.set(shL, handVL); armR.set(shR, handVR); }
     else if (w === 'm4') { armL.set(shL, handML); armR.set(shR, handMR); }
     else if (w === 'barrett') { armL.set(shL, handBL); armR.set(shR, handBR); }
+    else if (w === 'shotgun') { armL.set(shL, handSL); armR.set(shR, handSR); }
     else if (w === 'bat') { armL.set(shL, tmpA.copy(handB).add(tmpB.set(-0.02, -0.02, 0.02))); armR.set(shR, handB); }
     else { armL.set(shL, handL); armR.set(shR, handR); }
   }
@@ -961,6 +993,14 @@ function makeArcher(cloth, hoodCol, owner) {
     if (wpn === 'rifle') { rifle.position.z = -0.18 + draw * 0.04; return; }
     if (wpn === 'crossbow') { xbow.position.z = -0.18 + draw * 0.04; xBolt.visible = isNocked; return; }
     // revolver : gros relevé du canon et le buste qui encaisse, retour en 0,45 s (purement visuel)
+    // fusil à pompe : recul franc, puis la main gauche ramène la pompe en arrière et la renvoie (0,3 à 0,65 s après le tir)
+    if (wpn === 'shotgun') {
+      const e = t - pKick, k = 1 - Math.pow(1 - clamp(e / 0.35, 0, 1), 2), r = 1 - k;
+      upper.rotation.x = pitch + r * 0.1; sgG.rotation.x = r * 0.3; sgG.position.z = rifle.position.z + r * 0.06;
+      const pu = e > 0.3 && e < 0.65 ? Math.sin((e - 0.3) / 0.35 * Math.PI) : 0;
+      pump.position.z = pu * 0.09; armL.set(shL, tmpA.copy(handSL).add(tmpB.set(0, 0, pu * 0.09)));
+      return;
+    }
     // Barrett : énorme recul, l'arme remonte et recule dans l'épaule, le buste encaisse (purement visuel)
     if (wpn === 'barrett') { const k = 1 - Math.pow(1 - clamp((t - pKick) / 0.6, 0, 1), 2), r = 1 - k; upper.rotation.x = pitch + r * 0.2; bwG.rotation.x = r * 0.4; bwG.position.z = rifle.position.z + draw * 0.04 + r * 0.14; bwG.position.y = rifle.position.y + r * 0.04; return; }
     if (wpn === 'm4') { const k = clamp((t - pKick) / 0.16, 0, 1); m4G.rotation.x = (1 - k) * 0.09; m4G.position.z = rifle.position.z + (1 - k) * 0.035; return; }
@@ -993,6 +1033,7 @@ function makeArcher(cloth, hoodCol, owner) {
     if (wpn === 'vector') return vecG.localToWorld(out.set(0, 0.02, -0.45));
     if (wpn === 'm4') return m4G.localToWorld(out.set(0, 0.018, -0.545));
     if (wpn === 'barrett') return bwG.localToWorld(out.copy(bwMuzzle));
+    if (wpn === 'shotgun') return sgG.localToWorld(out.copy(sgMuzzle));
     if (wpn === 'pistol') return pistolG.localToWorld(out.set(0, 0.038, sil.visible ? -0.3 : -0.16));
     return bow.localToWorld(out.set(0, 0, -0.35));
   }
@@ -1022,8 +1063,8 @@ function tone(type, f0, f1, dur, vol, delay = 0) {
   o.type = type; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f1, t + dur);
   env(g, t, vol, dur); o.connect(g).connect(actx.destination); o.start(t); o.stop(t + dur + 0.05);
 }
-function hiss(ftype, f0, f1, dur, vol) {
-  const t = actx.currentTime, s = actx.createBufferSource(), f = actx.createBiquadFilter(), g = actx.createGain();
+function hiss(ftype, f0, f1, dur, vol, delay = 0) {
+  const t = actx.currentTime + delay, s = actx.createBufferSource(), f = actx.createBiquadFilter(), g = actx.createGain();
   s.buffer = noise; f.type = ftype; f.Q.value = 1.2; f.frequency.setValueAtTime(f0, t); f.frequency.exponentialRampToValueAtTime(f1, t + dur);
   env(g, t, vol, dur); s.connect(f).connect(g).connect(actx.destination); s.start(t); s.stop(t + dur + 0.05);
 }
@@ -1034,6 +1075,11 @@ function sfx(k, v = 1) {
     else if (k === 'whoosh') hiss('bandpass', 700, 2600, 0.45, 0.22 * v);
     else if (k === 'pbang') { hiss('highpass', 4200, 1400, 0.14, 0.5 * v); tone('square', 240, 70, 0.09, 0.22 * v); hiss('lowpass', 2500, 300, 0.12, 0.35 * v); }
     else if (k === 'psil') { hiss('bandpass', 1600, 500, 0.07, 0.16 * v); tone('sine', 150, 70, 0.06, 0.1 * v); }
+    else if (k === 'sbang') { // détonation de calibre 12, puis le « clac-clac » de la pompe
+      hiss('lowpass', 6500, 200, 0.45, 0.9 * v); tone('sine', 85, 30, 0.35, 0.7 * v); tone('square', 190, 50, 0.08, 0.25 * v);
+      hiss('bandpass', 2600, 1800, 0.045, 0.3 * v, 0.33); tone('square', 950, 600, 0.025, 0.07 * v, 0.33);
+      hiss('bandpass', 3200, 2200, 0.04, 0.32 * v, 0.55); tone('square', 1200, 800, 0.02, 0.08 * v, 0.55);
+    }
     else if (k === 'fbang') { hiss('lowpass', 9000, 140, 0.85, 1.0 * v); tone('sine', 62, 22, 0.65, 0.9 * v); tone('square', 170, 40, 0.12, 0.32 * v); tone('sine', 48, 24, 0.55, 0.35 * v, 0.16); hiss('lowpass', 1200, 120, 0.9, 0.25 * v); }
     else if (k === 'mbang') { hiss('highpass', 5200, 1500, 0.09, 0.55 * v); tone('square', 260, 80, 0.06, 0.2 * v); hiss('lowpass', 4200, 280, 0.26, 0.45 * v); tone('sine', 110, 45, 0.16, 0.32 * v); }
     else if (k === 'vbang') { hiss('highpass', 3800, 1200, 0.07, 0.38 * v); tone('square', 210, 70, 0.055, 0.17 * v); hiss('lowpass', 2400, 260, 0.1, 0.3 * v); }
@@ -1268,7 +1314,7 @@ function flightEnd(o, v, g = G) {
 }
 // vitesse et gravité d'un projectile : la balle file droit, le carreau vole comme une flèche tirée à fond
 function shotSpeed(kind, draw) { return isBullet(kind) ? BULLET_V : kind === 'bolt' ? VMAX : VMIN + (VMAX - VMIN) * draw; }
-function shotSfx(kind, sil, v = 1) { sfx(kind === 'pistol' ? (sil ? 'psil' : 'pbang') : kind === 'revolver' ? 'rbang' : kind === 'deagle' ? 'dbang' : kind === 'vector' ? 'vbang' : kind === 'm4' ? 'mbang' : kind === 'barrett' ? 'fbang' : kind === 'bullet' ? 'bang' : 'twang', v); }
+function shotSfx(kind, sil, v = 1) { sfx(kind === 'pistol' ? (sil ? 'psil' : 'pbang') : kind === 'revolver' ? 'rbang' : kind === 'deagle' ? 'dbang' : kind === 'vector' ? 'vbang' : kind === 'm4' ? 'mbang' : kind === 'barrett' ? 'fbang' : kind === 'shotgun' ? 'sbang' : kind === 'bullet' ? 'bang' : 'twang', v); }
 function fire() {
   const kind = curWpn().kind, g = isBullet(kind) ? 0 : G;
   const speed = shotSpeed(kind, me.draw);
@@ -1289,12 +1335,12 @@ function fire() {
   const id = ++shotSeq;
   // le tir part avant d'être résolu : une balle touche dans la foulée, les autres doivent recevoir le tir avant la touche
   if (mode === 'online' && nroom) nroom.emit('shot', { g: net.started, id, k: KIND_CODE[kind], s: kind === 'pistol' && silencer ? 1 : 0, o: [r3(o.x), r3(o.y), r3(o.z)], v: [r3(v.x), r3(v.y), r3(v.z)] }).catch(() => {});
-  spawnArrow('me', o, v, id, kind);
+  spawnShot('me', o, v, id, kind);
   me.reload = curWpn().rate || RELOAD; shotSfx(kind, silencer);
   // tir continu : cadence exacte, sans dériver avec la durée des images
   if (curWpn().auto) { const ns = me.nextShot; me.nextShot = (t - ns < me.reload ? ns : t) + me.reload; }
   if (kicks(kind)) meA.recoil();
-  if (bigGun(kind) || kind === 'barrett') { camKick = t; camKickA = kind === 'barrett' ? 0.22 : kind === 'deagle' ? 0.16 : 0.13; }
+  if (bigGun(kind) || kind === 'barrett' || kind === 'shotgun') { camKick = t; camKickA = kind === 'barrett' ? 0.22 : kind === 'deagle' ? 0.16 : kind === 'shotgun' ? 0.11 : 0.13; }
 }
 // ---------- batte : le coup part au relâcher, il touche ~0,1 s plus tard l'adversaire le plus proche devant soi
 function inBatReach(ax, az, yaw, tg) {
@@ -1463,7 +1509,7 @@ function botUpdate(dt) {
       if (bot.hold > 0.18 && see) {
         const c = Math.cos(sol.pitch) * speed;
         const kind = curWpn().kind;
-        spawnArrow('opp', o.clone(), new T.Vector3(sol.hx * c, Math.sin(sol.pitch) * speed, sol.hz * c), 0, kind);
+        spawnShot('opp', o.clone(), new T.Vector3(sol.hx * c, Math.sin(sol.pitch) * speed, sol.hz * c), 0, kind);
         shotSfx(kind, false, isBullet(kind) ? 0.5 : 0.35);
         if (kicks(kind)) oppA.recoil();
         if (--bot.burst > 0) { bot.hold = 0.18 - curWpn().rate; bot.ex = gauss() * 0.4; bot.ey = gauss() * 0.3; } // balle suivante 0,25 s plus tard
@@ -1504,23 +1550,35 @@ function updateOpp(dt) {
 
 // ---------- arrow physics
 function orient(a) { a.m.quaternion.setFromUnitVectors(NEG_Z, tmpV.copy(a.v).normalize()); }
-const KIND_CODE = { arrow: 'a', bolt: 'x', bullet: 'b', pistol: 'p', revolver: 'r', deagle: 'd', vector: 'v', m4: 'm', barrett: 'f' }, CODE_KIND = { a: 'arrow', x: 'bolt', b: 'bullet', p: 'pistol', r: 'revolver', d: 'deagle', v: 'vector', m: 'm4', f: 'barrett' };
+const KIND_CODE = { arrow: 'a', bolt: 'x', bullet: 'b', pistol: 'p', revolver: 'r', deagle: 'd', vector: 'v', m4: 'q', barrett: 'f', shotgun: 'g' }, CODE_KIND = { a: 'arrow', x: 'bolt', b: 'bullet', p: 'pistol', r: 'revolver', d: 'deagle', v: 'vector', q: 'm4', f: 'barrett', g: 'shotgun' };
 const BOLT_LEN = 0.45; // un carreau est une flèche raccourcie
 function makeProjectile(owner, kind, streak) {
   if (isBullet(kind)) return makeBullet(owner);
   const m = makeArrow(owner, streak); if (kind === 'bolt') m.scale.set(1, 1, BOLT_LEN); return m;
 }
-function spawnArrow(owner, p, v, id = 0, kind = 'arrow') {
+function spawnArrow(owner, p, v, id = 0, kind = 'arrow', noSmoke = false) {
   const bullet = isBullet(kind);
   const m = makeProjectile(owner, kind, true); m.position.copy(p); scene.add(m);
   // g : gravité propre au projectile (la balle n'en a pas) ; tail : distance de la pointe à l'arrière, d'où sort la fumée
   // kill : le carreau d'arbalète tue d'un coup, où qu'il touche
-  const a = { owner, id, kind, g: bullet ? 0 : G, tail: bullet ? 0.05 : kind === 'bolt' ? 0.9 * BOLT_LEN : 0.9, kill: kind === 'bolt' || kind === 'barrett', sid: ++arrowSerial, p, v, m, flying: true, pending: 0, life: 0, botSeen: false };
+  const a = { owner, id, kind, g: bullet ? 0 : G, tail: bullet ? 0.05 : kind === 'bolt' ? 0.9 * BOLT_LEN : 0.9, kill: kind === 'bolt' || kind === 'barrett', sid: ++arrowSerial, p, v, m, flying: true, pending: 0, life: 0, botSeen: false, o0: p.clone(), noSmoke, maxD: kind === 'shotgun' ? SG_RANGE : 0 };
   orient(a); arrows.push(a);
   if (owner !== 'me' && !bullet) sfx('whoosh', 0.7);
   if (bullet) flyNow(a);
   const stuck = arrows.filter(x => !x.flying);
   while (stuck.length > 30) { const old = stuck.shift(); if (old.m.parent) old.m.parent.remove(old.m); arrows.splice(arrows.indexOf(old), 1); }
+}
+// un tir : une flèche ou une balle, ou au fusil à pompe la gerbe de plombs (motif fixe, identique chez tous les joueurs)
+const sgR = new T.Vector3(), sgU = new T.Vector3(), sgV = new T.Vector3(), sgD = new T.Vector3();
+function spawnShot(owner, p, v, id = 0, kind = 'arrow') {
+  if (kind !== 'shotgun') return spawnArrow(owner, p, v, id, kind);
+  const sp = v.length(), dir = sgD.copy(v).normalize();
+  sgR.crossVectors(dir, UP); if (sgR.lengthSq() < 1e-6) sgR.set(1, 0, 0); sgR.normalize(); sgU.crossVectors(sgR, dir);
+  for (let i = 0; i < SG_PELLETS; i++) {
+    const ang = (i - 1) / (SG_PELLETS - 1) * Math.PI * 2, off = i ? Math.tan(SG_SPREAD) : 0;
+    sgV.copy(dir).addScaledVector(sgR, Math.cos(ang) * off).addScaledVector(sgU, Math.sin(ang) * off).normalize().multiplyScalar(sp);
+    spawnArrow(owner, p.clone(), sgV.clone(), id ? id * 16 + i : 0, kind, i > 0);
+  }
 }
 function stopArrow(a) {
   a.flying = false;
@@ -1606,7 +1664,7 @@ function hitArcher(a, tgt, head) {
   pres({ dealt: { ...mine } });
 }
 function registerTaken(e, n, head, byKey) {
-  n = Math.min(WIN, Math.round(n * 4) / 4); // quarts de touche : 25 HP au vector, 50 HP au pistolet
+  n = Math.min(WIN, Math.round(n * 100) / 100); // au HP près : plombs du fusil à pompe, 25 HP au vector, 50 HP au pistolet
   if (!(phase === 'fight' || phase === 'ending') || !(n > e.s.taken)) return;
   const wasHead = head || ((curW() === 'bow' || curW() === 'rifle' || curW() === 'm4' || bigGun(curW())) && n === WIN && n - e.s.taken >= 2);
   e.s.taken = n;
@@ -1650,6 +1708,7 @@ function collide(a) {
 }
 function stepArrow(a, h) {
   a.v.y -= a.g * h; a.p.addScaledVector(a.v, h); collide(a);
+  if (a.noSmoke) return; // plombs de la couronne : seule la traînée du plomb central est dessinée
   a.smokeD = (a.smokeD || 0) + a.v.length() * h;
   // plusieurs bouffées par sous-pas, réparties en arrière le long du trajet
   while (a.flying && a.smokeD >= SMOKE_STEP) { a.smokeD -= SMOKE_STEP; emitSmoke(a, a.smokeD); }
@@ -1659,7 +1718,7 @@ function flyNow(a) {
   const h = ARROW_STEP / a.v.length();
   for (let i = 0; a.flying && i < 5000; i++) {
     stepArrow(a, h);
-    if (a.flying && a.p.x * a.p.x + a.p.z * a.p.z > 22500) { stopArrow(a); a.gone = true; a.m.visible = false; }
+    if (a.flying && (a.p.x * a.p.x + a.p.z * a.p.z > 22500 || (a.maxD && a.p.distanceToSquared(a.o0) > a.maxD * a.maxD))) { stopArrow(a); a.gone = true; a.m.visible = false; }
   }
   if (a.flying) { stopArrow(a); a.gone = true; a.m.visible = false; }
 }
@@ -1724,6 +1783,9 @@ function drawHud() {
   const scoped = !!mode && phase !== 'idle' && !!curWpn().zoomX && me.drawing && me.draw > 0.6;
   scopeEl.hidden = !scoped; crossEl.style.visibility = scoped ? 'hidden' : '';
   if (!mode || phase === 'idle') return;
+  // fusil à pompe : viseur en cercle, de la taille exacte de la gerbe de plombs (suit le zoom)
+  const sg = curWpn().kind === 'shotgun', S = sg ? Math.max(44, Math.tan(SG_SPREAD) / Math.tan(fov * Math.PI / 360) * innerHeight / 2 * 72 / 27) : 72;
+  crossEl.classList.toggle('sg', sg); crossEl.style.width = crossEl.style.height = S.toFixed(1) + 'px'; crossEl.style.margin = `${(-S / 2).toFixed(1)}px 0 0 ${(-S / 2).toFixed(1)}px`;
   ringEl.setAttribute('stroke-dashoffset', (169.6 * (1 - me.draw)).toFixed(1));
   ringEl.setAttribute('stroke', me.draw >= 1 ? '#f2914a' : (me.reload > 0 ? 'rgba(239,230,214,.35)' : '#efe6d6'));
   const kx = moveId !== null ? moveIn.x : 0, ky = moveId !== null ? moveIn.y : 0;
@@ -1904,10 +1966,10 @@ function onShot(msg) {
   const vv = new T.Vector3(k * num(v[0], 0), num(v[1], 0), k * num(v[2], 0));
   if (isDead(f) || vv.length() > BULLET_V * 1.1 || Math.hypot(op.x - f.s.x, op.z - f.s.z) > 5) return;
   const kind = CODE_KIND[msg.data.k] || 'arrow';
-  spawnArrow(f.key, op, vv, num(msg.data.id, 0), kind);
+  spawnShot(f.key, op, vv, num(msg.data.id, 0), kind);
   shotSfx(kind, msg.data.s === 1, isBullet(kind) ? 0.5 : 0.35);
   if (kind === 'pistol') { f.A.setSilencer(msg.data.s === 1); f.A.recoil(); }
-  if (bigGun(kind) || kind === 'vector' || kind === 'm4' || kind === 'barrett') f.A.recoil();
+  if (bigGun(kind) || kind === 'vector' || kind === 'm4' || kind === 'barrett' || kind === 'shotgun') f.A.recoil();
 }
 function onHit(msg) {
   if (!fromOpp(msg)) return;
