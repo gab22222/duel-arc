@@ -183,6 +183,7 @@ p{margin:0}
         <button data-wpn="shotgun" aria-pressed="false">Pompe</button>
         <button data-wpn="beer" aria-pressed="false">Bière</button>
         <button data-wpn="grenade" aria-pressed="false">Grenades</button>
+        <button data-wpn="minigun" aria-pressed="false">Minigun</button>
       </div>
     </div>
     <div class="opt"><span>Visée</span>
@@ -245,6 +246,7 @@ p{margin:0}
         <button data-wpn="shotgun" aria-pressed="false">Pompe</button>
         <button data-wpn="beer" aria-pressed="false">Bière</button>
         <button data-wpn="grenade" aria-pressed="false">Grenades</button>
+        <button data-wpn="minigun" aria-pressed="false">Minigun</button>
       </div>
     </div>
     <div class="status"><i class="dot" id="lobbyDot"></i><span id="lobbyStatus">En attente de ton adversaire…</span></div>
@@ -277,6 +279,7 @@ p{margin:0}
         <button data-wpn="shotgun" aria-pressed="false">Pompe</button>
         <button data-wpn="beer" aria-pressed="false">Bière</button>
         <button data-wpn="grenade" aria-pressed="false">Grenades</button>
+        <button data-wpn="minigun" aria-pressed="false">Minigun</button>
       </div>
     </div>
     <p class="sub" id="overStatus"></p>
@@ -346,7 +349,7 @@ const MAPS = {
   canyon: { key: 'canyon', spawnZ: 12, lateral: true, xlim: 2.1, zlim: 12, maxv: 1.8, acc: 15, yawLim: 0.5 },
   forest: { key: 'forest', spawnZ: 17, lateral: false, xlim: 14.5, zlim: 20.5, maxv: 3.1, acc: 22, yawLim: Infinity },
 };
-// arme en forêt : arc (par défaut), arbalète, carabine, batte, pistolet, revolver, deagle, vector, M4, Barrett, fusil à pompe, bière ou lance-grenades ; le canyon reste toujours à l'arc
+// arme en forêt : arc (par défaut), arbalète, carabine, batte, pistolet, revolver, deagle, vector, M4, Barrett, fusil à pompe, bière, lance-grenades ou minigun ; le canyon reste toujours à l'arc
 // kind : projectile ; aimT : temps pour bander / épauler ; zoomX : lunette (null = zoom léger de l'arc)
 const WPN = {
   bow: { kind: 'arrow', aimT: DRAW_T, zoomX: null },
@@ -362,7 +365,11 @@ const WPN = {
   shotgun: { kind: 'shotgun', aimT: 0.15, zoomX: null, rate: 1.2 },                  // fusil à pompe : 9 plombs en gerbe fixe, dégâts selon la distance
   beer: { kind: 'beer', aimT: 0.45, zoomX: null, rate: 1 },                          // bouteille de bière lancée : tombe comme une flèche, éclate au contact, tue d'un coup
   grenade: { kind: 'grenade', aimT: 0.2, zoomX: null, rate: 1.2 },                   // lance-grenades : tir en cloche, explose au contact, dégâts selon la distance
+  minigun: { kind: 'minigun', aimT: 0.5, zoomX: null, auto: true, rate: 0.1 },       // minigun : 0,5 s pour lancer les canons, puis une balle toutes les 0,1 s
 };
+// minigun : balles traçantes à 110 m/s qui tombent un peu (gravité x0,35) ; 20 HP au corps, 60 HP à la tête
+const MINI_V = 110, MINI_G = G * 0.35;
+const shotG = k => isBullet(k) ? 0 : k === 'minigun' ? MINI_G : G;
 // grenade : 32 m/s, tombe comme une flèche ; à l'explosion, 300 HP jusqu'à 0,6 m du corps, puis de moins en moins jusqu'à 0 à 5 m
 const GREN_V = 32, GREN_R = 5;
 function grenadeDamage(d) { return d <= 0.6 ? WIN : Math.max(0, WIN * (1 - (d - 0.6) / (GREN_R - 0.6))); }
@@ -373,12 +380,13 @@ function sgTotal(d) { return d <= 6 ? WIN : d <= 30 ? WIN + (0.6 - WIN) * (d - 6
 const isBullet = k => k === 'bullet' || k === 'pistol' || k === 'revolver' || k === 'deagle' || k === 'vector' || k === 'm4' || k === 'barrett' || k === 'shotgun'; // pas de chute, pas de temps de vol
 const hasLaser = w => w === 'vector' || w === 'm4';
 const bigGun = k => k === 'revolver' || k === 'deagle'; // armes de poing à gros recul (visuel)
-const kicks = k => k === 'pistol' || k === 'vector' || k === 'm4' || k === 'barrett' || k === 'shotgun' || k === 'beer' || k === 'grenade' || bigGun(k); // (bière : le geste du lancer) // l'arme bouge au tir
+const kicks = k => k === 'pistol' || k === 'vector' || k === 'm4' || k === 'barrett' || k === 'shotgun' || k === 'beer' || k === 'grenade' || k === 'minigun' || bigGun(k); // (bière : le geste du lancer) // l'arme bouge au tir
 // dégâts en « touches » (1 touche = 100 HP, WIN touches = mort)
 function hitDamage(a, head) {
   if (a.kind === 'pistol') return head ? 1 : 0.5;
   if (a.kind === 'deagle') return head ? WIN : 1.5;
   if (a.kind === 'vector') return head ? 1 : 0.25;
+  if (a.kind === 'minigun') return head ? 0.6 : 0.2;
   if (a.kind === 'shotgun') return sgTotal(a.p.distanceTo(a.o0)) / SG_PELLETS * (head ? 1.5 : 1);
   return head || a.kill ? WIN : 1;
 }
@@ -1086,6 +1094,25 @@ function makeArcher(cloth, hoodCol, owner) {
   const butt = spart(new T.BoxGeometry(0.045, 0.1, 0.19), walnut, 0, -0.032, 0.23); butt.rotation.x = 0.1;    // crosse
   const pad = spart(new T.BoxGeometry(0.047, 0.11, 0.022), padM, 0, -0.043, 0.33); pad.rotation.x = 0.1;      // plaque de couche
   const sgMuzzle = new T.Vector3(0, 0.042, -0.655), handSR = new T.Vector3(0.12, 0.13, -0.09), handSL = new T.Vector3(0.12, 0.165, -0.48);
+  // minigun M134 : six canons autour d'un rotor (tournent avec la montée en régime), carter et moteur électrique,
+  // poignées arrière et poignée de transport, caisse de munitions vert olive et goulotte d'alimentation ; portée à la hanche
+  const mgG = new T.Group(); mgG.position.set(0.16, -0.06, -0.22); mgG.visible = false; upper.add(mgG);
+  const mgDark = std(0x2b2d31, { metalness: .5, roughness: .45 }), mgBarrelM = std(0x3c3f43, { metalness: .6, roughness: .35 }), mgOlive = std(0x4d5434, { roughness: .7 });
+  const mpart2 = (geo, mat, x, y, z, parent = mgG) => { const m = new T.Mesh(geo, mat); m.position.set(x, y, z); parent.add(m); return m; };
+  const rotor = new T.Group(); rotor.position.set(0, 0, -0.1); mgG.add(rotor);
+  for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2, b = mpart2(new T.CylinderGeometry(0.0085, 0.0085, 0.52, 8), mgBarrelM, Math.cos(a) * 0.03, Math.sin(a) * 0.03, -0.26, rotor); b.rotation.x = Math.PI / 2; }
+  for (const z of [-0.2, -0.45]) { const c = mpart2(new T.CylinderGeometry(0.043, 0.043, 0.02, 14), mgDark, 0, 0, z, rotor); c.rotation.x = Math.PI / 2; } // colliers des canons
+  const mgBody = mpart2(new T.CylinderGeometry(0.058, 0.058, 0.24, 14), mgDark, 0, 0, 0.06); mgBody.rotation.x = Math.PI / 2; // carter
+  const mgMotor = mpart2(new T.CylinderGeometry(0.03, 0.03, 0.13, 10), mgDark, 0.06, 0.04, 0.07); mgMotor.rotation.x = Math.PI / 2; // moteur
+  mpart2(new T.BoxGeometry(0.03, 0.05, 0.03), mgDark, 0, 0.075, -0.03);                                   // pied de la poignée de transport
+  mpart2(new T.BoxGeometry(0.025, 0.02, 0.2), mgDark, 0, 0.105, 0.03);                                    // poignée de transport
+  mpart2(new T.BoxGeometry(0.03, 0.05, 0.03), mgDark, 0, 0.075, 0.12);
+  for (const sx of [-1, 1]) mpart2(new T.BoxGeometry(0.02, 0.09, 0.025), mgDark, sx * 0.06, -0.03, 0.2);  // poignées arrière
+  mpart2(new T.BoxGeometry(0.14, 0.015, 0.025), mgDark, 0, 0.015, 0.2);
+  mpart2(new T.BoxGeometry(0.12, 0.13, 0.17), mgOlive, -0.13, -0.1, 0.08);                               // caisse de munitions
+  const chute = mpart2(new T.BoxGeometry(0.03, 0.02, 0.14), mgDark, -0.07, -0.03, 0.04); chute.rotation.z = 0.6; // goulotte
+  const mgMuzzle = new T.Vector3(0, 0, -0.63), handMgR = new T.Vector3(0.22, -0.08, -0.02), handMgL = new T.Vector3(0.16, 0.05, -0.2);
+  let spinA = 0, spinT = 0;
   // lance-grenades M79 : canon court et large en acier, hausse à lamelle relevée, garde-main et crosse en bois, plaque de couche
   const glG = new T.Group(); glG.position.copy(rifle.position); glG.visible = false; upper.add(glG);
   const glSteel = std(0x343a33, { metalness: .45, roughness: .45 }), glWood = std(0x8a5a2e, { roughness: .65 });
@@ -1134,7 +1161,7 @@ function makeArcher(cloth, hoodCol, owner) {
   function setWeapon(w) {
     wpn = w; const bowOn = w === 'bow';
     bow.visible = quiver.visible = bowOn; quiverArrows.forEach(f => { f.visible = bowOn; });
-    rifle.visible = w === 'rifle'; xbow.visible = w === 'crossbow'; batSwing.visible = w === 'bat'; pistolG.visible = w === 'pistol'; revG.visible = w === 'revolver'; dgG.visible = w === 'deagle'; vecG.visible = w === 'vector'; m4G.visible = w === 'm4'; bwG.visible = w === 'barrett'; sgG.visible = w === 'shotgun'; bottle.visible = w === 'beer'; glG.visible = w === 'grenade'; if (!hasLaser(w)) laser(null);
+    rifle.visible = w === 'rifle'; xbow.visible = w === 'crossbow'; batSwing.visible = w === 'bat'; pistolG.visible = w === 'pistol'; revG.visible = w === 'revolver'; dgG.visible = w === 'deagle'; vecG.visible = w === 'vector'; m4G.visible = w === 'm4'; bwG.visible = w === 'barrett'; sgG.visible = w === 'shotgun'; bottle.visible = w === 'beer'; glG.visible = w === 'grenade'; mgG.visible = w === 'minigun'; if (!hasLaser(w)) laser(null);
     if (bowOn) armL.set(shL, grip);
     else if (w === 'pistol' || bigGun(w)) { armL.set(shL, tmpA.copy(handP).add(tmpB.set(-0.02, -0.03, 0.03))); armR.set(shR, handP); }
     else if (w === 'vector') { armL.set(shL, handVL); armR.set(shR, handVR); }
@@ -1142,6 +1169,7 @@ function makeArcher(cloth, hoodCol, owner) {
     else if (w === 'barrett') { armL.set(shL, handBL); armR.set(shR, handBR); }
     else if (w === 'shotgun') { armL.set(shL, handSL); armR.set(shR, handSR); }
     else if (w === 'grenade') { armL.set(shL, handGL); armR.set(shR, handGR); }
+    else if (w === 'minigun') { armL.set(shL, handMgL); armR.set(shR, handMgR); }
     else if (w === 'beer') { armL.set(shL, tmpA.set(-0.18, 0.12, -0.4)); armR.set(shR, beerFront); }
     else if (w === 'bat') { armL.set(shL, tmpA.copy(handB).add(tmpB.set(-0.02, -0.02, 0.02))); armR.set(shR, handB); }
     else { armL.set(shL, handL); armR.set(shR, handR); }
@@ -1151,6 +1179,13 @@ function makeArcher(cloth, hoodCol, owner) {
     if (wpn === 'rifle') { rifle.position.z = -0.18 + draw * 0.04; return; }
     if (wpn === 'crossbow') { xbow.position.z = -0.18 + draw * 0.04; xBolt.visible = isNocked; return; }
     // revolver : gros relevé du canon et le buste qui encaisse, retour en 0,45 s (purement visuel)
+    // minigun : les canons tournent avec la montée en régime ; l'arme vibre à chaque balle
+    if (wpn === 'minigun') {
+      spinA += Math.max(0, t - spinT) * draw * 42; spinT = t; rotor.rotation.z = spinA;
+      const k = clamp((t - pKick) / 0.08, 0, 1), r = 1 - k;
+      upper.rotation.x = pitch; mgG.position.set(0.16 + (Math.random() - 0.5) * 0.006 * r, -0.06 + r * 0.008, -0.22 + r * 0.015); mgG.rotation.x = r * 0.03;
+      return;
+    }
     // lance-grenades : coup sourd dans l'épaule, le canon se relève
     if (wpn === 'grenade') { const k = 1 - Math.pow(1 - clamp((t - pKick) / 0.4, 0, 1), 2), r = 1 - k; upper.rotation.x = pitch + r * 0.08; glG.rotation.x = r * 0.28; glG.position.z = rifle.position.z + draw * 0.03 + r * 0.05; return; }
     // bière : le bras arme la bouteille au-dessus de l'épaule, puis l'accompagne vers l'avant au lâcher ; nouvelle bouteille en main
@@ -1205,6 +1240,7 @@ function makeArcher(cloth, hoodCol, owner) {
     if (wpn === 'barrett') return bwG.localToWorld(out.copy(bwMuzzle));
     if (wpn === 'shotgun') return sgG.localToWorld(out.copy(sgMuzzle));
     if (wpn === 'grenade') return glG.localToWorld(out.copy(glMuzzle));
+    if (wpn === 'minigun') return mgG.localToWorld(out.copy(mgMuzzle));
     if (wpn === 'beer') return upper.localToWorld(out.copy(beerFront).add(tmpB.set(0, 0.12, -0.05)));
     if (wpn === 'pistol') return pistolG.localToWorld(out.set(0, 0.038, sil.visible ? -0.3 : -0.16));
     return bow.localToWorld(out.set(0, 0, -0.35));
@@ -1247,6 +1283,7 @@ function sfx(k, v = 1) {
     else if (k === 'whoosh') hiss('bandpass', 700, 2600, 0.45, 0.22 * v);
     else if (k === 'pbang') { hiss('highpass', 4200, 1400, 0.14, 0.5 * v); tone('square', 240, 70, 0.09, 0.22 * v); hiss('lowpass', 2500, 300, 0.12, 0.35 * v); }
     else if (k === 'psil') { hiss('bandpass', 1600, 500, 0.07, 0.16 * v); tone('sine', 150, 70, 0.06, 0.1 * v); }
+    else if (k === 'mini') { hiss('highpass', 4200, 1600, 0.05, 0.4 * v); tone('square', 150, 70, 0.045, 0.16 * v); tone('sawtooth', 420, 400, 0.1, 0.035 * v); } // une balle : la rafale fait le « brrrt »
     else if (k === 'thoomp') { tone('sine', 170, 65, 0.13, 0.55 * v); hiss('lowpass', 1000, 200, 0.12, 0.35 * v); }
     else if (k === 'boom') { hiss('lowpass', 3200, 70, 1.3, 1.0 * v); tone('sine', 58, 20, 1.0, 1.0 * v); tone('square', 120, 35, 0.15, 0.3 * v); hiss('highpass', 2500, 800, 0.2, 0.35 * v); }
     else if (k === 'glass') { // verre qui éclate : craquement aigu, tintements, giclée de bière
@@ -1492,10 +1529,10 @@ function flightEnd(o, v, g = G) {
   return simP;
 }
 // vitesse et gravité d'un projectile : la balle file droit, le carreau vole comme une flèche tirée à fond
-function shotSpeed(kind, draw) { return isBullet(kind) ? BULLET_V : kind === 'bolt' ? VMAX : kind === 'beer' ? 16 + 14 * draw : kind === 'grenade' ? GREN_V : VMIN + (VMAX - VMIN) * draw; }
-function shotSfx(kind, sil, v = 1) { sfx(kind === 'pistol' ? (sil ? 'psil' : 'pbang') : kind === 'revolver' ? 'rbang' : kind === 'deagle' ? 'dbang' : kind === 'vector' ? 'vbang' : kind === 'm4' ? 'mbang' : kind === 'barrett' ? 'fbang' : kind === 'shotgun' ? 'sbang' : kind === 'beer' ? 'whoosh' : kind === 'grenade' ? 'thoomp' : kind === 'bullet' ? 'bang' : 'twang', v); }
+function shotSpeed(kind, draw) { return isBullet(kind) ? BULLET_V : kind === 'bolt' ? VMAX : kind === 'beer' ? 16 + 14 * draw : kind === 'grenade' ? GREN_V : kind === 'minigun' ? MINI_V : VMIN + (VMAX - VMIN) * draw; }
+function shotSfx(kind, sil, v = 1) { sfx(kind === 'pistol' ? (sil ? 'psil' : 'pbang') : kind === 'revolver' ? 'rbang' : kind === 'deagle' ? 'dbang' : kind === 'vector' ? 'vbang' : kind === 'm4' ? 'mbang' : kind === 'barrett' ? 'fbang' : kind === 'shotgun' ? 'sbang' : kind === 'beer' ? 'whoosh' : kind === 'grenade' ? 'thoomp' : kind === 'minigun' ? 'mini' : kind === 'bullet' ? 'bang' : 'twang', v); }
 function fire() {
-  const kind = curWpn().kind, g = isBullet(kind) ? 0 : G;
+  const kind = curWpn().kind, g = shotG(kind);
   const speed = shotSpeed(kind, me.draw);
   const o = meA.bowWorld(new T.Vector3());
   forward(me.yaw, me.pitch, camF);
@@ -1519,6 +1556,7 @@ function fire() {
   // tir continu : cadence exacte, sans dériver avec la durée des images
   if (curWpn().auto) { const ns = me.nextShot; me.nextShot = (t - ns < me.reload ? ns : t) + me.reload; }
   if (kicks(kind)) meA.recoil();
+  if (kind === 'minigun') { camKick = t; camKickA = 0.022; } // la vue tremble en continu pendant la rafale
   if (bigGun(kind) || kind === 'barrett' || kind === 'shotgun' || kind === 'grenade') { camKick = t; camKickA = kind === 'barrett' ? 0.22 : kind === 'deagle' ? 0.16 : kind === 'shotgun' ? 0.11 : kind === 'grenade' ? 0.09 : 0.13; }
 }
 // ---------- batte : le coup part au relâcher, il touche ~0,1 s plus tard l'adversaire le plus proche devant soi
@@ -1598,7 +1636,7 @@ function botAim() {
   const kind = curWpn().kind, speed = shotSpeed(kind, bot.drawGoal);
   const o = oppA.bowWorld(tmpB);
   const dist = Math.hypot(me.x - o.x, me.z - o.z), flight = dist / (speed * 0.97), err = Math.max(0.6, dist / 24);
-  return { o, speed, sol: solveBallistic(o, me.x + bot.ex * err + me.vx * flight * bot.lead, 1.0 + bot.ey * err, me.z + me.vz * flight * bot.lead, speed, isBullet(kind) ? 0 : G) };
+  return { o, speed, sol: solveBallistic(o, me.x + bot.ex * err + me.vx * flight * bot.lead, 1.0 + bot.ey * err, me.z + me.vz * flight * bot.lead, speed, shotG(kind)) };
 }
 const losA = new T.Vector3(), losB = new T.Vector3();
 function botPickWaypoint() {
@@ -1676,7 +1714,7 @@ function botUpdate(dt) {
     if (bot.shootT <= 0 && bot.reload <= 0 && see) {
       bot.drawing = true; bot.hold = 0; bot.drawGoal = rand(0.75, 1);
       bot.ex = gauss() * 0.4; bot.ey = gauss() * 0.3; bot.lead = rand(0, 0.8);
-      bot.burst = curWpn().kind === 'vector' ? 5 + Math.floor(Math.random() * 6) : curWpn().kind === 'm4' ? 2 + Math.floor(Math.random() * 3) : curWpn().auto ? 3 + Math.floor(Math.random() * 4) : 1; // pistolet : rafale de 3 à 6 balles, vector : 5 à 10
+      bot.burst = curWpn().kind === 'minigun' ? 12 + Math.floor(Math.random() * 12) : curWpn().kind === 'vector' ? 5 + Math.floor(Math.random() * 6) : curWpn().kind === 'm4' ? 2 + Math.floor(Math.random() * 3) : curWpn().auto ? 3 + Math.floor(Math.random() * 4) : 1; // pistolet : rafale de 3 à 6 balles, vector : 5 à 10
     }
   } else {
     opp.draw = Math.min(bot.drawGoal, opp.draw + dt / curWpn().aimT);
@@ -1729,10 +1767,10 @@ function updateOpp(dt) {
 
 // ---------- arrow physics
 function orient(a) { a.m.quaternion.setFromUnitVectors(NEG_Z, tmpV.copy(a.v).normalize()); }
-const KIND_CODE = { arrow: 'a', bolt: 'x', bullet: 'b', pistol: 'p', revolver: 'r', deagle: 'd', vector: 'v', m4: 'q', barrett: 'f', shotgun: 'g', beer: 'e', grenade: 'n' }, CODE_KIND = { a: 'arrow', x: 'bolt', b: 'bullet', p: 'pistol', r: 'revolver', d: 'deagle', v: 'vector', q: 'm4', f: 'barrett', g: 'shotgun', e: 'beer', n: 'grenade' };
+const KIND_CODE = { arrow: 'a', bolt: 'x', bullet: 'b', pistol: 'p', revolver: 'r', deagle: 'd', vector: 'v', m4: 'q', barrett: 'f', shotgun: 'g', beer: 'e', grenade: 'n', minigun: 'z' }, CODE_KIND = { a: 'arrow', x: 'bolt', b: 'bullet', p: 'pistol', r: 'revolver', d: 'deagle', v: 'vector', q: 'm4', f: 'barrett', g: 'shotgun', e: 'beer', n: 'grenade', z: 'minigun' };
 const BOLT_LEN = 0.45; // un carreau est une flèche raccourcie
 function makeProjectile(owner, kind, streak) {
-  if (isBullet(kind)) return makeBullet(owner);
+  if (isBullet(kind) || kind === 'minigun') return makeBullet(owner);
   if (kind === 'beer') return makeBeerProjectile();
   if (kind === 'grenade') return makeGrenade();
   const m = makeArrow(owner, streak); if (kind === 'bolt') m.scale.set(1, 1, BOLT_LEN); return m;
@@ -1742,7 +1780,7 @@ function spawnArrow(owner, p, v, id = 0, kind = 'arrow', noSmoke = false) {
   const m = makeProjectile(owner, kind, true); m.position.copy(p); scene.add(m);
   // g : gravité propre au projectile (la balle n'en a pas) ; tail : distance de la pointe à l'arrière, d'où sort la fumée
   // kill : le carreau d'arbalète tue d'un coup, où qu'il touche
-  const a = { owner, id, kind, g: bullet ? 0 : G, tail: bullet || kind === 'grenade' ? 0.05 : kind === 'bolt' ? 0.9 * BOLT_LEN : 0.9, kill: kind === 'bolt' || kind === 'barrett' || kind === 'beer', sid: ++arrowSerial, p, v, m, flying: true, pending: 0, life: 0, botSeen: false, o0: p.clone(), noSmoke: noSmoke || kind === 'beer', maxD: kind === 'shotgun' ? SG_RANGE : 0 };
+  const a = { owner, id, kind, g: shotG(kind), tail: bullet || kind === 'grenade' || kind === 'minigun' ? 0.05 : kind === 'bolt' ? 0.9 * BOLT_LEN : 0.9, kill: kind === 'bolt' || kind === 'barrett' || kind === 'beer', sid: ++arrowSerial, p, v, m, flying: true, pending: 0, life: 0, botSeen: false, o0: p.clone(), noSmoke: noSmoke || kind === 'beer' || kind === 'minigun', maxD: kind === 'shotgun' ? SG_RANGE : 0 };
   orient(a); arrows.push(a);
   if (owner !== 'me' && !bullet) sfx('whoosh', 0.7);
   if (bullet) flyNow(a);
@@ -1810,7 +1848,7 @@ function pierceDepth(p, dir, model, head, len = 0.9) {
 // plante la flèche dans l'archer, accrochée au buste (qui se penche pour viser) ou au bas du corps
 function plantInArcher(a, model, head) {
   stopArrow(a); a.pending = 0;
-  if (isBullet(a.kind)) { a.m.visible = false; a.gone = true; a.part = 'r'; tintSmoke(a); return; } // la balle ne reste pas dans le corps
+  if (isBullet(a.kind) || a.kind === 'minigun') { a.m.visible = false; a.gone = true; a.part = 'r'; tintSmoke(a); return; } // la balle ne reste pas dans le corps
   if (a.kind === 'beer') { shatter(a); a.part = 'r'; return; } // la bouteille éclate sur le joueur
   a.m.visible = true;
   orient(a); tmpV.copy(a.v).normalize();
@@ -1841,7 +1879,7 @@ function hitArcher(a, tgt, head) {
   // après attach, position et rotation sont locales à la partie du corps touchée : les autres replantent la flèche au même endroit
   const lp = a.m.position; tmpV.set(0, 0, -1).applyQuaternion(a.m.quaternion);
   const msg = { g: net.started, id: a.id, k: KIND_CODE[a.kind], v: tgt.peer, n: mine[tgt.peer], head, part: a.part };
-  if (!isBullet(a.kind) && a.kind !== 'beer') Object.assign(msg, { lp: [r3(lp.x), r3(lp.y), r3(lp.z)], ld: [r3(tmpV.x), r3(tmpV.y), r3(tmpV.z)] });
+  if (!isBullet(a.kind) && a.kind !== 'beer' && a.kind !== 'minigun') Object.assign(msg, { lp: [r3(lp.x), r3(lp.y), r3(lp.z)], ld: [r3(tmpV.x), r3(tmpV.y), r3(tmpV.z)] });
   nroom.emit('hit', msg).catch(() => {});
   pres({ dealt: { ...mine } });
 }
