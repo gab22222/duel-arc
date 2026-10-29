@@ -431,6 +431,7 @@ const WPN = {
 };
 // paintball : billes de peinture qui volent comme une flèche d'arc tirée à fond (même vitesse, même chute), couleurs fluo
 const isPaint = k => k === 'paintball' || k === 'psniper'; // billes de peinture (paintball et sniper paintball)
+const PAINT_BALL = 3; // taille des billes tirées (x3 par rapport à une vraie bille de 17 mm grossie)
 const PAINT_V = VMAX, PAINT_G = G, PAINT_COLS = [0xffe81a, 0xff2f9a, 0x2fd8ff, 0x7dff36, 0xff7a1a];
 // minigun : balles traçantes à 110 m/s qui tombent un peu (gravité x0,35) ; 20 HP au corps, 60 HP à la tête
 const MINI_V = 110, MINI_G = G * 0.35;
@@ -1240,7 +1241,7 @@ function paintAt(p, col) {
   for (let i = 0; i < 12; i++) {
     const k = dropNext; dropNext = (dropNext + 1) % (SPLASH_N / 2); const j = SPLASH_N / 2 + k;
     dropMesh.setColorAt(k, paintCol);
-    splash[j] = { mesh: dropMesh, i: k, p: p.clone(), v: new T.Vector3(rand(-1.8, 1.8), rand(0.3, 2), rand(-1.8, 1.8)), r: new T.Vector3(), w: 0, life: rand(0.25, 0.6), s: rand(0.35, 0.8), drop: true };
+    splash[j] = { mesh: dropMesh, i: k, p: p.clone(), v: new T.Vector3(rand(-1.8, 1.8), rand(0.3, 2), rand(-1.8, 1.8)), r: new T.Vector3(), w: 0, life: rand(0.25, 0.6), s: rand(0.6, 1.3), drop: true };
   }
   dropMesh.instanceColor.needsUpdate = true;
 }
@@ -2283,7 +2284,7 @@ function makeProjectile(owner, kind, streak) {
   if (isBullet(kind) || kind === 'minigun') return makeBullet(owner);
   if (kind === 'beer') return makeBeerProjectile();
   if (kind === 'grenade') return makeGrenade();
-  if (isPaint(kind)) return new T.Mesh(paintGeo, new T.MeshStandardMaterial({ color: PAINT_COLS[0], roughness: .3 }));
+  if (isPaint(kind)) { const m = new T.Mesh(paintGeo, new T.MeshStandardMaterial({ color: PAINT_COLS[0], roughness: .3 })); m.scale.setScalar(PAINT_BALL); return m; } // billes tirées 3 fois plus grosses
   const m = makeArrow(owner, streak); if (kind === 'bolt') m.scale.set(1, 1, BOLT_LEN); return m;
 }
 function spawnArrow(owner, p, v, id = 0, kind = 'arrow', noSmoke = false) {
@@ -2438,7 +2439,7 @@ function collide(a) {
   // bille de paintball : elle éclate et laisse une tache de peinture sur l'arbre, le rocher ou le sol
   if (isPaint(a.kind) && ((obstacles.length && inObstacle(p)) || (!map.lateral && p.y < 0))) {
     if (p.y < 0) p.y = 0.01;
-    stopArrow(a); orient(a); a.m.position.copy(p).addScaledVector(tmpV.copy(a.v).normalize(), -0.012); a.m.scale.set(3.2, 3.2, 0.22);
+    stopArrow(a); orient(a); a.m.position.copy(p).addScaledVector(tmpV.copy(a.v).normalize(), -0.012 * PAINT_BALL); a.m.scale.set(3.2 * PAINT_BALL, 3.2 * PAINT_BALL, 0.22 * PAINT_BALL); // tache à la taille de la bille
     paintAt(p, a.col); sfx('splat', a.owner === 'me' ? 0.35 : 0.6); return;
   }
   if (a.kind === 'beer' && ((obstacles.length && inObstacle(p)) || (!map.lateral && p.y < 0))) { if (p.y < 0) p.y = 0.02; shatter(a); return; }
