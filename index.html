@@ -434,7 +434,7 @@ const isPaint = k => k === 'paintball' || k === 'psniper'; // billes de peinture
 const PAINT_V = VMAX, PAINT_G = G, PAINT_COLS = [0xffe81a, 0xff2f9a, 0x2fd8ff, 0x7dff36, 0xff7a1a];
 // minigun : balles traçantes à 110 m/s qui tombent un peu (gravité x0,35) ; 20 HP au corps, 60 HP à la tête
 const MINI_V = 110, MINI_G = G * 0.35;
-const shotG = k => isBullet(k) ? 0 : k === 'minigun' ? MINI_G : isPaint(k) ? PAINT_G : G;
+const shotG = k => isBullet(k) ? 0 : k === 'minigun' ? MINI_G : k === 'psniper' ? PAINT_G * 3 : isPaint(k) ? PAINT_G : G; // sniper paint : chute x3
 // grenade : 32 m/s, tombe comme une flèche ; à l'explosion, 300 HP jusqu'à 0,6 m du corps, puis de moins en moins jusqu'à 0 à 5 m
 const GREN_V = 32, GREN_R = 5;
 function grenadeDamage(d) { return d <= 0.6 ? WIN : Math.max(0, WIN * (1 - (d - 0.6) / (GREN_R - 0.6))); }
