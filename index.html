@@ -1934,7 +1934,7 @@ function resetMatch(k) {
   }
   for (const A of archers) { A.root.rotation.z = 0; A.root.position.y = 0; }
   $('#side2').hidden = !trio(); $('.vs').hidden = trio(); opp2A.root.visible = trio();
-  $('#score .side.me').hidden = false; $('#score .side.them').hidden = false; $('#spec').hidden = true;
+  $('#score .side.me').hidden = false; $('#score .side.them').hidden = false; $('#spec').hidden = true; specIdx = 0; wasDeadSpec = false;
   Object.assign(bot, { tx: 0, tz: -map.spawnZ, moveT: 0, shootT: rand(1.4, 2.2), drawing: false, reload: 0, hold: 0, stuck: 0, swingHit: 0 });
   me.swingHit = 0;
   aimId = null; moveId = null; moveIn.x = moveIn.y = 0; headshot = false;
@@ -2597,8 +2597,9 @@ function drawRadar() {
   radarEl.hidden = !on; if (!on) return;
   if (t - radarAt >= RADAR_EVERY || t < radarAt) { radarAt = t; radarSnap = foes.map(f => ({ x: f.s.x, z: f.s.z, dead: isDead(f), col: PALETTE[colorOf[f.key]].css })); }
   const g = radarG, W = 240, C = W / 2, Rpx = C - 6, k = Rpx / (map.big ? 90 : 60); // portée : 90 m sur les grandes cartes, 60 m dans la forêt
-  const fx = -Math.sin(me.yaw), fz = -Math.cos(me.yaw), rx = Math.cos(me.yaw), rz = -Math.sin(me.yaw);
-  const toScreen = (x, z) => { const dx = x - me.x, dz = z - me.z; return [C + (dx * rx + dz * rz) * k, C - (dx * fx + dz * fz) * k]; };
+  const V = viewOf(); // centré sur moi, ou sur le joueur que je regarde quand je suis éliminé
+  const fx = -Math.sin(V.yaw), fz = -Math.cos(V.yaw), rx = Math.cos(V.yaw), rz = -Math.sin(V.yaw);
+  const toScreen = (x, z) => { const dx = x - V.x, dz = z - V.z; return [C + (dx * rx + dz * rz) * k, C - (dx * fx + dz * fz) * k]; };
   g.clearRect(0, 0, W, W);
   g.save(); g.beginPath(); g.arc(C, C, Rpx, 0, Math.PI * 2); g.fillStyle = 'rgba(12,16,14,.62)'; g.fill(); g.clip();
   // bords de la forêt et anneaux de distance (30 et 60 m)
@@ -2623,7 +2624,7 @@ function drawRadar() {
   g.strokeStyle = '#3fc1b0'; g.lineWidth = 4; g.beginPath(); g.arc(C, C, Rpx, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.min(1, age / RADAR_EVERY)); g.stroke();
 }
 function drawHud() {
-  drawRadar();
+  updateDeadSpec(); drawRadar();
   const scoped = !!mode && phase !== 'idle' && !!curWpn().zoomX && me.drawing && me.draw > 0.6;
   scopeEl.hidden = !scoped; crossEl.style.visibility = scoped ? 'hidden' : '';
   if (!mode || phase === 'idle') return;
@@ -3060,11 +3061,19 @@ function tourRoles() {
   renderScore(); updateSpecTxt();
 }
 const fighters = () => foes.filter(f => f.slot !== 2);
-function viewOf() {
-  if (!(TOUR.on && TOUR.n === 3 && mySlot === 2 && phase !== 'idle')) return me;
-  const F = fighters(); return F.length ? F[specIdx % F.length].s : me;
+// spectateur : celui de la tournante, ou le joueur éliminé d'une partie à 3 (grandes cartes) qui suit les survivants
+const tourSpec = () => TOUR.on && TOUR.n === 3 && mySlot === 2 && phase !== 'idle';
+const deadSpec = () => !TOUR.on && mode === 'online' && trio() && isDead(ME) && (phase === 'fight' || phase === 'ending');
+const watchable = () => tourSpec() ? fighters() : deadSpec() ? foes.filter(f => !isDead(f)) : [];
+function viewOf() { const F = watchable(); return F.length ? F[specIdx % F.length].s : me; }
+function updateSpecTxt() { const F = watchable(); if (F.length) $('#specTxt').textContent = `Tu regardes ${F[specIdx % F.length].name}`; }
+// éliminé à 3 : la barre « Tu regardes … / Changer de vue » remplace les commandes jusqu'à la fin de la partie
+let wasDeadSpec = false;
+function updateDeadSpec() {
+  const on = deadSpec();
+  if (on !== wasDeadSpec) { wasDeadSpec = on; specIdx = 0; $('#spec').hidden = !on; ['#cross', '#stick', '#look'].forEach(sel => $(sel).toggleAttribute('hidden', on)); }
+  if (on) updateSpecTxt();
 }
-function updateSpecTxt() { const F = fighters(); if (F.length) $('#specTxt').textContent = `Tu regardes ${F[specIdx % F.length].name}`; }
 // fin d'un duel : le gagnant reste, le perdant regarde ; deux duels gagnés de suite (ou deux manches à 2) = « … a gagné ! »
 function tourFinish() {
   phase = 'over'; me.drawing = false; me.draw = 0;
