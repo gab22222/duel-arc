@@ -1774,7 +1774,8 @@ const FOES = { opp: { key: 'opp', s: opp, A: oppA, peer: null, slot: 1, name: 'R
 let foes = [FOES.opp];
 let nPlayers = 2, mySlot = 0;
 // tournante (mode entre amis par défaut) : à 3, deux joueurs tirés au sort s'affrontent dans la petite forêt, le troisième
-// regarde ; le gagnant reste et affronte le spectateur ; celui qui gagne deux duels de suite a gagné, puis on recommence.
+// regarde ; le gagnant reste et affronte le spectateur, le perdant regarde (jamais spectateur deux fois de suite) ;
+// celui qui gagne deux duels de suite a gagné, puis on continue de la même façon.
 // À 2 : manches en BO3. Chaque duel commence par une roulette qui tire l'arme au hasard.
 // Tous les tirages viennent d'une graine commune (les jetons des joueurs) : chaque téléphone calcule la même chose.
 const TOUR = { on: false, base: '', ids: [], n: 0, round: 0, champ: null, wins: 0, sc: {}, title: '', big: false, cur: null };
@@ -2898,10 +2899,12 @@ function showRoulette(title, match, spec, w, done) {
     const k = Math.min(1, (now - t0) / DUR), e = 1 - Math.pow(1 - k, 3.4), a = end * e;
     draw(a);
     const sIdx = Math.floor(a / seg); // un séparateur passe sous la flèche : cliquetis
-    if (sIdx !== lastSeg) { if (lastSeg >= 0) sfx('clic', 0.35 + 0.65 * (1 - e)); lastSeg = sIdx; }
+    if (sIdx !== lastSeg) { if (lastSeg >= 0 && k < 1) sfx('clic', 0.35 + 0.65 * (1 - e)); lastSeg = sIdx; }
     if (k < 1) requestAnimationFrame(spin);
-    else { res.classList.add('on'); sfx('ding'); setTimeout(() => { $('#roulette').hidden = true; done(); }, 1100); }
   })(t0);
+  // la fin ne dépend pas de l'animation : même si le téléphone n'a pas dessiné (écran éteint un instant), le duel démarre à l'heure
+  setTimeout(() => { draw(end); res.classList.add('on'); sfx('ding'); }, DUR);
+  setTimeout(() => { $('#roulette').hidden = true; done(); }, DUR + 1100);
 }
 // rôles du duel : le spectateur est déjà « hors jeu » (invisible, intouchable) et regarde l'un des deux combattants
 function tourRoles() {
@@ -2940,7 +2943,7 @@ function tourFinish() {
 function tourAdvance(winner) {
   const P = TOUR.cur; let next;
   TOUR.round++;
-  if (!winner) { TOUR.title = 'Égalité : on rejoue'; TOUR.big = false; next = { a: P.a, b: P.b, s: P.s }; }
+  if (!winner) { TOUR.title = 'Égalité : on rejoue'; TOUR.big = false; next = TOUR.n === 2 ? { a: P.a, b: P.b } : { a: P.a, b: P.b, s: P.s }; } // les deux mêmes rejouent
   else if (TOUR.n === 2) {
     const other = winner === P.a ? P.b : P.a;
     TOUR.sc[winner] = (TOUR.sc[winner] || 0) + 1;
@@ -2950,8 +2953,10 @@ function tourAdvance(winner) {
   } else {
     const loser = winner === P.a ? P.b : P.a;
     if (TOUR.champ === winner) TOUR.wins++; else { TOUR.champ = winner; TOUR.wins = 1; }
-    if (TOUR.wins >= 2) { TOUR.title = `${tourName(winner)} a gagné !`; TOUR.big = true; TOUR.champ = null; TOUR.wins = 0; next = tourPair(); }
-    else { TOUR.title = `${tourName(winner)} gagne le duel`; TOUR.big = false; next = { a: winner, b: P.s, s: loser }; }
+    if (TOUR.wins >= 2) { TOUR.title = `${tourName(winner)} a gagné !`; TOUR.big = true; TOUR.champ = null; TOUR.wins = 0; }
+    else { TOUR.title = `${tourName(winner)} gagne le duel`; TOUR.big = false; }
+    // toujours : le gagnant affronte le spectateur de ce duel, le perdant regarde (personne n'est spectateur deux fois de suite)
+    next = { a: winner, b: P.s, s: loser };
   }
   next.w = tourWeapon(); TOUR.cur = next;
 }
