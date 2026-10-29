@@ -431,7 +431,7 @@ const WPN = {
 };
 // paintball : billes de peinture à la vitesse d'une flèche d'arc tirée à fond, en ligne droite (sans chute), couleurs fluo
 const isPaint = k => k === 'paintball' || k === 'psniper'; // billes de peinture (paintball et sniper paintball)
-const PAINT_BALL = 3; // taille des billes tirées (x3 par rapport à une vraie bille de 17 mm grossie)
+const PAINT_BALL = 6; // taille des billes tirées (x6 par rapport à une vraie bille de 17 mm grossie)
 const PAINT_V = VMAX, PAINT_COLS = [0xffe81a, 0xff2f9a, 0x2fd8ff, 0x7dff36, 0xff7a1a];
 // minigun : balles traçantes à 110 m/s qui tombent un peu (gravité x0,35) ; 20 HP au corps, 60 HP à la tête
 const MINI_V = 110, MINI_G = G * 0.35;
@@ -2284,7 +2284,7 @@ function makeProjectile(owner, kind, streak) {
   if (isBullet(kind) || kind === 'minigun') return makeBullet(owner);
   if (kind === 'beer') return makeBeerProjectile();
   if (kind === 'grenade') return makeGrenade();
-  if (isPaint(kind)) { const m = new T.Mesh(paintGeo, new T.MeshStandardMaterial({ color: PAINT_COLS[0], roughness: .3 })); m.scale.setScalar(PAINT_BALL); return m; } // billes tirées 3 fois plus grosses
+  if (isPaint(kind)) { const m = new T.Mesh(paintGeo, new T.MeshStandardMaterial({ color: PAINT_COLS[0], roughness: .3 })); m.scale.setScalar(PAINT_BALL); return m; } // grosses billes tirées
   const m = makeArrow(owner, streak); if (kind === 'bolt') m.scale.set(1, 1, BOLT_LEN); return m;
 }
 function spawnArrow(owner, p, v, id = 0, kind = 'arrow', noSmoke = false) {
