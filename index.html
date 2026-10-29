@@ -34,6 +34,23 @@ body{position:fixed;inset:0;touch-action:none;-webkit-user-select:none;user-sele
 #touch{position:fixed;inset:0;z-index:1}
 .hud{position:fixed;z-index:2;pointer-events:none}
 
+#roulette{inset:0;display:grid;place-items:center;z-index:5;background:rgba(10,8,14,.35)}
+.rbox{width:min(340px,86vw);padding:18px 18px 16px;border-radius:18px;background:rgba(20,17,28,.92);border:1px solid var(--line);text-align:center;display:grid;gap:10px}
+.reyebrow{font:800 22px/1.15 var(--display);color:var(--ember);letter-spacing:.02em}
+.rmatch{font-size:15px;color:var(--bone);font-weight:700}
+.rspec{font-size:13px;color:var(--mute)}
+.rspec:empty{display:none}
+.reel{height:58px;overflow:hidden;border-radius:12px;background:rgba(0,0,0,.35);border:1px solid var(--line);position:relative}
+.reel::before,.reel::after{content:"";position:absolute;left:0;right:0;height:14px;z-index:1;pointer-events:none}
+.reel::before{top:0;background:linear-gradient(rgba(20,17,28,.95),transparent)}
+.reel::after{bottom:0;background:linear-gradient(transparent,rgba(20,17,28,.95))}
+.reelList div{height:58px;display:grid;place-items:center;font:800 26px var(--display);color:var(--bone);letter-spacing:.03em}
+.reel.done{border-color:var(--ember);box-shadow:0 0 18px rgba(232,140,74,.5)}
+.reel.done .reelList div:last-child{color:var(--ember)}
+#spec{position:fixed;z-index:6;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 18px);transform:translateX(-50%);display:flex;align-items:center;gap:10px;padding:8px 8px 8px 14px;border-radius:14px;background:rgba(14,12,22,.7);border:1px solid var(--line);font-size:14px;color:var(--bone);white-space:nowrap}
+#spec[hidden]{display:none}
+#spec .btn{padding:8px 12px;font-size:14px}
+#lobby .modesel button small{font-size:11px}
 #radar{top:calc(env(safe-area-inset-top,0px) + 54px);right:12px;width:120px;height:120px;border-radius:50%;pointer-events:none}
 #score{top:calc(env(safe-area-inset-top,0px) + 10px);left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:14px;padding:6px 16px;background:rgba(14,12,22,.55);border:1px solid var(--line);border-radius:999px;font-family:var(--display);font-weight:700;letter-spacing:.06em;font-size:15px;white-space:nowrap}
 .side{display:flex;align-items:center;gap:8px}
@@ -183,6 +200,13 @@ p{margin:0}
 <div class="hud" id="hurt"></div>
 <div class="hud" id="stick" hidden><div id="knob"></div></div>
 <canvas class="hud" id="radar" width="240" height="240" hidden></canvas>
+<div class="hud" id="roulette" hidden><div class="rbox">
+  <div class="reyebrow" id="rTitle">Tournante</div>
+  <div class="rmatch" id="rMatch"></div>
+  <div class="reel"><div class="reelList" id="reelList"></div></div>
+  <div class="rspec" id="rSpec"></div>
+</div></div>
+<div id="spec" hidden><span id="specTxt">Tu regardes</span><button class="btn" id="specBtn">Changer de vue</button></div>
 <button id="quit" aria-label="Quitter la partie" hidden>✕</button>
 <button id="sil" aria-pressed="false" hidden>Silencieux</button>
 
@@ -266,7 +290,11 @@ p{margin:0}
   <div class="sheet">
     <div class="eyebrow">Chiffre de la partie</div>
     <div class="codebig" id="lobbyCode">-</div>
-    <p class="sub">Tes adversaires ouvrent la même page, tapent ce chiffre et appuient sur Rejoindre. Jusqu'à 3 joueurs : à 3, chacun pour soi dans une forêt géante, avec un radar ; le dernier debout gagne.</p>
+    <p class="sub">Tes amis ouvrent la même page, tapent ce chiffre et appuient sur Rejoindre une partie (jusqu'à 3 joueurs).</p>
+    <div class="seg modesel" role="group" aria-label="Mode de jeu">
+      <button data-gm="tour" aria-pressed="true">Tournante<small>duels à la suite, arme tirée à la roulette</small></button>
+      <button data-gm="classic" aria-pressed="false">Classique<small>carte et arme au choix</small></button>
+    </div>
     <div class="seg mapsel" role="group" aria-label="Carte">
       <button data-map="canyon" aria-pressed="true">Canyon<small>face à face</small></button>
       <button data-map="forest" aria-pressed="false">Forêt<small>déplacements libres</small></button>
@@ -975,7 +1003,7 @@ function applyMap(k) {
   if (!map.big) try { localStorage.setItem('duelarc-map', k); } catch (e) {}
   const shown = k === 'forestXL' ? 'forest' : k; // la forêt géante (1v1v1) apparaît comme « Forêt » dans les menus
   document.querySelectorAll('.mapsel button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.map === shown)));
-  document.querySelectorAll('.wpnrow').forEach(r => { r.hidden = map.lateral && !r.classList.contains('always'); }); // le tir libre est toujours en forêt
+  document.querySelectorAll('.wpnrow').forEach(r => { r.hidden = (map.lateral && !r.classList.contains('always')) || (gameMode === 'tour' && !!r.closest('#lobby')); }); // le tir libre est toujours en forêt
   dressArchers();
 }
 const curW = () => map.lateral ? 'bow' : weapon;
@@ -1744,12 +1772,20 @@ const ME = { key: 'me', s: me, A: meA, name: 'Toi' };
 const FOES = { opp: { key: 'opp', s: opp, A: oppA, peer: null, slot: 1, name: 'Rouge' }, opp2: { key: 'opp2', s: opp2, A: opp2A, peer: null, slot: 2, name: 'Jaune' } };
 let foes = [FOES.opp];
 let nPlayers = 2, mySlot = 0;
+// tournante (mode entre amis par défaut) : à 3, deux joueurs tirés au sort s'affrontent dans la petite forêt, le troisième
+// regarde ; le gagnant reste et affronte le spectateur ; celui qui gagne deux duels de suite a gagné, puis on recommence.
+// À 2 : manches en BO3. Chaque duel commence par une roulette qui tire l'arme au hasard.
+// Tous les tirages viennent d'une graine commune (les jetons des joueurs) : chaque téléphone calcule la même chose.
+const TOUR = { on: false, base: '', ids: [], n: 0, round: 0, champ: null, wins: 0, sc: {}, title: '', big: false, cur: null };
+let specIdx = 0;
 const trio = () => nPlayers === 3;
 const foeByPeer = id => foes.find(f => f.peer === id);
 const entryByKey = k => k === 'me' ? ME : FOES[k];
 const isDead = e => e.s.taken >= WIN;
 // à 3 : pas de miroir, chacun part d'un des trois côtés de la forêt, tourné vers le centre
-function spawnOf(slot) { const R = map.spawnR || 13.5, a = slot * 2 * Math.PI / 3; return { x: R * Math.sin(a), z: R * Math.cos(a), yaw: a + (map.spawnOut ? Math.PI : 0) }; } // triangle équilatéral
+function spawnOf(slot) {
+  if (TOUR.on) return slot === 2 ? { x: 0, z: 0, yaw: 0 } : { x: 0, z: slot ? -map.spawnZ : map.spawnZ, yaw: slot ? Math.PI : 0 }; // tournante : face à face comme en duel
+  const R = map.spawnR || 13.5, a = slot * 2 * Math.PI / 3; return { x: R * Math.sin(a), z: R * Math.cos(a), yaw: a + (map.spawnOut ? Math.PI : 0) }; } // triangle équilatéral
 // un éliminé tombe sur le côté
 function deadPose(A, dead) { A.root.rotation.z += ((dead ? 1.45 : 0) - A.root.rotation.z) * 0.15; A.root.position.y = dead ? 0.12 : 0; }
 let mode = null;      // 'bot' | 'online' | null
@@ -1816,6 +1852,7 @@ function resetMatch(k) {
   }
   for (const A of archers) { A.root.rotation.z = 0; A.root.position.y = 0; }
   $('#side2').hidden = !trio(); $('.vs').hidden = trio(); opp2A.root.visible = trio();
+  $('#score .side.me').hidden = false; $('#score .side.them').hidden = false; $('#spec').hidden = true;
   Object.assign(bot, { tx: 0, tz: -map.spawnZ, moveT: 0, shootT: rand(1.4, 2.2), drawing: false, reload: 0, hold: 0, stuck: 0, swingHit: 0 });
   me.swingHit = 0;
   aimId = null; moveId = null; moveIn.x = moveIn.y = 0; headshot = false;
@@ -1846,6 +1883,7 @@ function checkEnd() {
   if (over) { phase = 'ending'; endT = 1.0; me.drawing = false; me.draw = 0; }
 }
 function finish() {
+  if (TOUR.on) return tourFinish();
   phase = 'over'; me.drawing = false; me.draw = 0;
   let title, color;
   const standing = [ME, ...foes].filter(e => !isDead(e));
@@ -1922,10 +1960,10 @@ function release() {
   me.drawing = false; me.draw = 0;
 }
 function forward(yaw, pitch, out) { return out.set(-Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), -Math.cos(yaw) * Math.cos(pitch)); }
-function camOffset(out) {
+function camOffset(out, v = me) {
   // centrée : juste derrière et un peu plus haut, pour que la tête du personnage passe sous le viseur
-  const oz = 2.9 - me.draw * 0.8;
-  return out.set(me.x + oz * Math.sin(me.yaw), 2.45, me.z + oz * Math.cos(me.yaw));
+  const oz = 2.9 - (v.draw || 0) * 0.8;
+  return out.set(v.x + oz * Math.sin(v.yaw), 2.45, v.z + oz * Math.cos(v.yaw));
 }
 const camF = new T.Vector3(), aimP = new T.Vector3();
 // point réellement sous le viseur : on suit le rayon de la caméra avec les mêmes collisions que les flèches
@@ -2025,6 +2063,7 @@ function updateMe(dt) {
     iy = ((keys.KeyS) ? 1 : 0) - ((keys.KeyW || keys.KeyZ) ? 1 : 0);
   }
   const out = isDead(ME); // éliminé (à 3) : on regarde la fin sans bouger ni tirer
+  meA.root.visible = !(TOUR.on && mySlot === 2); // spectateur de la tournante : invisible
   if (out) { me.drawing = false; me.draw = 0; }
   const slow = (me.drawing && !curWpn().melee ? (map.lateral ? 0.65 : 0.55) : 1) * speedMul(), act = canMove() && !out;
   let tvx = 0, tvz = 0;
@@ -2193,6 +2232,7 @@ function updateOpp(dt) {
     f.A.root.position.set(s.x, 0, s.z); f.A.root.rotation.y = (trio() ? 0 : Math.PI) + s.yaw;
     deadPose(f.A, trio() && isDead(f));
     tags[f.key].visible = mode === 'online' && phase !== 'idle' && !isDead(f); // pseudo au-dessus de la tête
+    if (TOUR.on && f.slot === 2) f.A.root.visible = false; // le spectateur de la tournante n'est pas sur le terrain
     f.A.setPose(s.pitch, s.draw, s.nock);
     f.A.updateHead();
     updateLaser(f, isDead(f));
@@ -2421,14 +2461,15 @@ function updateCamera(dt) {
     const zoom = zx ? 2 * Math.atan(Math.tan(base * Math.PI / 360) / zx) * 180 / Math.PI : curWpn().melee || curWpn().auto ? base : (portrait ? 46 : 32);
     const want = base + (zoom - base) * (me.drawing ? Math.sin(me.draw * Math.PI / 2) : 0);
     fov += (want - fov) * (1 - Math.exp(-dt * 10));
-    camOffset(camera.position);
+    const V = viewOf(); // moi, ou le combattant que je regarde quand je suis spectateur
+    camOffset(camera.position, V);
     if (obstacles.length) { // la caméra ne traverse pas les arbres
-      pivot.set(me.x, 2.0, me.z);
+      pivot.set(V.x, 2.0, V.z);
       let t = 1;
       for (let s = 0.2; s <= 1.0001; s += 0.1) { camTry.lerpVectors(pivot, camera.position, s); if (inObstacle(camTry, 0.25)) { t = Math.max(0.12, s - 0.12); break; } }
       camera.position.lerpVectors(pivot, camera.position, t);
     }
-    forward(me.yaw, me.pitch, camF);
+    forward(V.yaw, V.pitch, camF);
     camera.lookAt(look.copy(camera.position).add(camF));
     // recul du revolver et du deagle : la vue saute vers le haut et revient (la visée, elle, ne bouge pas)
     const ck = clamp((t - camKick) / 0.5, 0, 1);
@@ -2583,6 +2624,19 @@ function netTick(now) {
 function randCode() { return String(Math.floor(Math.random() * 10)); } // un seul chiffre, de 0 à 9
 function menuNote(t) { $('#menuNote').textContent = t; }
 let joining = false;
+// mode de jeu entre amis : « tournante » (par défaut) ou « classique » ; choisi dans le salon, synchronisé comme la carte
+let gameMode = 'tour';
+function setGameMode(g) {
+  gameMode = g === 'classic' ? 'classic' : 'tour';
+  document.querySelectorAll('.modesel button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.gm === gameMode)));
+  const L = $('#lobby .mapsel'); if (L) L.hidden = gameMode === 'tour';
+  document.querySelectorAll('#lobby .wpnrow').forEach(r => { r.hidden = gameMode === 'tour' || map.lateral; });
+}
+function chooseGameMode(g) {
+  if (mode !== 'online' || !(phase === 'idle' || phase === 'over')) return;
+  mapV = Math.max(mapV, ...peersNow.map(x => num(x.presence.mapV, 0))) + 1;
+  setGameMode(g); pres({ gm: gameMode, mapK: mapKey, wpn: weapon, mapV }); renderLobby();
+}
 // numéro dans le salon : ordre d'arrivée (heure d'entrée publiée par chacun, puis identifiant) ; même ordre chez tout le monde,
 // stable tant que les mêmes joueurs restent. Pseudo facultatif, sinon « Joueur 1, 2, 3 ».
 let myJoin = 0, myName = '';
@@ -2612,12 +2666,14 @@ async function enterRoom(code, creator) {
     nroom.on('hit', onHit),
   ];
   myJoin = Date.now();
-  pres({ rdy: false, tok: '', started: '', dealt: {}, mapK: mapKey, wpn: weapon, mapV, j: myJoin, nm: myName });
+  setGameMode('tour'); TOUR.on = false;
+  pres({ rdy: false, tok: '', started: '', dealt: {}, mapK: mapKey, wpn: weapon, mapV, j: myJoin, nm: myName, gm: gameMode, tourBase: '' });
   phase = 'idle';
   $('#lobbyCode').textContent = code;
   renderLobby(); showPanel('#lobby');
 }
 function leaveRoom() {
+  tourStop();
   subs.forEach(u => { try { u(); } catch (e) {} }); subs = [];
   if (nroom) nroom.leave().catch(() => {});
   nroom = null; peersNow = []; FOES.opp.peer = FOES.opp2.peer = null; foes = [FOES.opp]; nPlayers = 2; mode = null; phase = 'idle';
@@ -2625,12 +2681,17 @@ function leaveRoom() {
 }
 const inGame = () => mode === 'online' && phase !== 'idle';
 function onPeers(peers) {
+  // tournante entre deux duels (roulette) : si quelqu'un est parti, tout le monde revient au salon
+  if (TOUR.on && phase === 'idle' && !TOUR.ids.every(id => id === myId || peers.some(p => p.peer === id))) {
+    tourStop(); clearArrows(); setPlayingHud(false); net.rp = false; pres({ rdy: false }); showPanel('#lobby'); toast('Un joueur est parti', 2);
+  }
   peersNow = peers.filter(p => !p.sameTab && p.kind === 'viewer').sort((a, b) => a.peer < b.peer ? -1 : 1).slice(0, 2)
     .map(p => ({ peer: p.peer, presence: p.presence || {} }));
   if (inGame()) {
     // un joueur de la partie est parti : en duel on revient au salon, à 3 il est éliminé
     const gone = foes.filter(f => !peersNow.some(x => x.peer === f.peer));
-    if (gone.length && (!trio() || gone.length === foes.length)) {
+    if (gone.length && (TOUR.on || !trio() || gone.length === foes.length)) {
+      tourStop();
       phase = 'idle'; clearArrows(); setPlayingHud(false); net.rp = false; pres({ rdy: false });
       renderLobby(); showPanel('#lobby'); menuNote('');
       toast(gone.length > 1 ? 'Tes adversaires sont partis' : trio() ? `${gone[0].name} est parti` : 'Ton adversaire est parti', 2.2);
@@ -2644,11 +2705,12 @@ function onPeers(peers) {
 }
 // carte et arme choisies dans le salon : le dernier qui change l'emporte (à égalité, le plus petit identifiant)
 function syncLobbyChoice() {
-  if (!(phase === 'idle' || phase === 'over')) return;
+  if (!(phase === 'idle' || phase === 'over') || TOUR.on) return; // pendant la tournante, l'arme vient de la roulette
   for (const x of peersNow) {
     const p = x.presence; if (!MAPS[p.mapK]) continue;
     const v = num(p.mapV, 0), w = wpnKey(p.wpn);
-    if (v > mapV || (v === mapV && (p.mapK !== mapKey || w !== weapon) && x.peer < myId)) { mapV = v; setWeapon(w); applyMap(p.mapK); }
+    const g = p.gm === 'classic' ? 'classic' : 'tour';
+    if (v > mapV || (v === mapV && (p.mapK !== mapKey || w !== weapon || g !== gameMode) && x.peer < myId)) { mapV = v; setWeapon(w); applyMap(p.mapK); setGameMode(g); }
   }
 }
 function applyOppPres(p, f) {
@@ -2728,7 +2790,7 @@ function chooseWeapon(w) {
 function pressReady() {
   audioInit();
   net.rp = true; net.tok = Math.random().toString(36).slice(2, 10);
-  pres({ rdy: true, tok: net.tok, mapK: mapKey, wpn: weapon });
+  pres({ rdy: true, tok: net.tok, mapK: mapKey, wpn: weapon, gm: gameMode });
   renderLobby(); renderOverStatus(); evaluateReady();
 }
 const okTok = t => typeof t === 'string' && /^[a-z0-9]{4,12}$/.test(t);
@@ -2737,11 +2799,12 @@ function evaluateReady() {
   const ps = peersNow.map(x => x.presence);
   // un autre a déjà lancé une partie qui m'inclut
   const st = ps.find(p => typeof p.started === 'string' && p.started.split('|').includes(net.tok));
-  if (st) return startOnline(st.started, MAPS[st.smap] ? st.smap : mapKey, st.swpn ? wpnKey(st.swpn) : weapon);
+  if (st) return st.tourBase && st.started.startsWith(st.tourBase + '|r') ? startTour(st.tourBase) : startOnline(st.started, MAPS[st.smap] ? st.smap : mapKey, st.swpn ? wpnKey(st.swpn) : weapon);
   // tout le monde est prêt : la carte et l'arme sont celles du joueur au plus petit jeton (même choix sur chaque téléphone)
   if (ps.every(p => p.rdy === true && okTok(p.tok))) {
     const toks = [net.tok, ...ps.map(p => p.tok)].sort();
-    const lead = toks[0] === net.tok ? { mapK: mapKey, wpn: weapon } : ps.find(p => p.tok === toks[0]);
+    const lead = toks[0] === net.tok ? { mapK: mapKey, wpn: weapon, gm: gameMode } : ps.find(p => p.tok === toks[0]);
+    if (lead.gm !== 'classic') return startTour(toks.join('|'));
     const k = toks.length === 3 ? (lead.mapK === 'japan' ? 'japan' : 'forestXL') : lead.mapK === 'canyon' ? 'canyon' : 'forest'; // à 3 : forêt géante ou Japon
     startOnline(toks.join('|'), k, wpnKey(lead.wpn));
   }
@@ -2757,8 +2820,113 @@ function startOnline(id, k, w) {
   foes.forEach((f, i) => { f.peer = parts[i] ? parts[i].peer : null; f.slot = parts[i] ? Math.max(0, toks.indexOf(parts[i].presence.tok)) : i + 1; });
   dealt = {};
   setWeapon(w);
-  pres({ rdy: false, started: id, smap: k, swpn: weapon, dealt: {} });
+  pres({ rdy: false, started: id, smap: k, swpn: weapon, dealt: {}, tourBase: '' });
   resetMatch(k);
+}
+function tourStop() { TOUR.on = false; $('#roulette').hidden = true; $('#spec').hidden = true; }
+const hashStr = str => { let h = 2166136261; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; };
+const tourRng = k => mulberry32(hashStr(TOUR.base + '#' + TOUR.round + '#' + k));
+const tourName = id => (lobbyPlayers().find(x => x.id === id) || {}).name || 'Joueur';
+const WPN_KEYS = Object.keys(WPN);
+const wpnLabel = k => { const b = document.querySelector(`.wpnsel button[data-wpn="${k}"]`); return b ? b.textContent : k; };
+function tourWeapon() { return WPN_KEYS[Math.floor(tourRng('w')() * WPN_KEYS.length)]; } // vraiment au hasard : la même arme peut retomber
+function tourPair() {
+  const r = tourRng('p'), ids = TOUR.ids.slice();
+  for (let i = ids.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [ids[i], ids[j]] = [ids[j], ids[i]]; }
+  return TOUR.n === 3 ? { a: ids[0], b: ids[1], s: ids[2] } : { a: ids[0], b: ids[1] };
+}
+function startTour(base) {
+  // participants dans l'ordre des jetons (même ordre partout)
+  const ids = base.split('|').map(tk => tk === net.tok ? myId : (peersNow.find(x => x.presence.tok === tk) || {}).peer).filter(Boolean);
+  if (ids.length < 2) return;
+  Object.assign(TOUR, { on: true, base, ids, n: ids.length, round: 0, champ: null, wins: 0, sc: {}, title: '', big: false });
+  TOUR.cur = tourPair(); TOUR.cur.w = tourWeapon();
+  startTourRound();
+}
+function startTourRound() {
+  const R = TOUR.cur, ids = [R.a, R.b].concat(R.s ? [R.s] : []);
+  net.rp = false; net.started = TOUR.base + '|r' + TOUR.round;
+  nPlayers = ids.length; mySlot = Math.max(0, ids.indexOf(myId));
+  const others = ids.filter(id => id !== myId);
+  foes = [FOES.opp, FOES.opp2].slice(0, nPlayers - 1);
+  foes.forEach((f, i) => { f.peer = others[i]; f.slot = ids.indexOf(others[i]); });
+  dealt = {};
+  pres({ rdy: false, started: net.started, tourBase: TOUR.base, smap: 'forest', swpn: R.w, dealt: {} });
+  // roulette, puis le duel
+  phase = 'idle'; clearArrows(); setPlayingHud(false); showPanel(null); applyMap('forest'); setWeapon(R.w);
+  const vs = `${tourName(R.a)} contre ${tourName(R.b)}`;
+  const score = TOUR.n === 2 ? ` · ${TOUR.sc[R.a] || 0} – ${TOUR.sc[R.b] || 0}` : '';
+  showRoulette(TOUR.round ? (TOUR.title || 'Duel suivant') : 'Tournante', vs + score, R.s ? `Spectateur : ${tourName(R.s)}` : (TOUR.n === 2 ? 'BO3 : deux manches gagnantes' : ''), R.w, () => {
+    if (!TOUR.on || net.started !== TOUR.base + '|r' + TOUR.round) return;
+    setWeapon(R.w); resetMatch('forest'); tourRoles();
+  });
+}
+// roulette des armes : la bande défile puis s'arrête sur l'arme tirée
+function showRoulette(title, match, spec, w, done) {
+  $('#rTitle').textContent = title; $('#rMatch').textContent = match; $('#rSpec').textContent = spec;
+  const list = $('#reelList'), reel = list.parentElement, n = 28, names = [];
+  for (let i = 0; i < n - 1; i++) names.push(wpnLabel(WPN_KEYS[Math.floor(Math.random() * WPN_KEYS.length)]));
+  names.push(wpnLabel(w));
+  list.innerHTML = names.map(x => `<div>${x}</div>`).join('');
+  list.style.transition = 'none'; list.style.transform = 'translateY(0)'; reel.classList.remove('done');
+  $('#roulette').hidden = false; sfx('tick');
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    list.style.transition = 'transform 2.4s cubic-bezier(.12,.75,.18,1)'; list.style.transform = `translateY(${-(n - 1) * 58}px)`;
+  }));
+  setTimeout(() => { reel.classList.add('done'); sfx('go'); }, 2450);
+  setTimeout(() => { $('#roulette').hidden = true; done(); }, 3300);
+}
+// rôles du duel : le spectateur est déjà « hors jeu » (invisible, intouchable) et regarde l'un des deux combattants
+function tourRoles() {
+  const spec = TOUR.n === 3 && mySlot === 2;
+  if (spec) me.taken = WIN;
+  for (const f of foes) if (f.slot === 2) f.s.taken = WIN;
+  specIdx = 0;
+  $('#spec').hidden = !spec;
+  ['#hp', '#cross', '#stick'].forEach(sel => $(sel).toggleAttribute('hidden', spec));
+  $('#score .side.me').hidden = spec;
+  $('#score .side.them').hidden = TOUR.n === 3 && FOES.opp.slot === 2;
+  $('#side2').hidden = !(TOUR.n === 3 && FOES.opp2.slot !== 2);
+  renderScore(); updateSpecTxt();
+}
+const fighters = () => foes.filter(f => f.slot !== 2);
+function viewOf() {
+  if (!(TOUR.on && TOUR.n === 3 && mySlot === 2 && phase !== 'idle')) return me;
+  const F = fighters(); return F.length ? F[specIdx % F.length].s : me;
+}
+function updateSpecTxt() { const F = fighters(); if (F.length) $('#specTxt').textContent = `Tu regardes ${F[specIdx % F.length].name}`; }
+// fin d'un duel : le gagnant reste, le perdant regarde ; deux duels gagnés de suite (ou deux manches à 2) = « … a gagné ! »
+function tourFinish() {
+  phase = 'over'; me.drawing = false; me.draw = 0;
+  const R = TOUR.cur, idOf = e => e === ME ? myId : e.peer;
+  const alive = [ME, ...foes].filter(e => (idOf(e) === R.a || idOf(e) === R.b) && !isDead(e));
+  const winner = alive.length === 1 ? idOf(alive[0]) : null;
+  tourAdvance(winner);
+  const mine = winner === myId, fought = myId === R.a || myId === R.b;
+  if (TOUR.big) { big(TOUR.title, 2.4, mine ? 'var(--teal)' : 'var(--ember)'); sfx(mine ? 'win' : 'go'); }
+  else if (!winner) big('Égalité', 1.4, 'var(--bone)');
+  else if (fought) { big(mine ? 'Victoire' : 'Défaite', 1.4, mine ? 'var(--teal)' : 'var(--crimson)'); sfx(mine ? 'win' : 'lose'); }
+  else big(`${tourName(winner)} gagne`, 1.4, 'var(--ember)');
+  const tb = TOUR.base, rr = TOUR.round;
+  setTimeout(() => { if (TOUR.on && TOUR.base === tb && TOUR.round === rr) startTourRound(); }, TOUR.big ? 2800 : 1900);
+}
+function tourAdvance(winner) {
+  const P = TOUR.cur; let next;
+  TOUR.round++;
+  if (!winner) { TOUR.title = 'Égalité : on rejoue'; TOUR.big = false; next = { a: P.a, b: P.b, s: P.s }; }
+  else if (TOUR.n === 2) {
+    const other = winner === P.a ? P.b : P.a;
+    TOUR.sc[winner] = (TOUR.sc[winner] || 0) + 1;
+    if (TOUR.sc[winner] >= 2) { TOUR.title = `${tourName(winner)} a gagné !`; TOUR.big = true; TOUR.sc = {}; }
+    else { TOUR.title = `${tourName(winner)} mène ${TOUR.sc[winner]} – ${TOUR.sc[other] || 0}`; TOUR.big = false; }
+    next = { a: P.a, b: P.b };
+  } else {
+    const loser = winner === P.a ? P.b : P.a;
+    if (TOUR.champ === winner) TOUR.wins++; else { TOUR.champ = winner; TOUR.wins = 1; }
+    if (TOUR.wins >= 2) { TOUR.title = `${tourName(winner)} a gagné !`; TOUR.big = true; TOUR.champ = null; TOUR.wins = 0; next = tourPair(); }
+    else { TOUR.title = `${tourName(winner)} gagne le duel`; TOUR.big = false; next = { a: winner, b: P.s, s: loser }; }
+  }
+  next.w = tourWeapon(); TOUR.cur = next;
 }
 function renderLobby() {
   if (mode !== 'online') return;
@@ -2775,7 +2943,7 @@ function renderLobby() {
   $('#youAre').innerHTML = `Tu es <b style="color:${PALETTE[mine.col].css}">${esc(mine.name)}</b> (${PALETTE[mine.col].label})`;
   $('#nameIn').placeholder = 'Joueur ' + mine.n;
   $('#rosterN').textContent = n + 1; $('#rosterN').classList.toggle('full', n === 2);
-  let s = !ok ? 'Seul pour l’instant : donne le chiffre aux autres.' : n === 1 ? 'À 2 : la partie part dès que vous êtes prêts tous les deux. Pour jouer à 3, attends le 3e joueur avant d’appuyer sur Prêt.' : (mapKey === 'japan' ? '3 joueurs : chacun pour soi, dans les jardins de temples.' : '3 joueurs : chacun pour soi, dans la forêt géante.');
+  let s = !ok ? 'Seul pour l’instant : donne le chiffre aux autres.' : gameMode === 'tour' ? (n === 1 ? 'Tournante à 2 : manches en BO3 (deux manches gagnantes), arme tirée à la roulette.' : 'Tournante à 3 : deux s’affrontent, le troisième regarde ; le gagnant reste. Deux duels gagnés de suite = victoire.') : n === 1 ? 'À 2 : la partie part dès que vous êtes prêts tous les deux. Pour jouer à 3, attends le 3e joueur avant d’appuyer sur Prêt.' : (mapKey === 'japan' ? 'Classique à 3 : chacun pour soi, dans les jardins de temples, avec un radar.' : 'Classique à 3 : chacun pour soi, dans la forêt géante, avec un radar.');
   if (ok && rdy && !net.rp) s = n === 1 ? 'Ton adversaire est prêt : appuie sur Prêt pour lancer à 2.' : rdy === n ? 'Les deux autres sont prêts : appuie sur Prêt pour lancer à 3.' : 'Un adversaire est prêt.';
   if (net.rp) s = ok ? `Prêt. On attend que ${n === 1 ? 'l’autre appuie' : 'les autres appuient'} aussi…` : 'Prêt. En attente d’un adversaire…';
   $('#lobbyStatus').textContent = s;
@@ -2807,6 +2975,8 @@ $('#code').addEventListener('keydown', e => { if (e.key === 'Enter') $('#btnJoin
 $('#btnBot').addEventListener('click', () => { audioInit(); menuNote(''); mode = 'bot'; resetMatch(); });
 $('#btnPractice').addEventListener('click', () => { audioInit(); menuNote(''); practicePrevMap = mapKey; mode = 'practice'; resetMatch('forest'); });
 $('#btnReady').addEventListener('click', pressReady);
+document.querySelectorAll('.modesel button').forEach(b => b.addEventListener('click', () => chooseGameMode(b.dataset.gm)));
+$('#specBtn').addEventListener('click', () => { specIdx++; updateSpecTxt(); });
 // pseudo facultatif : enregistré sur ce téléphone et envoyé aux autres
 $('#nameIn').value = myName;
 $('#nameIn').addEventListener('input', () => {
