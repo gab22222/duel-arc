@@ -706,7 +706,7 @@ const bigForestG = new T.Group(); scene.add(bigForestG); bigForestG.visible = fa
     O.push({ type: 'rock', x, z, r, cy: 0.15, sy: 0.75 });
   }
   // sol : zone de jeu plate, bosses au-delà
-  const gGeo = new T.PlaneGeometry(260, 260, 96, 96); gGeo.rotateX(-Math.PI / 2);
+  const gGeo = new T.PlaneGeometry(900, 900, 150, 150); gGeo.rotateX(-Math.PI / 2); // jusqu'à l'horizon (plus de brume pour cacher le bord)
   { const p = gGeo.attributes.position, col = [];
     for (let i = 0; i < p.count; i++) {
       const x = p.getX(i), z = p.getZ(i), inside = Math.abs(x) < F.xlim + 1 && Math.abs(z) < F.zlim + 1;
@@ -720,6 +720,13 @@ const bigForestG = new T.Group(); scene.add(bigForestG); bigForestG.visible = fa
   const spots = spawns.map(sp => ({ x: sp.x, z: sp.z, d: 6 }));
   const free = (x, z, d) => spots.every(sp => Math.hypot(sp.x - x, sp.z - z) > Math.max(d, sp.d));
   oakTree(0, 0, 1.1, true); spots.push({ x: 0, z: 0, d: 5 });
+  // sans brume, on cache les apparitions : au milieu de chaque ligne entre deux apparitions, un gros pin entre deux grands rochers
+  for (let i = 0; i < 3; i++) {
+    const a = i * 2 * Math.PI / 3 + Math.PI / 3, d = F.spawnR * Math.cos(Math.PI / 3), mx = d * Math.sin(a), mz = d * Math.cos(a), ux = Math.sin(a), uz = Math.cos(a);
+    pineTree(mx, mz, 1.0, true);
+    for (const k of [-1, 1]) rock(mx + ux * k * 2.9, mz + uz * k * 2.9, 1.7);
+    spots.push({ x: mx, z: mz, d: 7 });
+  }
   let n = 0, tries = 0;
   while (n < 380 && tries++ < 20000) {
     const x = rr(-F.xlim + 0.8, F.xlim - 0.8), z = rr(-F.zlim + 0.8, F.zlim - 0.8);
@@ -880,7 +887,7 @@ function updatePetals(dt) {
     box(x, z, 5, 5, y + 5, ry);
   }
   // sol : gravier ratissé clair dans le jardin, mousse par plaques, terre au-delà des murs d'enceinte
-  const gGeo = new T.PlaneGeometry(300, 300, 110, 110); gGeo.rotateX(-Math.PI / 2);
+  const gGeo = new T.PlaneGeometry(900, 900, 160, 160); gGeo.rotateX(-Math.PI / 2); // jusqu'à l'horizon
   { const p = gGeo.attributes.position, col = [];
     for (let i = 0; i < p.count; i++) {
       const x = p.getX(i), z = p.getZ(i), inside = Math.abs(x) < F.xlim + 2 && Math.abs(z) < F.zlim + 2;
@@ -997,8 +1004,9 @@ let practicePrevMap = null;
 const MAPLOOK = {
   canyon: { fog: 0xb4685a, near: 40, far: 200, hs: 0xffd8b8, hg: 0x3b2a44, sun: 0xffb27a, sunI: 0.95 },
   forest: { fog: 0x9fb2a3, near: 10, far: 72, hs: 0xe4f0d6, hg: 0x3a4630, sun: 0xfff0c8, sunI: 0.8 },
-  forestXL: { fog: 0x9fb2a3, near: 12, far: 70, hs: 0xe4f0d6, hg: 0x3a4630, sun: 0xfff0c8, sunI: 0.8 },
-  japan: { fog: 0xd8b9bb, near: 14, far: 78, hs: 0xffe6ee, hg: 0x4a3a40, sun: 0xffd2b0, sunI: 0.85 },
+  // grandes cartes du 1v1v1 : pas de brume sur la zone de jeu, seulement un voile très loin pour fondre l'horizon
+  forestXL: { fog: 0xb4c6b4, near: 160, far: 420, hs: 0xe4f0d6, hg: 0x3a4630, sun: 0xfff0c8, sunI: 0.8 },
+  japan: { fog: 0xe8c3b6, near: 160, far: 420, hs: 0xffe6ee, hg: 0x4a3a40, sun: 0xffd2b0, sunI: 0.85 },
 };
 function applyMap(k) {
   mapKey = k; map = MAPS[k]; obstacles = OBST[k];
