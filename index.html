@@ -427,15 +427,15 @@ const WPN = {
   grenade: { kind: 'grenade', aimT: 0.2, zoomX: null, rate: 1.2 },                   // lance-grenades : tir en cloche, explose au contact, dégâts selon la distance
   minigun: { kind: 'minigun', aimT: 0.5, zoomX: null, auto: true, rate: 0.1 },       // minigun : 0,5 s pour lancer les canons, puis une balle toutes les 0,1 s
   paintball: { kind: 'paintball', aimT: 0.15, zoomX: null, auto: true, rate: 0.2 },  // paintball : tir continu, billes comme une flèche d'arc, 30 HP corps / 60 HP tête
-  psniper: { kind: 'psniper', aimT: 0.3, zoomX: 5, rate: 1 },                        // sniper paintball : lunette x5, une bille par seconde (2 fois plus rapide qu'une flèche, avec traînée), tête = mort, corps = 75 HP
+  psniper: { kind: 'psniper', aimT: 0.3, zoomX: 5, rate: 1 },                        // sniper paintball : lunette x5, une bille par seconde (2 fois plus rapide qu'une flèche, sans chute), tête = mort, corps = 75 HP
 };
-// paintball : billes de peinture qui volent comme une flèche d'arc tirée à fond (même vitesse, même chute), couleurs fluo
+// paintball : billes de peinture à la vitesse d'une flèche d'arc tirée à fond, en ligne droite (sans chute), couleurs fluo
 const isPaint = k => k === 'paintball' || k === 'psniper'; // billes de peinture (paintball et sniper paintball)
 const PAINT_BALL = 3; // taille des billes tirées (x3 par rapport à une vraie bille de 17 mm grossie)
-const PAINT_V = VMAX, PAINT_G = G, PAINT_COLS = [0xffe81a, 0xff2f9a, 0x2fd8ff, 0x7dff36, 0xff7a1a];
+const PAINT_V = VMAX, PAINT_COLS = [0xffe81a, 0xff2f9a, 0x2fd8ff, 0x7dff36, 0xff7a1a];
 // minigun : balles traçantes à 110 m/s qui tombent un peu (gravité x0,35) ; 20 HP au corps, 60 HP à la tête
 const MINI_V = 110, MINI_G = G * 0.35;
-const shotG = k => isBullet(k) ? 0 : k === 'minigun' ? MINI_G : k === 'psniper' ? PAINT_G * 3 : isPaint(k) ? PAINT_G : G; // sniper paint : chute x3
+const shotG = k => isBullet(k) ? 0 : k === 'minigun' ? MINI_G : isPaint(k) ? 0 : G; // billes de peinture : en ligne droite, sans chute
 // grenade : 32 m/s, tombe comme une flèche ; à l'explosion, 300 HP jusqu'à 0,6 m du corps, puis de moins en moins jusqu'à 0 à 5 m
 const GREN_V = 32, GREN_R = 5;
 function grenadeDamage(d) { return d <= 0.6 ? WIN : Math.max(0, WIN * (1 - (d - 0.6) / (GREN_R - 0.6))); }
@@ -2292,7 +2292,7 @@ function spawnArrow(owner, p, v, id = 0, kind = 'arrow', noSmoke = false) {
   const m = makeProjectile(owner, kind, true); m.position.copy(p); scene.add(m);
   // g : gravité propre au projectile (la balle n'en a pas) ; tail : distance de la pointe à l'arrière, d'où sort la fumée
   // kill : le carreau d'arbalète tue d'un coup, où qu'il touche
-  const a = { owner, id, kind, g: shotG(kind), tail: bullet || kind === 'grenade' || kind === 'minigun' || isPaint(kind) ? 0.05 : kind === 'bolt' ? 0.9 * BOLT_LEN : 0.9, kill: kind === 'bolt' || kind === 'barrett' || kind === 'beer', sid: ++arrowSerial, p, v, m, flying: true, pending: 0, life: 0, botSeen: false, o0: p.clone(), noSmoke: noSmoke || kind === 'beer' || kind === 'minigun' || kind === 'paintball', maxD: kind === 'shotgun' ? SG_RANGE : 0 };
+  const a = { owner, id, kind, g: shotG(kind), tail: bullet || kind === 'grenade' || kind === 'minigun' || isPaint(kind) ? 0.05 : kind === 'bolt' ? 0.9 * BOLT_LEN : 0.9, kill: kind === 'bolt' || kind === 'barrett' || kind === 'beer', sid: ++arrowSerial, p, v, m, flying: true, pending: 0, life: 0, botSeen: false, o0: p.clone(), noSmoke: noSmoke || kind === 'beer' || kind === 'minigun' || isPaint(kind), maxD: kind === 'shotgun' ? SG_RANGE : 0 };
   orient(a); arrows.push(a);
   if (isPaint(kind)) { a.col = PAINT_COLS[id ? id % PAINT_COLS.length : Math.floor(Math.random() * PAINT_COLS.length)]; m.material.color.setHex(a.col); }
   if (owner !== 'me' && !bullet && !isPaint(kind)) sfx('whoosh', 0.7);
