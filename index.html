@@ -427,7 +427,7 @@ const WPN = {
   grenade: { kind: 'grenade', aimT: 0.2, zoomX: null, rate: 1.2 },                   // lance-grenades : tir en cloche, explose au contact, dégâts selon la distance
   minigun: { kind: 'minigun', aimT: 0.5, zoomX: null, auto: true, rate: 0.1 },       // minigun : 0,5 s pour lancer les canons, puis une balle toutes les 0,1 s
   paintball: { kind: 'paintball', aimT: 0.15, zoomX: null, auto: true, rate: 0.2 },  // paintball : tir continu, billes comme une flèche d'arc, 30 HP corps / 60 HP tête
-  psniper: { kind: 'psniper', aimT: 0.3, zoomX: 5, rate: 1 },                        // sniper paintball : lunette x5, une bille par seconde, tête = mort, corps = 75 HP
+  psniper: { kind: 'psniper', aimT: 0.3, zoomX: 5, rate: 1 },                        // sniper paintball : lunette x5, une bille par seconde (2 fois plus rapide qu'une flèche, avec traînée), tête = mort, corps = 75 HP
 };
 // paintball : billes de peinture qui volent comme une flèche d'arc tirée à fond (même vitesse, même chute), couleurs fluo
 const isPaint = k => k === 'paintball' || k === 'psniper'; // billes de peinture (paintball et sniper paintball)
@@ -2036,7 +2036,7 @@ function flightEnd(o, v, g = G) {
   return simP;
 }
 // vitesse et gravité d'un projectile : la balle file droit, le carreau vole comme une flèche tirée à fond
-function shotSpeed(kind, draw) { return isBullet(kind) ? BULLET_V : kind === 'bolt' ? VMAX : kind === 'beer' ? 16 + 14 * draw : kind === 'grenade' ? GREN_V : kind === 'minigun' ? MINI_V : isPaint(kind) ? PAINT_V : VMIN + (VMAX - VMIN) * draw; }
+function shotSpeed(kind, draw) { return isBullet(kind) ? BULLET_V : kind === 'bolt' ? VMAX : kind === 'beer' ? 16 + 14 * draw : kind === 'grenade' ? GREN_V : kind === 'minigun' ? MINI_V : kind === 'psniper' ? PAINT_V * 2 : isPaint(kind) ? PAINT_V : VMIN + (VMAX - VMIN) * draw; }
 function shotSfx(kind, sil, v = 1) { sfx(kind === 'pistol' ? (sil ? 'psil' : 'pbang') : kind === 'revolver' ? 'rbang' : kind === 'deagle' ? 'dbang' : kind === 'vector' ? 'vbang' : kind === 'm4' ? 'mbang' : kind === 'barrett' ? 'fbang' : kind === 'shotgun' ? 'sbang' : kind === 'beer' ? 'whoosh' : kind === 'grenade' ? 'thoomp' : kind === 'minigun' ? 'mini' : kind === 'paintball' ? 'paint' : kind === 'psniper' ? 'psnip' : kind === 'bullet' ? 'bang' : 'twang', v); }
 function fire() {
   const kind = curWpn().kind, g = shotG(kind);
@@ -2291,7 +2291,7 @@ function spawnArrow(owner, p, v, id = 0, kind = 'arrow', noSmoke = false) {
   const m = makeProjectile(owner, kind, true); m.position.copy(p); scene.add(m);
   // g : gravité propre au projectile (la balle n'en a pas) ; tail : distance de la pointe à l'arrière, d'où sort la fumée
   // kill : le carreau d'arbalète tue d'un coup, où qu'il touche
-  const a = { owner, id, kind, g: shotG(kind), tail: bullet || kind === 'grenade' || kind === 'minigun' || isPaint(kind) ? 0.05 : kind === 'bolt' ? 0.9 * BOLT_LEN : 0.9, kill: kind === 'bolt' || kind === 'barrett' || kind === 'beer', sid: ++arrowSerial, p, v, m, flying: true, pending: 0, life: 0, botSeen: false, o0: p.clone(), noSmoke: noSmoke || kind === 'beer' || kind === 'minigun' || isPaint(kind), maxD: kind === 'shotgun' ? SG_RANGE : 0 };
+  const a = { owner, id, kind, g: shotG(kind), tail: bullet || kind === 'grenade' || kind === 'minigun' || isPaint(kind) ? 0.05 : kind === 'bolt' ? 0.9 * BOLT_LEN : 0.9, kill: kind === 'bolt' || kind === 'barrett' || kind === 'beer', sid: ++arrowSerial, p, v, m, flying: true, pending: 0, life: 0, botSeen: false, o0: p.clone(), noSmoke: noSmoke || kind === 'beer' || kind === 'minigun' || kind === 'paintball', maxD: kind === 'shotgun' ? SG_RANGE : 0 };
   orient(a); arrows.push(a);
   if (isPaint(kind)) { a.col = PAINT_COLS[id ? id % PAINT_COLS.length : Math.floor(Math.random() * PAINT_COLS.length)]; m.material.color.setHex(a.col); }
   if (owner !== 'me' && !bullet && !isPaint(kind)) sfx('whoosh', 0.7);
@@ -2361,7 +2361,7 @@ function pierceDepth(p, dir, model, head, len = 0.9) {
 function plantInArcher(a, model, head) {
   stopArrow(a); a.pending = 0;
   if (isBullet(a.kind) || a.kind === 'minigun') { a.m.visible = false; a.gone = true; a.part = 'r'; tintSmoke(a); return; } // la balle ne reste pas dans le corps
-  if (isPaint(a.kind)) { a.m.visible = false; a.gone = true; a.part = 'r'; paintAt(a.p, a.col); sfx('splat', 0.8); return; } // la bille éclate sur le joueur
+  if (isPaint(a.kind)) { a.m.visible = false; a.gone = true; a.part = 'r'; tintSmoke(a); paintAt(a.p, a.col); sfx('splat', 0.8); return; } // la bille éclate sur le joueur
   if (a.kind === 'beer') { shatter(a); a.part = 'r'; return; } // la bouteille éclate sur le joueur
   a.m.visible = true;
   orient(a); tmpV.copy(a.v).normalize();
