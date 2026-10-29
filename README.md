@@ -6,7 +6,7 @@ Duel à l'arc en 3D pour deux téléphones. Les flèches ont un temps de vol et 
 
 Deux cartes :
 - **Canyon** : face à face sur deux piliers, on ne peut que se décaler sur le côté pour esquiver.
-- **Forêt** : déplacements libres avec un joystick, arbres et rochers pour se cacher ou foncer sur l'adversaire. On y choisit son arme :
+- **Forêt** : déplacements libres avec un joystick, arbres et rochers pour se cacher ou foncer sur l'adversaire. La zone de jeu va jusqu'aux arbres de la lisière, qui sont solides (environ 58 × 82 m), et les deux joueurs apparaissent à 51 m l'un de l'autre. La carte est identique tournée de 180° (chaque joueur se voit au sud). Un mini radar montre l'adversaire toutes les 5 s. On y choisit son arme :
   - **Arc** (par défaut).
   - **Arbalète** avec lunette x1,5 : ses carreaux tombent et volent comme une flèche tirée à fond, et tuent d'un coup où qu'ils touchent.
   - **Carabine** de chasse en bois avec lunette x3 : les balles ne tombent pas et arrivent instantanément.

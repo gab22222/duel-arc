@@ -403,7 +403,7 @@ const SENS = 0.0028;
 try { ['duelarc-aim', 'duelarc-cam', 'duelarc-tint'].forEach(k => localStorage.removeItem(k)); } catch (e) {} // anciens choix du menu
 const MAPS = {
   canyon: { key: 'canyon', spawnZ: 12, lateral: true, xlim: 2.1, zlim: 12, maxv: 1.8, acc: 15, yawLim: 0.5 },
-  forest: { key: 'forest', spawnZ: 17, lateral: false, xlim: 14.5, zlim: 20.5, maxv: 3.1, acc: 22, yawLim: Infinity },
+  forest: { key: 'forest', spawnZ: 25.5, lateral: false, xlim: 29, zlim: 41, maxv: 3.1, acc: 22, yawLim: Infinity }, // zone x2 (les arbres de la lisière comptent), apparitions à 51 m
   // 1v1v1 : forêt géante de 124 m de côté (plus de 3 fois plus grande dans chaque direction), apparitions à 94 m les unes des autres
   forestXL: { key: 'forestXL', spawnZ: 17, lateral: false, xlim: 62, zlim: 62, maxv: 3.1, acc: 22, yawLim: Infinity, big: true, spawnR: 54 },
   // 1v1v1 : jardins de temples japonais de 140 m de côté ; chacun apparaît dans une cour fermée, porte tournée vers l'extérieur
@@ -595,7 +595,7 @@ const canyonG = new T.Group(); scene.add(canyonG);
 // ---------- map 2 : forêt (symétrique par rotation de 180° pour que les deux joueurs aient la même carte)
 const forestG = new T.Group(); scene.add(forestG); forestG.visible = false;
 {
-  const F = MAPS.forest;
+  const F = MAPS.forest, G0 = { xlim: 14.5, zlim: 20.5, spawnZ: 17 }; // G0 : dimensions d'origine, pour garder la même disposition des arbres
   const R = mulberry32(20261027);
   const rr = (a, b) => a + R() * (b - a);
   const bark = std(0x5a3e2b), bark2 = std(0x6e4c33), pine = std(0x2f5a3c), pine2 = std(0x3d6b44), leaf = std(0x5d7f3a), rockM = std(0x7d8279), mossM = std(0x56703f);
@@ -611,7 +611,7 @@ const forestG = new T.Group(); scene.add(forestG); forestG.visible = false;
     gGeo.setAttribute('color', new T.Float32BufferAttribute(col, 3)); gGeo.computeVertexNormals(); }
   forestG.add(new T.Mesh(gGeo, new T.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 1 })));
   // un sentier clair entre les deux camps
-  const path = new T.Mesh(new T.PlaneGeometry(2.2, 2 * F.zlim + 4, 1, 8), new T.MeshStandardMaterial({ color: 0x8a7a55, roughness: 1, transparent: true, opacity: .45 }));
+  const path = new T.Mesh(new T.PlaneGeometry(2.2, 2 * F.spawnZ + 6, 1, 8), new T.MeshStandardMaterial({ color: 0x8a7a55, roughness: 1, transparent: true, opacity: .45 }));
   path.rotation.x = -Math.PI / 2; path.position.y = 0.01; forestG.add(path);
 
   function pineTree(x, z, r, solid) {
@@ -626,6 +626,7 @@ const forestG = new T.Group(); scene.add(forestG); forestG.visible = false;
     }
     forestG.add(g);
     if (solid) OBST.forest.push({ type: 'trunk', x, z, r: r * 1.05, h, tris: trunkTris(trunk.geometry, h, x, z) });
+    return g;
   }
   function oakTree(x, z, r, solid) {
     const g = new T.Group(); g.position.set(x, 0, z);
@@ -638,6 +639,7 @@ const forestG = new T.Group(); scene.add(forestG); forestG.visible = false;
     }
     forestG.add(g);
     if (solid) OBST.forest.push({ type: 'trunk', x, z, r: r * 1.15, h, tris: trunkTris(trunk.geometry, h, x, z) });
+    return g;
   }
   function rock(x, z, r, rot) {
     const m = new T.Mesh(rough(new T.DodecahedronGeometry(r, 1), r * 0.18), rockM);
@@ -649,21 +651,25 @@ const forestG = new T.Group(); scene.add(forestG); forestG.visible = false;
   // grand chêne au centre
   oakTree(0, 0, 1.0, true);
   const spots = [{ x: 0, z: 0, d: 4 }];
-  const free = (x, z, d) => Math.hypot(x, z - F.spawnZ) > 4 && Math.hypot(x, z + F.spawnZ) > 4 && spots.every(s => Math.hypot(s.x - x, s.z - z) > Math.max(d, s.d));
+  const free = (x, z, d) => Math.hypot(x, z - G0.spawnZ) > 4 && Math.hypot(x, z + G0.spawnZ) > 4 && spots.every(s => Math.hypot(s.x - x, s.z - z) > Math.max(d, s.d));
   let tries = 0, pairs = 0;
   while (pairs < 16 && tries++ < 4000) {
-    const x = rr(-F.xlim + 0.8, F.xlim - 0.8), z = rr(-F.zlim + 0.8, F.zlim - 0.8);
+    const x = rr(-G0.xlim + 0.8, G0.xlim - 0.8), z = rr(-G0.zlim + 0.8, G0.zlim - 0.8);
     const isRock = R() < 0.3, d = isRock ? 3.2 : 3.6;
     if (Math.hypot(x, z) < 2 || !free(x, z, d) || !free(-x, -z, d)) continue;
     spots.push({ x, z, d }, { x: -x, z: -z, d }); pairs++;
     if (isRock) { const r = rr(0.85, 1.25), rot = rr(0, 6); rock(x, z, r, rot); rock(-x, -z, r, rot + Math.PI); }
     else { const r = rr(0.4, 0.8), oak = R() < 0.35; (oak ? oakTree : pineTree)(x, z, r, true); (oak ? oakTree : pineTree)(-x, -z, r, true); }
   }
-  // lisière décorative (hors zone de jeu)
+  // lisière : mêmes arbres qu'avant, mais maintenant solides (la zone de jeu s'étend jusqu'à eux)
+  const ring = [];
   for (let i = 0; i < 140; i++) {
     const x = rr(-60, 60), z = rr(-70, 70);
-    if (Math.abs(x) < F.xlim + 2.5 && Math.abs(z) < F.zlim + 2.5) continue;
-    (R() < 0.75 ? pineTree : oakTree)(x, z, rr(0.4, 0.9), false);
+    if (Math.abs(x) < G0.xlim + 2.5 && Math.abs(z) < G0.zlim + 2.5) continue;
+    const oak = R() >= 0.75, r = rr(0.4, 0.9), nearSpawn = Math.hypot(x, Math.abs(z) - F.spawnZ) < 3.5;
+    const g = (oak ? oakTree : pineTree)(x, z, r, !nearSpawn);
+    if (nearSpawn) forestG.remove(g); // (seul changement : pas d'arbre sur les nouvelles apparitions)
+    else ring.push({ x, z, r, oak });
   }
   // herbes
   const grass = new T.InstancedMesh(new T.ConeGeometry(0.07, 0.38, 3), std(0x6d8f3f), 700);
@@ -673,7 +679,16 @@ const forestG = new T.Group(); scene.add(forestG); forestG.visible = false;
     m4.compose(new T.Vector3(rr(-F.xlim - 3, F.xlim + 3), 0.15, rr(-F.zlim - 3, F.zlim + 3)), q, sc); grass.setMatrixAt(i, m4);
   }
   forestG.add(grass);
+  // en duel chacun se voit au sud (vue en miroir) : la carte doit être la même tournée de 180°. Dans la zone de jeu,
+  // chaque arbre de la lisière reçoit son jumeau à l'opposé (s'il n'en a pas déjà un tout près)
+  for (const t of ring) {
+    if (Math.abs(t.x) > F.xlim + 3 || Math.abs(t.z) > F.zlim + 3) continue;
+    if (ring.some(u => Math.hypot(u.x + t.x, u.z + t.z) < 1.5) || Math.hypot(t.x, Math.abs(t.z) - F.spawnZ) < 3.5) continue;
+    (t.oak ? oakTree : pineTree)(-t.x, -t.z, t.r, true);
+  }
+  gridObstacles(OBST.forest);
 }
+
 // ---------- map 3 : forêt géante du 1v1v1 (même graine chez tous les joueurs : mêmes arbres au même endroit).
 // Plusieurs centaines d'arbres et de rochers : tout est fusionné en un objet par matière pour rester fluide sur téléphone.
 const bigForestG = new T.Group(); scene.add(bigForestG); bigForestG.visible = false;
@@ -2536,13 +2551,13 @@ function updateCamera(dt) {
 const ringEl = $('#ring'), knobEl = $('#knob');
 const scopeEl = $('#scope'), crossEl = $('#cross');
 // radar du 1v1v1 : orienté vers où je regarde, je suis au centre ; la position des deux autres est relevée toutes les 5 s
-const radarEl = $('#radar'), radarG = radarEl.getContext('2d'), RADAR_RANGE = 90, RADAR_EVERY = 5;
+const radarEl = $('#radar'), radarG = radarEl.getContext('2d'), RADAR_EVERY = 5;
 let radarSnap = [], radarAt = -99;
 function drawRadar() {
-  const on = !!mode && trio() && map.big && (phase === 'countdown' || phase === 'fight' || phase === 'ending');
+  const on = !!mode && mode !== 'practice' && !map.lateral && !(TOUR.on && TOUR.n === 3 && mySlot === 2) && (phase === 'countdown' || phase === 'fight' || phase === 'ending'); // radar en 1v1 (forêt) et à 3 ; pas pour le spectateur
   radarEl.hidden = !on; if (!on) return;
   if (t - radarAt >= RADAR_EVERY || t < radarAt) { radarAt = t; radarSnap = foes.map(f => ({ x: f.s.x, z: f.s.z, dead: isDead(f), col: PALETTE[colorOf[f.key]].css })); }
-  const g = radarG, W = 240, C = W / 2, Rpx = C - 6, k = Rpx / RADAR_RANGE;
+  const g = radarG, W = 240, C = W / 2, Rpx = C - 6, k = Rpx / (map.big ? 90 : 60); // portée : 90 m sur les grandes cartes, 60 m dans la forêt
   const fx = -Math.sin(me.yaw), fz = -Math.cos(me.yaw), rx = Math.cos(me.yaw), rz = -Math.sin(me.yaw);
   const toScreen = (x, z) => { const dx = x - me.x, dz = z - me.z; return [C + (dx * rx + dz * rz) * k, C - (dx * fx + dz * fz) * k]; };
   g.clearRect(0, 0, W, W);
