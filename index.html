@@ -48,7 +48,16 @@ body{position:fixed;inset:0;touch-action:none;-webkit-user-select:none;user-sele
 #spec{position:fixed;z-index:6;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 18px);transform:translateX(-50%);display:flex;align-items:center;gap:10px;padding:8px 8px 8px 14px;border-radius:14px;background:rgba(14,12,22,.7);border:1px solid var(--line);font-size:14px;color:var(--bone);white-space:nowrap}
 #spec[hidden]{display:none}
 #spec .btn{padding:8px 12px;font-size:14px}
-#lobby .modesel button small{font-size:11px}
+#lobby .modesel{grid-template-columns:repeat(3,1fr)}
+#lobby .modesel button{padding:7px 6px}
+#lobby .modesel button small{font-size:10.5px}
+#wpick{inset:0;display:grid;place-items:center;z-index:5;background:rgba(10,8,14,.35);pointer-events:auto}
+#wpick[hidden]{display:none}
+.wgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.wgrid button{font:700 14px var(--body);padding:10px 4px;border-radius:10px;border:1px solid var(--line);background:rgba(239,230,214,.07);color:var(--bone);cursor:pointer;touch-action:manipulation}
+.wgrid button:disabled{opacity:.4;cursor:default}
+.wgrid button.chosen{background:var(--ember);color:#24140a;border-color:transparent;opacity:1}
+.wwho{font-size:15px;color:var(--ember);font-weight:700}
 #radar{top:calc(env(safe-area-inset-top,0px) + 54px);right:12px;width:120px;height:120px;border-radius:50%;pointer-events:none}
 #score{top:calc(env(safe-area-inset-top,0px) + 10px);left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:14px;padding:6px 16px;background:rgba(14,12,22,.55);border:1px solid var(--line);border-radius:999px;font-family:var(--display);font-weight:700;letter-spacing:.06em;font-size:15px;white-space:nowrap}
 .side{display:flex;align-items:center;gap:8px}
@@ -209,6 +218,13 @@ p{margin:0}
   <div class="wresult" id="wResult"></div>
   <div class="rspec" id="rSpec"></div>
 </div></div>
+<div class="hud" id="wpick" hidden><div class="rbox">
+  <div class="reyebrow" id="pTitle">Tournante</div>
+  <div class="rmatch" id="pMatch"></div>
+  <div class="wwho" id="pWho"></div>
+  <div class="wgrid" id="pGrid"></div>
+  <div class="rspec" id="pSpec"></div>
+</div></div>
 <div id="spec" hidden><span id="specTxt">Tu regardes</span><button class="btn" id="specBtn">Changer de vue</button></div>
 <button id="quit" aria-label="Quitter la partie" hidden>✕</button>
 <button id="sil" aria-pressed="false" hidden>Silencieux</button>
@@ -297,7 +313,8 @@ p{margin:0}
     <div class="codebig" id="lobbyCode">-</div>
     <p class="sub">Tes amis ouvrent la même page, tapent ce chiffre et appuient sur Rejoindre une partie (jusqu'à 3 joueurs).</p>
     <div class="seg modesel" role="group" aria-label="Mode de jeu">
-      <button data-gm="tour" aria-pressed="true">Tournante<small>duels à la suite, arme tirée à la roulette</small></button>
+      <button data-gm="tour" aria-pressed="true">Tournante<small>l'arme choisie à tour de rôle</small></button>
+      <button data-gm="roul" aria-pressed="false">Tournante roulette<small>l'arme tirée à la roue</small></button>
       <button data-gm="classic" aria-pressed="false">Classique<small>carte et arme au choix</small></button>
     </div>
     <div class="seg mapsel" role="group" aria-label="Carte">
@@ -1037,7 +1054,7 @@ function applyMap(k) {
   if (!map.big) try { localStorage.setItem('duelarc-map', k); } catch (e) {}
   const shown = k === 'forestXL' ? 'forest' : k; // la forêt géante (1v1v1) apparaît comme « Forêt » dans les menus
   document.querySelectorAll('.mapsel button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.map === shown)));
-  document.querySelectorAll('.wpnrow').forEach(r => { r.hidden = (map.lateral && !r.classList.contains('always')) || (gameMode === 'tour' && !!r.closest('#lobby')); }); // le tir libre est toujours en forêt
+  document.querySelectorAll('.wpnrow').forEach(r => { r.hidden = (map.lateral && !r.classList.contains('always')) || (gameMode !== 'classic' && !!r.closest('#lobby')); }); // le tir libre est toujours en forêt
   dressArchers();
 }
 const curW = () => map.lateral ? 'bow' : weapon;
@@ -1840,7 +1857,7 @@ let nPlayers = 2, mySlot = 0;
 // celui qui gagne deux duels de suite a gagné, puis on continue de la même façon.
 // À 2 : manches en BO3. Chaque duel commence par une roulette qui tire l'arme au hasard.
 // Tous les tirages viennent d'une graine commune (les jetons des joueurs) : chaque téléphone calcule la même chose.
-const TOUR = { on: false, base: '', ids: [], n: 0, round: 0, champ: null, wins: 0, sc: {}, title: '', big: false, cur: null };
+const TOUR = { on: false, mode: 'tour', order: [], waitPick: false, pickT: 0, base: '', ids: [], n: 0, round: 0, champ: null, wins: 0, sc: {}, title: '', big: false, cur: null };
 let specIdx = 0;
 const trio = () => nPlayers === 3;
 const foeByPeer = id => foes.find(f => f.peer === id);
@@ -2710,10 +2727,10 @@ let joining = false;
 // mode de jeu entre amis : « tournante » (par défaut) ou « classique » ; choisi dans le salon, synchronisé comme la carte
 let gameMode = 'tour';
 function setGameMode(g) {
-  gameMode = g === 'classic' ? 'classic' : 'tour';
+  gameMode = g === 'classic' || g === 'roul' ? g : 'tour'; // tournante (choix de l'arme, par défaut), tournante roulette, classique
   document.querySelectorAll('.modesel button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.gm === gameMode)));
-  const L = $('#lobby .mapsel'); if (L) L.hidden = gameMode === 'tour';
-  document.querySelectorAll('#lobby .wpnrow').forEach(r => { r.hidden = gameMode === 'tour' || map.lateral; });
+  const L = $('#lobby .mapsel'); if (L) L.hidden = gameMode !== 'classic';
+  document.querySelectorAll('#lobby .wpnrow').forEach(r => { r.hidden = gameMode !== 'classic' || map.lateral; });
 }
 function chooseGameMode(g) {
   if (mode !== 'online' || !(phase === 'idle' || phase === 'over')) return;
@@ -2750,7 +2767,7 @@ async function enterRoom(code, creator) {
   ];
   myJoin = Date.now();
   setGameMode('tour'); TOUR.on = false;
-  pres({ rdy: false, tok: '', started: '', dealt: {}, mapK: mapKey, wpn: weapon, mapV, j: myJoin, nm: myName, gm: gameMode, tourBase: '' });
+  pres({ rdy: false, tok: '', started: '', dealt: {}, mapK: mapKey, wpn: weapon, mapV, j: myJoin, nm: myName, gm: gameMode, tourBase: '', tourMode: '', pick: null });
   phase = 'idle';
   $('#lobbyCode').textContent = code;
   renderLobby(); showPanel('#lobby');
@@ -2784,7 +2801,7 @@ function onPeers(peers) {
     syncLobbyChoice();
     for (const x of peersNow) { const f = foeByPeer(x.peer); if (f && inGame()) applyOppPres(x.presence, f); }
   }
-  renderLobby(); renderOverStatus(); evaluateReady();
+  renderLobby(); renderOverStatus(); evaluateReady(); checkPick();
 }
 // carte et arme choisies dans le salon : le dernier qui change l'emporte (à égalité, le plus petit identifiant)
 function syncLobbyChoice() {
@@ -2792,7 +2809,7 @@ function syncLobbyChoice() {
   for (const x of peersNow) {
     const p = x.presence; if (!MAPS[p.mapK]) continue;
     const v = num(p.mapV, 0), w = wpnKey(p.wpn);
-    const g = p.gm === 'classic' ? 'classic' : 'tour';
+    const g = p.gm === 'classic' || p.gm === 'roul' ? p.gm : 'tour';
     if (v > mapV || (v === mapV && (p.mapK !== mapKey || w !== weapon || g !== gameMode) && x.peer < myId)) { mapV = v; setWeapon(w); applyMap(p.mapK); setGameMode(g); }
   }
 }
@@ -2882,12 +2899,12 @@ function evaluateReady() {
   const ps = peersNow.map(x => x.presence);
   // un autre a déjà lancé une partie qui m'inclut
   const st = ps.find(p => typeof p.started === 'string' && p.started.split('|').includes(net.tok));
-  if (st) return st.tourBase && st.started.startsWith(st.tourBase + '|r') ? startTour(st.tourBase) : startOnline(st.started, MAPS[st.smap] ? st.smap : mapKey, st.swpn ? wpnKey(st.swpn) : weapon);
+  if (st) return st.tourBase && st.started.startsWith(st.tourBase + '|r') ? startTour(st.tourBase, st.tourMode) : startOnline(st.started, MAPS[st.smap] ? st.smap : mapKey, st.swpn ? wpnKey(st.swpn) : weapon);
   // tout le monde est prêt : la carte et l'arme sont celles du joueur au plus petit jeton (même choix sur chaque téléphone)
   if (ps.every(p => p.rdy === true && okTok(p.tok))) {
     const toks = [net.tok, ...ps.map(p => p.tok)].sort();
     const lead = toks[0] === net.tok ? { mapK: mapKey, wpn: weapon, gm: gameMode } : ps.find(p => p.tok === toks[0]);
-    if (lead.gm !== 'classic') return startTour(toks.join('|'));
+    if (lead.gm !== 'classic') return startTour(toks.join('|'), lead.gm === 'roul' ? 'roul' : 'tour');
     const k = toks.length === 3 ? (lead.mapK === 'japan' ? 'japan' : 'forestXL') : lead.mapK === 'canyon' ? 'canyon' : 'forest'; // à 3 : forêt géante ou Japon
     startOnline(toks.join('|'), k, wpnKey(lead.wpn));
   }
@@ -2906,7 +2923,7 @@ function startOnline(id, k, w) {
   pres({ rdy: false, started: id, smap: k, swpn: weapon, dealt: {}, tourBase: '' });
   resetMatch(k);
 }
-function tourStop() { TOUR.on = false; $('#roulette').hidden = true; $('#spec').hidden = true; }
+function tourStop() { TOUR.on = false; TOUR.waitPick = false; clearTimeout(TOUR.pickT); $('#roulette').hidden = true; $('#wpick').hidden = true; $('#spec').hidden = true; }
 const hashStr = str => { let h = 2166136261; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; };
 const tourRng = k => mulberry32(hashStr(TOUR.base + '#' + TOUR.round + '#' + k));
 const tourName = id => (lobbyPlayers().find(x => x.id === id) || {}).name || 'Joueur';
@@ -2918,11 +2935,13 @@ function tourPair() {
   for (let i = ids.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [ids[i], ids[j]] = [ids[j], ids[i]]; }
   return TOUR.n === 3 ? { a: ids[0], b: ids[1], s: ids[2] } : { a: ids[0], b: ids[1] };
 }
-function startTour(base) {
+function startTour(base, gm) {
   // participants dans l'ordre des jetons (même ordre partout)
   const ids = base.split('|').map(tk => tk === net.tok ? myId : (peersNow.find(x => x.presence.tok === tk) || {}).peer).filter(Boolean);
   if (ids.length < 2) return;
-  Object.assign(TOUR, { on: true, base, ids, n: ids.length, round: 0, champ: null, wins: 0, sc: {}, title: '', big: false });
+  Object.assign(TOUR, { on: true, mode: gm === 'roul' ? 'roul' : 'tour', base, ids, n: ids.length, round: 0, champ: null, wins: 0, sc: {}, title: '', big: false });
+  // qui choisit l'arme : à tour de rôle dans l'ordre du salon (Joueur 1 à la manche 1, Joueur 2 à la manche 2…)
+  TOUR.order = lobbyPlayers().map(x => x.id).filter(id => ids.includes(id));
   TOUR.cur = tourPair(); TOUR.cur.w = tourWeapon();
   startTourRound();
 }
@@ -2934,15 +2953,55 @@ function startTourRound() {
   foes = [FOES.opp, FOES.opp2].slice(0, nPlayers - 1);
   foes.forEach((f, i) => { f.peer = others[i]; f.slot = ids.indexOf(others[i]); });
   dealt = {};
-  pres({ rdy: false, started: net.started, tourBase: TOUR.base, smap: 'forest', swpn: R.w, dealt: {} });
-  // roulette, puis le duel
+  pres({ rdy: false, started: net.started, tourBase: TOUR.base, tourMode: TOUR.mode, smap: 'forest', swpn: R.w, dealt: {} });
   phase = 'idle'; clearArrows(); setPlayingHud(false); showPanel(null); applyMap('forest'); setWeapon(R.w);
   const vs = `${tourName(R.a)} contre ${tourName(R.b)}`;
   const score = TOUR.n === 2 ? ` · ${TOUR.sc[R.a] || 0} – ${TOUR.sc[R.b] || 0}` : '';
+  if (TOUR.mode === 'tour') return showWeaponPick(vs + score, R); // tournante : un joueur choisit l'arme
+  // tournante roulette : la roue, puis le duel
   showRoulette(TOUR.round ? (TOUR.title || 'Duel suivant') : 'Tournante', vs + score, R.s ? `Spectateur : ${tourName(R.s)}` : (TOUR.n === 2 ? 'BO3 : deux manches gagnantes' : ''), R.w, () => {
     if (!TOUR.on || net.started !== TOUR.base + '|r' + TOUR.round) return;
     setWeapon(R.w); resetMatch('forest'); tourRoles();
   });
+}
+// tournante (choix) : le joueur dont c'est le tour choisit l'arme ; les autres attendent son choix (envoyé dans sa présence).
+// Sans choix au bout de 25 s, une arme est tirée au hasard pour lui.
+function chooserOf() { return TOUR.order[TOUR.round % TOUR.order.length] || TOUR.ids[0]; }
+function showWeaponPick(match, R) {
+  const who = chooserOf(), mine = who === myId, rid = net.started;
+  $('#pTitle').textContent = TOUR.round ? (TOUR.title || 'Duel suivant') : 'Tournante';
+  $('#pMatch').textContent = `Manche ${TOUR.round + 1} · ${match}`;
+  $('#pWho').textContent = mine ? 'À toi de choisir l’arme' : `${tourName(who)} choisit l’arme…`;
+  $('#pSpec').textContent = R.s ? `Spectateur : ${tourName(R.s)}` : (TOUR.n === 2 ? 'BO3 : deux manches gagnantes' : '');
+  $('#pGrid').innerHTML = WPN_KEYS.map(k => `<button data-w="${k}"${mine ? '' : ' disabled'}>${wpnLabel(k)}</button>`).join('');
+  if (mine) $('#pGrid').querySelectorAll('button').forEach(b => b.addEventListener('click', () => pickWeapon(rid, b.dataset.w)));
+  $('#wpick').hidden = false; TOUR.waitPick = true; sfx('tick');
+  if (mine) { clearTimeout(TOUR.pickT); TOUR.pickT = setTimeout(() => { if (TOUR.waitPick && net.started === rid) pickWeapon(rid, WPN_KEYS[Math.floor(Math.random() * WPN_KEYS.length)]); }, 25000); }
+  checkPick();
+}
+function pickWeapon(rid, w) {
+  if (!TOUR.waitPick || net.started !== rid) return;
+  pres({ pick: { id: rid, w } }); weaponChosen(w);
+}
+// un choix est arrivé (le mien, ou celui du joueur dont c'est le tour) : on le montre, puis le duel commence
+function checkPick() {
+  if (!TOUR.on || !TOUR.waitPick) return;
+  const who = chooserOf(); if (who === myId) return;
+  const x = peersNow.find(p => p.peer === who), pk = x && x.presence.pick;
+  if (pk && pk.id === net.started && WPN[pk.w]) weaponChosen(pk.w);
+}
+function weaponChosen(w) {
+  if (!TOUR.waitPick) return;
+  TOUR.waitPick = false; clearTimeout(TOUR.pickT);
+  const rid = net.started;
+  $('#pGrid').querySelectorAll('button').forEach(b => { b.disabled = true; b.classList.toggle('chosen', b.dataset.w === w); });
+  $('#pWho').textContent = `${chooserOf() === myId ? 'Tu as choisi' : tourName(chooserOf()) + ' a choisi'} : ${wpnLabel(w)}`; sfx('ding');
+  TOUR.cur.w = w;
+  setTimeout(() => {
+    $('#wpick').hidden = true;
+    if (!TOUR.on || net.started !== rid) return;
+    setWeapon(w); resetMatch('forest'); tourRoles();
+  }, 1200);
 }
 // roulette des armes : une roue de casino à une case par arme ; elle tourne, ralentit en cliquetant à chaque case
 // et s'arrête sous la flèche sur l'arme tirée (la même pour tout le monde)
@@ -3056,7 +3115,7 @@ function renderLobby() {
   $('#youAre').innerHTML = `Tu es <b style="color:${PALETTE[mine.col].css}">${esc(mine.name)}</b> (${PALETTE[mine.col].label})`;
   $('#nameIn').placeholder = 'Joueur ' + mine.n;
   $('#rosterN').textContent = n + 1; $('#rosterN').classList.toggle('full', n === 2);
-  let s = !ok ? 'Seul pour l’instant : donne le chiffre aux autres.' : gameMode === 'tour' ? (n === 1 ? 'Tournante à 2 : manches en BO3 (deux manches gagnantes), arme tirée à la roulette.' : 'Tournante à 3 : deux s’affrontent, le troisième regarde ; le gagnant reste. Deux duels gagnés de suite = victoire.') : n === 1 ? 'À 2 : la partie part dès que vous êtes prêts tous les deux. Pour jouer à 3, attends le 3e joueur avant d’appuyer sur Prêt.' : (mapKey === 'japan' ? 'Classique à 3 : chacun pour soi, dans les jardins de temples, avec un radar.' : 'Classique à 3 : chacun pour soi, dans la forêt géante, avec un radar.');
+  let s = !ok ? 'Seul pour l’instant : donne le chiffre aux autres.' : gameMode !== 'classic' ? (gameMode === 'roul' ? 'Roulette : arme tirée à la roue à chaque manche. ' : 'Chaque manche, un joueur choisit l’arme, à tour de rôle (Joueur 1, puis 2, puis 3…). ') + (n === 1 ? 'À 2 : manches en BO3 (deux manches gagnantes).' : 'À 3 : deux s’affrontent, le troisième regarde ; le gagnant reste. Deux duels gagnés de suite = victoire.') : n === 1 ? 'À 2 : la partie part dès que vous êtes prêts tous les deux. Pour jouer à 3, attends le 3e joueur avant d’appuyer sur Prêt.' : (mapKey === 'japan' ? 'Classique à 3 : chacun pour soi, dans les jardins de temples, avec un radar.' : 'Classique à 3 : chacun pour soi, dans la forêt géante, avec un radar.');
   if (ok && rdy && !net.rp) s = n === 1 ? 'Ton adversaire est prêt : appuie sur Prêt pour lancer à 2.' : rdy === n ? 'Les deux autres sont prêts : appuie sur Prêt pour lancer à 3.' : 'Un adversaire est prêt.';
   if (net.rp) s = ok ? `Prêt. On attend que ${n === 1 ? 'l’autre appuie' : 'les autres appuient'} aussi…` : 'Prêt. En attente d’un adversaire…';
   $('#lobbyStatus').textContent = s;
