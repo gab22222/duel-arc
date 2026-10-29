@@ -424,8 +424,8 @@ const WPN = {
   minigun: { kind: 'minigun', aimT: 0.5, zoomX: null, auto: true, rate: 0.1 },       // minigun : 0,5 s pour lancer les canons, puis une balle toutes les 0,1 s
   paintball: { kind: 'paintball', aimT: 0.15, zoomX: null, auto: true, rate: 0.2 },  // paintball : tir continu, billes lentes qui tombent beaucoup, 30 HP corps / 60 HP tête
 };
-// paintball : billes de peinture à 38 m/s qui tombent fort (9 m/s²), couleurs fluo
-const PAINT_V = 38, PAINT_G = 9, PAINT_COLS = [0xffe81a, 0xff2f9a, 0x2fd8ff, 0x7dff36, 0xff7a1a];
+// paintball : billes de peinture qui volent comme une flèche d'arc tirée à fond (même vitesse, même chute), couleurs fluo
+const PAINT_V = VMAX, PAINT_G = G, PAINT_COLS = [0xffe81a, 0xff2f9a, 0x2fd8ff, 0x7dff36, 0xff7a1a];
 // minigun : balles traçantes à 110 m/s qui tombent un peu (gravité x0,35) ; 20 HP au corps, 60 HP à la tête
 const MINI_V = 110, MINI_G = G * 0.35;
 const shotG = k => isBullet(k) ? 0 : k === 'minigun' ? MINI_G : k === 'paintball' ? PAINT_G : G;
