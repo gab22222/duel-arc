@@ -92,6 +92,9 @@ body{position:fixed;inset:0;touch-action:none;-webkit-user-select:none;user-sele
 #stick::before{left:10px;border-right-color:var(--bone)}
 #stick::after{right:10px;border-left-color:var(--bone)}
 #stick.round{width:124px;height:124px;border-radius:50%}
+/* petit joystick caméra, dans le coin en bas à droite : tourne la vue sans bander ni tirer */
+#look{right:calc(env(safe-area-inset-right,0px) + 12px);bottom:calc(env(safe-area-inset-bottom,0px) + 12px);width:76px;height:76px;border-radius:50%;border:1px solid var(--line);background:rgba(14,12,22,.3)}
+#lookKnob{position:absolute;left:24px;top:24px;width:28px;height:28px;border-radius:50%;background:rgba(239,230,214,.25)}
 #stick.round #knob{top:40px;left:40px;width:44px;height:44px;border-radius:50%}
 #stick.round::before,#stick.round::after{display:none}
 
@@ -197,6 +200,7 @@ p{margin:0}
 <div class="hud" id="toast"></div>
 <div class="hud" id="hurt"></div>
 <div class="hud" id="stick" hidden><div id="knob"></div></div>
+<div class="hud" id="look" hidden><div id="lookKnob"></div></div>
 <canvas class="hud" id="radar" width="240" height="240" hidden></canvas>
 <div class="hud" id="roulette" hidden><div class="rbox">
   <div class="reyebrow" id="rTitle">Tournante</div>
@@ -1890,7 +1894,8 @@ function showPanel(id) { panels.forEach(p => { $(p).hidden = p !== id; }); if (i
 function menuStep(k) { document.querySelectorAll('#menu .step').forEach(el => { el.hidden = el.dataset.step !== k; }); menuNote(''); }
 document.querySelectorAll('#menu [data-go]').forEach(b => b.addEventListener('click', () => menuStep(b.dataset.go)));
 function setPlayingHud(on) {
-  ['#score', '#hp', '#cross', '#stick', '#quit'].forEach(s => { $(s).toggleAttribute('hidden', !on); });
+  ['#score', '#hp', '#cross', '#stick', '#look', '#quit'].forEach(s => { $(s).toggleAttribute('hidden', !on); });
+  if (!on) { lookId = null; lookIn.x = lookIn.y = 0; }
   $('#sil').hidden = !(on && curW() === 'pistol');
 }
 
@@ -1978,18 +1983,28 @@ const canMove = () => mode && (phase === 'fight' || phase === 'ending' || (phase
 // ---------- input
 const touch = $('#touch');
 const STICK_R = 50;
+// joystick caméra : touche dans le petit rond en bas à droite (zone un peu plus large que le dessin) ; l'écart au centre
+// donne une vitesse de rotation (courbe douce pour viser fin), sans bander ni tirer
+const LOOK_R = 30, LOOK_YAW = 1.8, LOOK_PITCH = 1.0; // rad/s à fond (un peu plus en portrait, comme la visée)
+let lookId = null, lookX0 = 0, lookY0 = 0; const lookIn = { x: 0, y: 0 };
+function inLookZone(x, y) { const r = $('#look').getBoundingClientRect(); return !$('#look').hidden && Math.hypot(x - (r.left + r.width / 2), y - (r.top + r.height / 2)) < r.width / 2 + 14; }
 let moveId = null, moveX0 = 0, moveY0 = 0, aimId = null, aimX = 0, aimY = 0;
 const moveIn = { x: 0, y: 0 };
 const keys = {};
 touch.addEventListener('pointerdown', e => {
   e.preventDefault(); audioInit();
   if (!playing()) return;
-  if (e.clientX < innerWidth * 0.42) { if (moveId === null) { moveId = e.pointerId; moveX0 = e.clientX; moveY0 = e.clientY; moveIn.x = moveIn.y = 0; } }
+  if (lookId === null && inLookZone(e.clientX, e.clientY)) { const r = $('#look').getBoundingClientRect(); lookId = e.pointerId; lookX0 = r.left + r.width / 2; lookY0 = r.top + r.height / 2; lookIn.x = lookIn.y = 0; }
+  else if (e.clientX < innerWidth * 0.42) { if (moveId === null) { moveId = e.pointerId; moveX0 = e.clientX; moveY0 = e.clientY; moveIn.x = moveIn.y = 0; } }
   else if (aimId === null) { aimId = e.pointerId; aimX = e.clientX; aimY = e.clientY; }
   try { touch.setPointerCapture(e.pointerId); } catch (_) {}
 });
 touch.addEventListener('pointermove', e => {
-  if (e.pointerId === moveId) {
+  if (e.pointerId === lookId) {
+    let dx = e.clientX - lookX0, dy = e.clientY - lookY0; const l = Math.hypot(dx, dy);
+    if (l > LOOK_R) { dx *= LOOK_R / l; dy *= LOOK_R / l; }
+    lookIn.x = dx / LOOK_R; lookIn.y = dy / LOOK_R;
+  } else if (e.pointerId === moveId) {
     let dx = e.clientX - moveX0, dy = map.lateral ? 0 : e.clientY - moveY0;
     const l = Math.hypot(dx, dy);
     if (l > STICK_R) { const k = STICK_R / l; moveX0 = e.clientX - dx * k; moveY0 = e.clientY - dy * k; dx *= k; dy *= k; }
@@ -2004,6 +2019,7 @@ touch.addEventListener('pointermove', e => {
   }
 });
 function endPointer(e) {
+  if (e.pointerId === lookId) { lookId = null; lookIn.x = lookIn.y = 0; }
   if (e.pointerId === moveId) { moveId = null; moveIn.x = moveIn.y = 0; }
   if (e.pointerId === aimId) { aimId = null; release(); }
 }
@@ -2142,6 +2158,11 @@ function updateMe(dt) {
   if (keys.ArrowUp) me.pitch = clamp(me.pitch + dt * 0.5, -0.45, 0.65);
   if (keys.ArrowDown) me.pitch = clamp(me.pitch - dt * 0.5, -0.45, 0.65);
   if (keys.ArrowLeft) me.yaw = clamp(me.yaw + dt * 1.2, -map.yawLim, map.yawLim);
+  if (lookId !== null && !out) { // joystick caméra : vitesse selon l'écart (au carré, pour viser fin près du centre)
+    const zf = fov / 52, sx = Math.sign(lookIn.x) * lookIn.x * lookIn.x, sy = Math.sign(lookIn.y) * lookIn.y * lookIn.y;
+    me.yaw = clamp(me.yaw - sx * LOOK_YAW * zf * dt, -map.yawLim, map.yawLim);
+    me.pitch = clamp(me.pitch - sy * LOOK_PITCH * zf * dt, -0.45, 0.65);
+  }
   if (keys.ArrowRight) me.yaw = clamp(me.yaw - dt * 1.2, -map.yawLim, map.yawLim);
   me.reload = Math.max(0, me.reload - dt);
   if (me.swingHit > 0) { me.swingHit -= dt; if (me.swingHit <= 0) meleeStrike(); }
@@ -2594,6 +2615,7 @@ function drawHud() {
   ringEl.setAttribute('stroke-dashoffset', (169.6 * (1 - me.draw)).toFixed(1));
   ringEl.setAttribute('stroke', me.draw >= 1 ? '#f2914a' : (me.reload > 0 ? 'rgba(239,230,214,.35)' : '#efe6d6'));
   const kx = moveId !== null ? moveIn.x : 0, ky = moveId !== null ? moveIn.y : 0;
+  $('#lookKnob').style.transform = `translate(${(lookIn.x * 24).toFixed(1)}px, ${(lookIn.y * 24).toFixed(1)}px)`;
   knobEl.style.transform = map.lateral ? `translateX(${(kx * 50).toFixed(1)}px)` : `translate(${(kx * 38).toFixed(1)}px, ${(ky * 38).toFixed(1)}px)`;
 }
 
@@ -2971,7 +2993,7 @@ function tourRoles() {
   for (const f of foes) if (f.slot === 2) f.s.taken = WIN;
   specIdx = 0;
   $('#spec').hidden = !spec;
-  ['#hp', '#cross', '#stick'].forEach(sel => $(sel).toggleAttribute('hidden', spec));
+  ['#hp', '#cross', '#stick', '#look'].forEach(sel => $(sel).toggleAttribute('hidden', spec));
   $('#score .side.me').hidden = spec;
   $('#score .side.them').hidden = TOUR.n === 3 && FOES.opp.slot === 2;
   $('#side2').hidden = !(TOUR.n === 3 && FOES.opp2.slot !== 2);
