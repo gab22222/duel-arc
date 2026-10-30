@@ -1786,6 +1786,7 @@ function audioInit() {
       actx = new (window.AudioContext || window.webkitAudioContext)();
       noise = actx.createBuffer(1, actx.sampleRate * 0.6, actx.sampleRate);
       const d = noise.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+      loadFhaa();
     }
     if (actx.state === 'suspended') actx.resume();
   } catch (e) { actx = null; }
@@ -1801,9 +1802,25 @@ function hiss(ftype, f0, f1, dur, vol, delay = 0) {
   s.buffer = noise; f.type = ftype; f.Q.value = 1.2; f.frequency.setValueAtTime(f0, t); f.frequency.exponentialRampToValueAtTime(f1, t + dur);
   env(g, t, vol, dur); s.connect(f).connect(g).connect(actx.destination); s.start(t); s.stop(t + dur + 0.05);
 }
-// « fhaaaa » des tirs à la tête : un souffle « f » puis un « aaah » crié qui retombe, voix de synthèse
-// (cordes vocales en dent de scie + souffle, passés dans les formants de la voyelle « a »)
+// « fhaaaa » des tirs à la tête : le vrai son (fhaaa.m4a, chargé au premier toucher) ;
+// tant qu'il n'est pas chargé, une voix de synthèse le remplace
+let fhaaBuf = null;
+function loadFhaa() {
+  fetch('fhaaa.m4a').then(r => r.arrayBuffer())
+    .then(b => new Promise((ok, ko) => { const p = actx.decodeAudioData(b, ok, ko); if (p && p.catch) p.catch(ko); }))
+    .then(buf => { fhaaBuf = buf; }).catch(() => {});
+}
 function fhaa(v = 1) {
+  if (fhaaBuf) {
+    const s = actx.createBufferSource(), g = actx.createGain();
+    s.buffer = fhaaBuf; g.gain.value = 2 * v; s.connect(g).connect(actx.destination); s.start();
+    return;
+  }
+  fhaaSynth(v);
+}
+// voix de synthèse : un souffle « f » puis un « aaah » crié qui retombe
+// (cordes vocales en dent de scie + souffle, passés dans les formants de la voyelle « a »)
+function fhaaSynth(v = 1) {
   const t = actx.currentTime, a0 = t + 0.12, end = a0 + 1.4, out = actx.createGain();
   out.gain.value = 0.7 * v; out.connect(actx.destination);
   hiss('highpass', 5500, 3500, 0.17, 0.3 * v); // « f »
