@@ -1801,6 +1801,30 @@ function hiss(ftype, f0, f1, dur, vol, delay = 0) {
   s.buffer = noise; f.type = ftype; f.Q.value = 1.2; f.frequency.setValueAtTime(f0, t); f.frequency.exponentialRampToValueAtTime(f1, t + dur);
   env(g, t, vol, dur); s.connect(f).connect(g).connect(actx.destination); s.start(t); s.stop(t + dur + 0.05);
 }
+// « fhaaaa » des tirs à la tête : un souffle « f » puis un « aaah » crié qui retombe, voix de synthèse
+// (cordes vocales en dent de scie + souffle, passés dans les formants de la voyelle « a »)
+function fhaa(v = 1) {
+  const t = actx.currentTime, a0 = t + 0.12, end = a0 + 1.4, out = actx.createGain();
+  out.gain.value = 0.7 * v; out.connect(actx.destination);
+  hiss('highpass', 5500, 3500, 0.17, 0.3 * v); // « f »
+  const o = actx.createOscillator(), vib = actx.createOscillator(), vg = actx.createGain(), og = actx.createGain();
+  o.type = 'sawtooth'; o.frequency.setValueAtTime(205, a0 - 0.03); o.frequency.linearRampToValueAtTime(245, a0 + 0.18); o.frequency.exponentialRampToValueAtTime(125, end);
+  vib.frequency.value = 5.5; vg.gain.value = 5; vib.connect(vg).connect(o.frequency);
+  const n = actx.createBufferSource(), ng = actx.createGain(); n.buffer = noise; n.loop = true;
+  const rasp = actx.createWaveShaper(), cv = new Float32Array(256);
+  for (let i = 0; i < 256; i++) { const x = i / 127.5 - 1; cv[i] = Math.tanh(2.2 * x); } rasp.curve = cv; // voix forcée, un peu éraillée
+  const g = actx.createGain();
+  g.gain.setValueAtTime(0.0001, a0 - 0.04); g.gain.exponentialRampToValueAtTime(1, a0 + 0.07); g.gain.setValueAtTime(1, a0 + 0.6); g.gain.linearRampToValueAtTime(0.25, end - 0.3); g.gain.exponentialRampToValueAtTime(0.0001, end);
+  og.gain.setValueAtTime(0.35, a0); og.gain.linearRampToValueAtTime(0.6, a0 + 0.2); og.gain.linearRampToValueAtTime(0.25, end); // la voix s'essouffle…
+  ng.gain.setValueAtTime(4.5, a0); ng.gain.linearRampToValueAtTime(3, a0 + 0.3); ng.gain.linearRampToValueAtTime(6, end); // … et le souffle reste
+  o.connect(og).connect(rasp).connect(g); n.connect(ng).connect(g);
+  [[820, 5, 1], [1220, 7, 0.75], [2650, 9, 0.4], [3500, 10, 0.22]].forEach(([f, q, k]) => {
+    const b = actx.createBiquadFilter(), bg = actx.createGain();
+    b.type = 'bandpass'; b.frequency.setValueAtTime(f, a0); b.frequency.linearRampToValueAtTime(f * 0.93, end); b.Q.value = q; bg.gain.value = k;
+    g.connect(b).connect(bg).connect(out);
+  });
+  for (const s of [o, vib, n]) { s.start(a0 - 0.04); s.stop(end + 0.05); }
+}
 function sfx(k, v = 1) {
   if (!actx) return;
   try {
@@ -1834,7 +1858,7 @@ function sfx(k, v = 1) {
     else if (k === 'bang') { hiss('lowpass', 5000, 400, 0.32, 0.6 * v); tone('sine', 120, 40, 0.25, 0.5 * v); }
     else if (k === 'thunk') { tone('sine', 150, 55, 0.14, 0.4 * v); hiss('lowpass', 1200, 300, 0.08, 0.2 * v); }
     else if (k === 'hit') { tone('square', 660, 660, 0.09, 0.09); tone('square', 990, 990, 0.14, 0.09, 0.08); }
-    else if (k === 'head') { tone('square', 660, 660, 0.08, 0.1); tone('square', 990, 990, 0.08, 0.1, 0.07); tone('square', 1320, 1320, 0.2, 0.1, 0.14); }
+    else if (k === 'head') { tone('square', 660, 660, 0.08, 0.1); tone('square', 990, 990, 0.08, 0.1, 0.07); tone('square', 1320, 1320, 0.2, 0.1, 0.14); fhaa(); }
     else if (k === 'hurt') { tone('sawtooth', 220, 70, 0.35, 0.22); hiss('lowpass', 900, 200, 0.2, 0.3); }
     else if (k === 'tick') tone('sine', 880, 880, 0.09, 0.18);
     else if (k === 'go') tone('sine', 1320, 1320, 0.25, 0.2);

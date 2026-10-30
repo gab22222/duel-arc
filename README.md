@@ -26,6 +26,8 @@ Deux cartes :
   - **Paintball** : lanceur type Tippmann (corps noir, réserve de billes translucide sur le dessus où l'on voit les billes de couleur, long canon, poignée avant, bouteille d'air argentée en guise de crosse), avec son « pof » pneumatique. On maintient pour tirer, une bille toutes les 0,2 s, chargeur infini. Les grosses billes fluo vont à la vitesse d'une flèche d'arc tirée à fond (84 m/s), en ligne droite : elles ne tombent pas. Elles éclatent en éclaboussures de leur couleur et laissent une tache sur les arbres, les rochers et le sol. 30 HP au corps, 60 HP à la tête.
   - **Sniper paintball** : version longue du lanceur (corps vert olive, long canon gainé, lunette x5 sur rail devant la réserve de billes, bouteille d'air avec appui-joue). Une bille par seconde, chargeur infini ; elle va deux fois plus vite qu'une flèche d'arc tirée à fond (168 m/s), en ligne droite sans tomber, et ne laisse pas de traînée. Une bille dans la tête tue d'un coup, une bille dans le corps enlève 75 HP.
 
+- **Tir à la tête** : quel que soit le mode et l'arme, quand on met une tête, en plus du « Tir à la tête ! », on entend un grand « fhaaaa » (un souffle puis un « aaah » crié qui retombe, voix de synthèse).
+
 Pour jouer : https://gab22222.github.io/duel-arc/
 
 - Un joueur appuie sur **Créer une partie** et reçoit un chiffre (de 0 à 9) qu'il donne aux autres, qui le tapent puis appuient sur **Rejoindre**.
