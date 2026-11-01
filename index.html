@@ -253,8 +253,8 @@ p{margin:0}
       <h2>Contre un bot</h2>
       <div class="seg mapsel" role="group" aria-label="Carte">
         <button data-map="canyon" aria-pressed="true">Canyon<small>face à face, esquive sur le côté</small></button>
-        <button data-map="forest" aria-pressed="false">Forêt<small>cours partout, cache-toi</small></button>
         <button data-map="forestV2" aria-pressed="false">Forêt V2<small>parfaitement symétrique</small></button>
+        <button data-map="forest" aria-pressed="false">Forêt V1<small>la forêt d'origine</small></button>
       </div>
       <div class="opt wpnrow" hidden><span>Arme</span>
       <div class="seg wpnsel" role="group" aria-label="Arme en forêt">
@@ -320,8 +320,8 @@ p{margin:0}
     </div>
     <div class="seg mapsel" role="group" aria-label="Carte">
       <button data-map="canyon" aria-pressed="true">Canyon<small>face à face</small></button>
-      <button data-map="forest" aria-pressed="false">Forêt<small>déplacements libres</small></button>
       <button data-map="forestV2" aria-pressed="false">Forêt V2<small>symétrique, à 2</small></button>
+      <button data-map="forest" aria-pressed="false">Forêt V1<small>d'origine · géante à 3</small></button>
       <button data-map="japan" aria-pressed="false" disabled>Japon<small>temples, à 3</small></button>
     </div>
     <div class="opt wpnrow" hidden><span>Arme</span>
@@ -362,8 +362,8 @@ p{margin:0}
     <p class="final" id="overScore"></p>
     <div class="seg mapsel" role="group" aria-label="Carte">
       <button data-map="canyon" aria-pressed="true">Canyon<small>face à face</small></button>
-      <button data-map="forest" aria-pressed="false">Forêt<small>déplacements libres</small></button>
       <button data-map="forestV2" aria-pressed="false">Forêt V2<small>symétrique, à 2</small></button>
+      <button data-map="forest" aria-pressed="false">Forêt V1<small>d'origine · géante à 3</small></button>
       <button data-map="japan" aria-pressed="false" disabled>Japon<small>temples, à 3</small></button>
     </div>
     <div class="opt wpnrow" hidden><span>Arme</span>
@@ -494,7 +494,7 @@ let weapon = 'bow';
 try { weapon = wpnKey(localStorage.getItem('duelarc-wpn')); } catch (e) {}
 let map = MAPS.canyon;
 let mapKey = 'canyon';
-try { const k = localStorage.getItem('duelarc-map'); if (MAPS[k]) mapKey = k; } catch (e) {}
+try { const k = localStorage.getItem('duelarc-map2') || (localStorage.getItem('duelarc-map') === 'forest' ? 'forestV2' : localStorage.getItem('duelarc-map')); if (MAPS[k]) mapKey = k; } catch (e) {}
 
 // ---------- renderer
 const canvas = $('#c');
@@ -1092,7 +1092,7 @@ function applyMap(k) {
   const L = MAPLOOK[k];
   scene.fog.color.setHex(L.fog); scene.fog.near = L.near; scene.fog.far = L.far;
   hemi.color.setHex(L.hs); hemi.groundColor.setHex(L.hg); sunL.color.setHex(L.sun); sunL.intensity = L.sunI;
-  if (!map.big) try { localStorage.setItem('duelarc-map', k); } catch (e) {}
+  if (!map.big && mode !== 'practice') try { localStorage.setItem('duelarc-map2', k); } catch (e) {}
   const shown = k === 'forestXL' ? 'forest' : k; // la forêt géante (1v1v1) apparaît comme « Forêt » dans les menus
   document.querySelectorAll('.mapsel button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.map === shown)));
   document.querySelectorAll('.wpnrow').forEach(r => { r.hidden = (map.lateral && !r.classList.contains('always')) || (gameMode !== 'classic' && !!r.closest('#lobby')); }); // le tir libre est toujours en forêt
@@ -3138,7 +3138,7 @@ function evaluateReady() {
     const toks = [net.tok, ...ps.map(p => p.tok)].sort();
     const lead = toks[0] === net.tok ? { mapK: mapKey, wpn: weapon, gm: gameMode } : ps.find(p => p.tok === toks[0]);
     if (lead.gm !== 'classic') return startTour(toks.join('|'), lead.gm === 'roul' ? 'roul' : 'tour');
-    const k = toks.length === 3 ? (lead.mapK === 'japan' ? 'japan' : 'forestXL') : lead.mapK === 'canyon' || lead.mapK === 'forestV2' ? lead.mapK : 'forest'; // à 3 : forêt géante ou Japon
+    const k = toks.length === 3 ? (lead.mapK === 'japan' ? 'japan' : 'forestXL') : lead.mapK === 'canyon' || lead.mapK === 'forest' ? lead.mapK : 'forestV2'; // à 3 : forêt géante ou Japon ; à 2 : forêt V2 sauf choix contraire
     startOnline(toks.join('|'), k, wpnKey(lead.wpn));
   }
 }
@@ -3186,15 +3186,15 @@ function startTourRound() {
   foes = [FOES.opp, FOES.opp2].slice(0, nPlayers - 1);
   foes.forEach((f, i) => { f.peer = others[i]; f.slot = ids.indexOf(others[i]); });
   dealt = {};
-  pres({ rdy: false, started: net.started, tourBase: TOUR.base, tourMode: TOUR.mode, smap: 'forest', swpn: R.w, dealt: {} });
-  phase = 'idle'; clearArrows(); setPlayingHud(false); showPanel(null); applyMap('forest'); setWeapon(R.w);
+  pres({ rdy: false, started: net.started, tourBase: TOUR.base, tourMode: TOUR.mode, smap: 'forestV2', swpn: R.w, dealt: {} });
+  phase = 'idle'; clearArrows(); setPlayingHud(false); showPanel(null); applyMap('forestV2'); setWeapon(R.w);
   const vs = `${tourName(R.a)} contre ${tourName(R.b)}`;
   const score = TOUR.n === 2 ? ` · ${TOUR.sc[R.a] || 0} – ${TOUR.sc[R.b] || 0}` : '';
   if (TOUR.mode === 'tour') return showWeaponPick(vs + score, R); // tournante : un joueur choisit l'arme
   // tournante roulette : la roue, puis le duel
   showRoulette(TOUR.round ? (TOUR.title || 'Duel suivant') : 'Tournante', vs + score, R.s ? `Spectateur : ${tourName(R.s)}` : (TOUR.n === 2 ? 'BO3 : deux manches gagnantes' : ''), R.w, () => {
     if (!TOUR.on || net.started !== TOUR.base + '|r' + TOUR.round) return;
-    setWeapon(R.w); resetMatch('forest'); tourRoles();
+    setWeapon(R.w); resetMatch('forestV2'); tourRoles();
   });
 }
 // tournante (choix) : le joueur dont c'est le tour choisit l'arme ; les autres attendent son choix (envoyé dans sa présence).
@@ -3233,7 +3233,7 @@ function weaponChosen(w) {
   setTimeout(() => {
     $('#wpick').hidden = true;
     if (!TOUR.on || net.started !== rid) return;
-    setWeapon(w); resetMatch('forest'); tourRoles();
+    setWeapon(w); resetMatch('forestV2'); tourRoles();
   }, 1200);
 }
 // roulette des armes : une roue de casino à une case par arme ; elle tourne, ralentit en cliquetant à chaque case
