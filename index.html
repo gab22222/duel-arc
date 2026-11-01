@@ -2001,7 +2001,7 @@ function resetMatch(k) {
   Object.assign(bot, { tx: 0, tz: -map.spawnZ, moveT: 0, shootT: rand(1.4, 2.2), drawing: false, reload: 0, hold: 0, stuck: 0, swingHit: 0 });
   me.swingHit = 0;
   aimId = null; moveId = null; moveIn.x = moveIn.y = 0; headshot = false;
-  phase = 'countdown'; cd = 3; big('3', 0.8); sfx('tick');
+  phase = 'countdown'; cd = 3; big('3', 0.8);
   $('#stick').classList.toggle('round', !map.lateral);
   hpShown = HP_MAX; showPanel(null); setPlayingHud(true); renderScore();
   // couleurs et noms : en ligne, ceux du salon (numéro et pseudo de chacun) ; sinon les couleurs d'origine
@@ -2052,7 +2052,7 @@ function updatePhase(dt) {
   if (phase === 'countdown') {
     const prev = Math.ceil(cd); cd -= dt; const now = Math.ceil(cd);
     if (cd <= 0) { phase = 'fight'; big('Tirez !', 0.7, 'var(--ember)'); sfx('go'); }
-    else if (now !== prev) { big(String(now), 0.8); sfx('tick'); }
+    else if (now !== prev) big(String(now), 0.8);
   } else if (phase === 'ending') {
     endT -= dt; if (endT <= 0) finish();
   }
@@ -2226,6 +2226,7 @@ function updateMe(dt) {
   if (act && map.lateral) tvx = ix * map.maxv * slow;
   else if (act) {
     let mx = ix, mf = -iy; const l = Math.hypot(mx, mf); if (l > 1) { mx /= l; mf /= l; }
+    mx *= 0.75; if (mf > 0) mf *= 1.25; // 25 % moins vite de côté, 25 % plus vite en avant (à reculons : inchangé)
     const s = Math.sin(me.yaw), c = Math.cos(me.yaw);
     tvx = (mx * c - mf * s) * map.maxv * slow;
     tvz = (-mx * s - mf * c) * map.maxv * slow;
