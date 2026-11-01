@@ -1291,6 +1291,91 @@ function paintAt(p, col, k = 1) { // k : taille de l'éclaboussure
   }
   dropMesh.instanceColor.needsUpdate = true;
 }
+// bille qui éclate sur un joueur, pour que tout le monde le voie de près comme de loin : une étoile de peinture qui s'ouvre,
+// un nuage coloré qui se dissipe, une gerbe de gouttes étirées par leur vitesse, et des taches qui restent sur lui jusqu'à la fin de la manche
+const BLOB_N = 420, blobs = [], Z_AXIS = new T.Vector3(0, 0, 1), WHITE = new T.Color(0xffffff), blobCol = new T.Color();
+const blobMesh = new T.InstancedMesh(new T.SphereGeometry(1, 8, 6), new T.MeshBasicMaterial({ color: 0xffffff }), BLOB_N);
+blobMesh.frustumCulled = false; blobMesh.instanceMatrix.setUsage(T.DynamicDrawUsage); scene.add(blobMesh);
+for (let i = 0; i < BLOB_N; i++) { blobMesh.setMatrixAt(i, new T.Matrix4().makeScale(0, 0, 0)); blobMesh.setColorAt(i, WHITE); blobs.push({ life: 0, t0: 1, p: new T.Vector3(), v: new T.Vector3(), s: 0, stuck: false, shown: false }); }
+function spriteTex(draw) { const c = document.createElement('canvas'); c.width = c.height = 128; draw(c.getContext('2d')); return new T.CanvasTexture(c); }
+const mistTex = spriteTex(g => { const gr = g.createRadialGradient(64, 64, 0, 64, 64, 64); gr.addColorStop(0, 'rgba(255,255,255,.9)'); gr.addColorStop(.45, 'rgba(255,255,255,.4)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, 128, 128); });
+const splatTex = spriteTex(g => {
+  g.fillStyle = g.strokeStyle = '#fff'; g.lineCap = 'round'; g.beginPath(); g.arc(64, 64, 25, 0, 7); g.fill();
+  for (let i = 0; i < 15; i++) {
+    const a = i / 15 * Math.PI * 2 + rand(-.14, .14), L = rand(30, 57), r = rand(3, 7.5), x = 64 + Math.cos(a) * L, y = 64 + Math.sin(a) * L;
+    g.lineWidth = r * 1.2; g.beginPath(); g.moveTo(64, 64); g.lineTo(x, y); g.stroke(); g.beginPath(); g.arc(x, y, r, 0, 7); g.fill();
+  }
+});
+const pops = Array.from({ length: 10 }, () => {
+  const splat = new T.Sprite(new T.SpriteMaterial({ map: splatTex, depthWrite: false })), mist = new T.Sprite(new T.SpriteMaterial({ map: mistTex, depthWrite: false }));
+  splat.visible = mist.visible = false; splat.renderOrder = 2; mist.renderOrder = 1; scene.add(mist, splat);
+  return { splat, mist, t: 0, k: 1, p: new T.Vector3() };
+});
+let popNext = 0, blobNext = 0, blobsOn = false;
+const burstN = new T.Vector3(), burstU = new T.Vector3(), burstW = new T.Vector3(), blobM = new T.Matrix4(), blobQ = new T.Quaternion(), blobS = new T.Vector3(), blobD = new T.Vector3();
+function paintBurst(p, dir, col, k = 1) {
+  paintCol.setHex(col);
+  const pop = pops[popNext]; popNext = (popNext + 1) % pops.length;
+  pop.t = 0; pop.k = k; pop.p.copy(p); pop.splat.material.color.copy(paintCol); pop.mist.material.color.copy(paintCol);
+  pop.splat.material.rotation = rand(0, 6.283); pop.splat.visible = pop.mist.visible = true;
+  // la gerbe repart vers le tireur et s'ouvre en couronne autour de l'impact
+  burstN.copy(dir).normalize().negate(); burstU.set(0, 1, 0).cross(burstN);
+  if (burstU.lengthSq() < 1e-4) burstU.set(1, 0, 0);
+  burstU.normalize(); burstW.crossVectors(burstN, burstU);
+  for (let i = 0; i < 46; i++) {
+    const b = blobs[blobNext], a = rand(0, 6.283), out = rand(1, 5) * k;
+    b.p.copy(p); b.v.copy(burstN).multiplyScalar(rand(0.6, 3.2) * k).addScaledVector(burstU, Math.cos(a) * out).addScaledVector(burstW, Math.sin(a) * out); b.v.y += rand(0.5, 2.4) * k;
+    b.s = (i % 6 ? rand(0.012, 0.03) : rand(0.035, 0.055)) * k; b.t0 = b.life = rand(0.5, 1); b.stuck = false;
+    blobMesh.setColorAt(blobNext, blobCol.copy(paintCol).lerp(WHITE, rand(0, 0.22)));
+    blobNext = (blobNext + 1) % BLOB_N;
+  }
+  blobMesh.instanceColor.needsUpdate = true; blobsOn = true;
+}
+function updatePaint(dt) {
+  for (const pop of pops) {
+    if (!pop.splat.visible) continue;
+    const u = (pop.t += dt) / 0.6;
+    if (u >= 1) { pop.splat.visible = pop.mist.visible = false; continue; }
+    const open = 1 - (1 - Math.min(1, pop.t / 0.16)) ** 3, front = 0.3 / Math.max(0.6, pop.p.distanceTo(camera.position)); // posé juste devant le joueur, côté caméra
+    pop.splat.position.lerpVectors(pop.p, camera.position, front); pop.mist.position.copy(pop.splat.position);
+    pop.splat.scale.setScalar((0.3 + 1.3 * open) * pop.k); pop.splat.material.opacity = u < 0.4 ? 1 : 1 - (u - 0.4) / 0.6;
+    pop.mist.scale.setScalar((0.5 + 1.9 * (1 - (1 - u) ** 2)) * pop.k); pop.mist.material.opacity = 0.55 * (1 - u);
+  }
+  if (!blobsOn) return;
+  let alive = false;
+  for (let i = 0; i < BLOB_N; i++) {
+    const b = blobs[i];
+    if (b.life <= 0) { if (b.shown) { b.shown = false; blobMesh.setMatrixAt(i, blobM.makeScale(0, 0, 0)); } continue; }
+    alive = b.shown = true; b.life -= dt;
+    if (!b.stuck) {
+      b.v.multiplyScalar(Math.exp(-1.7 * dt)); b.v.y -= 9.8 * dt; b.p.addScaledVector(b.v, dt);
+      if (b.p.y < 0.012) { b.p.y = 0.012; b.stuck = true; b.t0 = b.life = 1; } // goutte tombée : petite tache au sol
+    }
+    const grow = Math.min(1, (b.t0 - b.life) / 0.05), f = clamp(b.life / b.t0 / 0.35, 0, 1), sz = b.s * grow * f * f * (3 - 2 * f);
+    if (b.stuck) { blobQ.identity(); blobS.set(sz * 1.7, sz * 0.15, sz * 1.7); }
+    else { blobQ.setFromUnitVectors(Z_AXIS, blobD.copy(b.v).normalize()); blobS.set(sz, sz, sz * (1 + Math.min(2.2, b.v.length() * 0.35))); }
+    blobMesh.setMatrixAt(i, blobM.compose(b.p, blobQ, blobS));
+  }
+  blobMesh.instanceMatrix.needsUpdate = true; blobsOn = alive;
+}
+// taches collées sur le joueur, sur la peau du personnage (la zone de touche est plus large que lui)
+const stainGeo = new T.SphereGeometry(1, 10, 8), stainMats = {}, stains = [], stainC = new T.Vector3();
+function paintStain(model, p, dir, col) {
+  const mat = stainMats[col] || (stainMats[col] = std(col, { roughness: .35, flatShading: false })), head = p.distanceTo(model.headPos) < HEAD_R * 1.3, R = model.root;
+  if (head) stainC.copy(model.headPos); else stainC.set(R.position.x, clamp(p.y, 0.1, 1.5), R.position.z);
+  burstN.copy(p).sub(stainC); if (burstN.lengthSq() < 1e-4) burstN.copy(dir).negate(); burstN.normalize();
+  R.updateMatrixWorld(true);
+  const part = R.worldToLocal(tmpA.copy(p)).y > 1.15 ? model.upper : R;
+  burstU.set(0, 1, 0).cross(burstN); if (burstU.lengthSq() < 1e-4) burstU.set(1, 0, 0); burstU.normalize(); burstW.crossVectors(burstN, burstU);
+  for (let i = 0; i < 2; i++) {
+    const r = i ? rand(0.035, 0.06) : rand(0.09, 0.13), m = new T.Mesh(stainGeo, mat), a = rand(0, 6.283), off = i ? rand(0.1, 0.17) : 0;
+    m.position.copy(stainC).addScaledVector(burstN, head ? 0.15 : 0.25).addScaledVector(burstU, Math.cos(a) * off).addScaledVector(burstW, Math.sin(a) * off);
+    m.quaternion.setFromUnitVectors(Z_AXIS, burstN); m.scale.set(r, r * rand(0.75, 1.1), r * 0.22);
+    scene.add(m); part.attach(m); stains.push(m);
+    if (stains.length > 40) { const o = stains.shift(); if (o.parent) o.parent.remove(o); }
+  }
+}
+function paintHit(model, p, dir, col, kind) { paintBurst(p, dir, col, kind === 'psniper' ? 1.3 : 1); paintStain(model, p, dir, col); }
 function shatter(a) { stopArrow(a); a.m.visible = false; a.gone = true; shatterAt(a.p, a.v); sfx('glass', a.owner === 'me' ? 0.6 : 1); }
 // grenade de 40 mm : douille en laiton, ogive vert olive, pointe grise ; le long de -Z
 const grenBrass = std(0xb8913a, { metalness: .7, roughness: .35 }), grenOlive = std(0x59603a, { roughness: .6 }), grenTip = std(0x8b8f88, { metalness: .4, roughness: .5 });
@@ -1983,6 +2068,8 @@ function setPlayingHud(on) {
 function clearArrows() {
   for (const a of arrows) if (a.m.parent) a.m.parent.remove(a.m);
   arrows.length = 0;
+  for (const m of stains) if (m.parent) m.parent.remove(m);
+  stains.length = 0;
 }
 function resetMatch(k) {
   applyMap(k || mapKey);
@@ -2488,7 +2575,7 @@ function pierceDepth(p, dir, model, head, len = 0.9) {
 function plantInArcher(a, model, head) {
   stopArrow(a); a.pending = 0;
   if (isBullet(a.kind) || a.kind === 'minigun') { a.m.visible = false; a.gone = true; a.part = 'r'; tintSmoke(a); return; } // la balle ne reste pas dans le corps
-  if (isPaint(a.kind)) { a.m.visible = false; a.gone = true; a.part = 'r'; tintSmoke(a); paintAt(a.p, a.col, a.kind === 'psniper' ? 0.5 : 1); sfx('splat', 0.8); return; } // la bille éclate sur le joueur
+  if (isPaint(a.kind)) { a.m.visible = false; a.gone = true; a.part = 'r'; tintSmoke(a); paintHit(model, a.p, a.v, a.col, a.kind); sfx('splat', 0.8); return; } // la bille éclate sur le joueur
   if (a.kind === 'beer') { shatter(a); a.part = 'r'; return; } // la bouteille éclate sur le joueur
   a.m.visible = true;
   orient(a); tmpV.copy(a.v).normalize();
@@ -2520,6 +2607,8 @@ function hitArcher(a, tgt, head) {
   const lp = a.m.position; tmpV.set(0, 0, -1).applyQuaternion(a.m.quaternion);
   const msg = { g: net.started, id: a.id, k: KIND_CODE[a.kind], v: tgt.peer, n: mine[tgt.peer], head, part: a.part };
   if (!isBullet(a.kind) && a.kind !== 'beer' && a.kind !== 'minigun' && !isPaint(a.kind)) Object.assign(msg, { lp: [r3(lp.x), r3(lp.y), r3(lp.z)], ld: [r3(tmpV.x), r3(tmpV.y), r3(tmpV.z)] });
+  // bille : le point d'impact, relatif au joueur touché, pour que les autres voient l'explosion au bon endroit même si leur bille n'y est pas encore
+  if (isPaint(a.kind)) { const R = tgt.A.root; R.updateMatrixWorld(true); const sp = R.worldToLocal(tmpA.copy(a.p)), sd = tmpV.copy(a.v).normalize().applyQuaternion(R.quaternion.clone().invert()); Object.assign(msg, { sp: [r3(sp.x), r3(sp.y), r3(sp.z)], sd: [r3(sd.x), r3(sd.y), r3(sd.z)] }); }
   nroom.emit('hit', msg).catch(() => {});
   pres({ dealt: { ...mine } });
 }
@@ -2559,7 +2648,7 @@ function collide(a) {
     const z = hitZone(p, tg.s, tg.A);
     if (!z) continue;
     // en ligne, la flèche d'un autre attend la confirmation de son tireur (elle sera replantée à l'endroit qu'il a vu)
-    if (a.owner !== 'me' && mode === 'online') { a.flying = false; a.pending = 1.2; a.zone = z; a.victim = tg.key; a.m.visible = false; if (a.kind === 'beer') shatterAt(a.p, a.v), sfx('glass', 1); return; }
+    if (a.owner !== 'me' && mode === 'online') { a.flying = false; a.pending = 1.2; a.zone = z; a.victim = tg.key; a.m.visible = false; if (a.kind === 'beer') shatterAt(a.p, a.v), sfx('glass', 1); if (isPaint(a.kind)) { a.splashed = true; paintHit(tg.A, a.p, a.v, a.col, a.kind); sfx('splat', 0.8); } return; }
     hitArcher(a, tg, z === 2); return;
   }
   // bille de paintball : elle éclate et laisse une tache de peinture sur l'arbre, le rocher ou le sol
@@ -2921,7 +3010,12 @@ function onHit(msg) {
   const victim = (d.v === undefined || d.v === myId) ? ME : foeByPeer(d.v);
   if (!victim || victim === f) return;
   const i = arrows.findIndex(a => a.owner === f.key && a.id === d.id && d.id);
+  const seen = i >= 0 && arrows[i].splashed; // explosion déjà montrée quand la bille est arrivée ici
   if (i >= 0) { const a = arrows[i]; tintSmoke(a); if (a.m.parent) a.m.parent.remove(a.m); arrows.splice(i, 1); }
+  if (isPaint(CODE_KIND[d.k]) && !seen && Array.isArray(d.sp) && Array.isArray(d.sd) && d.sp.length === 3 && d.sd.length === 3) {
+    const R = victim.A.root, sp = new T.Vector3(num(d.sp[0], 0), num(d.sp[1], 1), num(d.sp[2], 0)), sd = new T.Vector3(num(d.sd[0], 0), num(d.sd[1], 0), num(d.sd[2], -1));
+    if (sp.length() < 3 && sd.lengthSq() > 0.01) { R.updateMatrixWorld(true); paintHit(victim.A, R.localToWorld(sp), sd.applyQuaternion(R.quaternion), PAINT_COLS[Math.abs(Math.floor(num(d.id, 0))) % PAINT_COLS.length], CODE_KIND[d.k]); sfx('splat', 0.8); }
+  }
   if (Array.isArray(d.lp) && Array.isArray(d.ld) && d.lp.length === 3 && d.ld.length === 3) {
     const lp = new T.Vector3(num(d.lp[0], 0), num(d.lp[1], 1), num(d.lp[2], 0));
     const ld = new T.Vector3(num(d.ld[0], 0), num(d.ld[1], 0), num(d.ld[2], -1));
@@ -3256,7 +3350,7 @@ function frame(now) {
   opp2A.root.visible = mode === 'online' && trio() && phase !== 'idle';
   updatePhase(dt);
   if (mode && phase !== 'idle') { updateMe(dt); updateOpp(dt); }
-  updateArrows(dt); updateSplash(dt); updateBlasts(dt); updatePetals(dt);
+  updateArrows(dt); updateSplash(dt); updatePaint(dt); updateBlasts(dt); updatePetals(dt);
   updateFlags(t);
   updateCamera(dt);
   netTick(now);
