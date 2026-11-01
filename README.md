@@ -4,7 +4,7 @@ Duel à l'arc en 3D pour deux téléphones. Les flèches ont un temps de vol et 
 
 Commandes en partie : à gauche, le joystick pour se déplacer (hors canyon, on avance 25 % plus vite et on se décale 25 % moins vite) ; à droite, on maintient pour bander ou épauler, on vise en glissant et on relâche pour tirer. Le **bas de la zone de droite** (environ 20 % de la hauteur de l'écran, sous le petit trait gris collé au bord droit) tourne la vue exactement comme la zone de tir, mais sans bander ni tirer.
 
-À l'ouverture, le jeu ne propose que trois gros boutons : **Jouer avec des amis** (créer une partie, ou taper un chiffre et « Rejoindre une partie » ; carte et arme se choisissent ensuite dans le salon), **Jouer contre un bot** (choix de la carte et de l'arme, puis Lancer la partie) et **Tir libre** (choix de l'arme, cible en forêt). Chaque écran a un bouton Retour.
+À l'ouverture, le jeu ne propose que trois gros boutons : **Jouer avec des amis** (créer une partie, ou taper un numéro et « Rejoindre une partie » ; carte et arme se choisissent ensuite dans le salon), **Jouer contre un bot** (choix de la carte et de l'arme, puis Lancer la partie) et **Tir libre** (choix de l'arme, cible en forêt). Chaque écran a un bouton Retour.
 
 Deux cartes :
 - **Canyon** : face à face sur deux piliers, on ne peut que se décaler sur le côté pour esquiver.
@@ -41,7 +41,7 @@ Deux cartes :
 
 Pour jouer : https://gab22222.github.io/duel-arc/
 
-- Un joueur appuie sur **Créer une partie** et reçoit un chiffre (de 0 à 9) qu'il donne aux autres, qui le tapent puis appuient sur **Rejoindre**.
+- Un joueur appuie sur **Créer une partie** et reçoit un numéro (de 1 à 10) qu'il donne aux autres, qui le tapent puis appuient sur **Rejoindre**.
 - **Trois modes entre amis**, au choix dans le salon (dans cet ordre) :
   - **Tournante** (par défaut) : mêmes règles que la Tournante roulette ci-dessous, mais à chaque nouvelle manche, un joueur **choisit l'arme**, à tour de rôle dans l'ordre du salon : Joueur 1 à la manche 1, Joueur 2 à la manche 2, Joueur 3 à la manche 3, puis de nouveau Joueur 1, etc. (à 2 : Joueur 1, Joueur 2, Joueur 1…). Les autres voient qui choisit et l'arme choisie ; sans choix au bout de 25 s, une arme est tirée au hasard.
   - **Tournante roulette** : à chaque duel, une **roue de casino** (une case par arme) tourne en cliquetant puis s'arrête sous la flèche sur l'arme tirée au hasard (la même peut retomber), et le duel se joue dans la Forêt 1. À 3 : deux joueurs tirés au sort s'affrontent, le troisième est **spectateur** (invisible, il suit l'un des deux et passe de l'un à l'autre avec « Changer de vue »). Le gagnant reste et affronte le spectateur ; le perdant devient spectateur. Celui qui gagne deux duels de suite a gagné (« … a gagné ! » chez tout le monde), puis on continue : le gagnant affronte toujours le spectateur du duel qui vient de finir, si bien que personne n'est spectateur deux fois de suite ; en cas d'égalité, les deux mêmes joueurs rejouent le duel. À 2 : manches en **BO3** (deux manches gagnantes), puis un nouveau BO3. Les duels s'enchaînent sans fin tant que personne ne quitte ; si quelqu'un part, tout le monde revient au salon. Tous les tirages (duel, arme) viennent d'une graine commune : chaque téléphone calcule exactement la même chose.

@@ -249,9 +249,9 @@ p{margin:0}
     <div class="step" data-step="friends" hidden>
       <button class="back" data-go="home">← Retour</button>
       <h2>Jouer avec des amis</h2>
-      <button class="btn primary" id="btnCreate">Créer une partie <span>tu reçois un chiffre</span></button>
+      <button class="btn primary" id="btnCreate">Créer une partie <span>tu reçois un numéro</span></button>
       <div class="row">
-        <input id="code" maxlength="1" placeholder="0–9" inputmode="numeric" pattern="[0-9]" autocomplete="off" spellcheck="false" aria-label="Chiffre de la partie">
+        <input id="code" maxlength="2" placeholder="1–10" inputmode="numeric" pattern="[0-9]*" autocomplete="off" spellcheck="false" aria-label="Numéro de la partie, de 1 à 10">
         <button class="btn navy" id="btnJoin">Rejoindre une partie</button>
       </div>
     </div>
@@ -3212,7 +3212,7 @@ function netTick(now) {
   const key = JSON.stringify(p);
   if (key !== lastSent) { lastSent = key; pres(p); }
 }
-function randCode() { return String(Math.floor(Math.random() * 10)); } // un seul chiffre, de 0 à 9
+function randCode() { return String(1 + Math.floor(Math.random() * 10)); } // un numéro, de 1 à 10
 function menuNote(t) { $('#menuNote').textContent = t; }
 let joining = false;
 // mode de jeu entre amis : « tournante » (par défaut) ou « classique » ; choisi dans le salon, synchronisé comme la carte
@@ -3624,7 +3624,7 @@ function renderLobby() {
   $('#youAre').innerHTML = `Tu es <b style="color:${PALETTE[mine.col].css}">${esc(mine.name)}</b> (${PALETTE[mine.col].label})`;
   $('#nameIn').placeholder = 'Joueur ' + mine.n;
   $('#rosterN').textContent = n + 1; $('#rosterN').classList.toggle('full', n === 2);
-  let s = !ok ? 'Seul pour l’instant : donne le chiffre aux autres.' : gameMode !== 'classic' ? (gameMode === 'roul' ? 'Roulette : arme tirée à la roue à chaque manche. ' : 'Chaque manche, un joueur choisit l’arme, à tour de rôle (Joueur 1, puis 2, puis 3…). ') + (n === 1 ? 'À 2 : manches en BO3 (deux manches gagnantes).' : 'À 3 : deux s’affrontent, le troisième regarde ; le gagnant reste. Deux duels gagnés de suite = victoire.') : n === 1 ? 'À 2 : la partie part dès que vous êtes prêts tous les deux. Pour jouer à 3, attends le 3e joueur avant d’appuyer sur Prêt.' : (mapKey === 'japan' ? 'Classique à 3 : chacun pour soi, dans les jardins de temples, avec un radar.' : 'Classique à 3 : chacun pour soi, dans la forêt géante, avec un radar.');
+  let s = !ok ? 'Seul pour l’instant : donne le numéro aux autres.' : gameMode !== 'classic' ? (gameMode === 'roul' ? 'Roulette : arme tirée à la roue à chaque manche. ' : 'Chaque manche, un joueur choisit l’arme, à tour de rôle (Joueur 1, puis 2, puis 3…). ') + (n === 1 ? 'À 2 : manches en BO3 (deux manches gagnantes).' : 'À 3 : deux s’affrontent, le troisième regarde ; le gagnant reste. Deux duels gagnés de suite = victoire.') : n === 1 ? 'À 2 : la partie part dès que vous êtes prêts tous les deux. Pour jouer à 3, attends le 3e joueur avant d’appuyer sur Prêt.' : (mapKey === 'japan' ? 'Classique à 3 : chacun pour soi, dans les jardins de temples, avec un radar.' : 'Classique à 3 : chacun pour soi, dans la forêt géante, avec un radar.');
   if (ok && rdy && !net.rp) s = n === 1 ? 'Ton adversaire est prêt : appuie sur Prêt pour lancer à 2.' : rdy === n ? 'Les deux autres sont prêts : appuie sur Prêt pour lancer à 3.' : 'Un adversaire est prêt.';
   if (net.rp) s = ok ? `Prêt. On attend que ${n === 1 ? 'l’autre appuie' : 'les autres appuient'} aussi…` : 'Prêt. En attente d’un adversaire…';
   $('#lobbyStatus').textContent = s;
@@ -3648,9 +3648,9 @@ document.querySelectorAll('.mapsel button').forEach(b => b.addEventListener('cli
 document.querySelectorAll('.wpnsel button').forEach(b => b.addEventListener('click', () => chooseWeapon(b.dataset.wpn)));
 $('#btnCreate').addEventListener('click', () => enterRoom(randCode(), true));
 $('#btnJoin').addEventListener('click', () => {
-  const c = $('#code').value.replace(/[^0-9]/g, '');
-  if (c.length !== 1) { menuNote('Tape le chiffre que ton adversaire voit sur son écran.'); return; }
-  enterRoom(c, false);
+  const c = Number($('#code').value.replace(/[^0-9]/g, '') || 0);
+  if (c < 1 || c > 10) { menuNote('Tape le numéro, de 1 à 10, que ton adversaire voit sur son écran.'); return; }
+  enterRoom(String(c), false);
 });
 $('#code').addEventListener('keydown', e => { if (e.key === 'Enter') $('#btnJoin').click(); });
 $('#btnBot').addEventListener('click', () => { audioInit(); menuNote(''); mode = 'bot'; resetMatch(); });
