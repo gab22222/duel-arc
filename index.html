@@ -452,7 +452,7 @@ const WPN = {
 };
 // paintball : billes de peinture à la vitesse d'une flèche d'arc tirée à fond, en ligne droite (sans chute), couleurs fluo
 const isPaint = k => k === 'paintball' || k === 'psniper'; // billes de peinture (paintball et sniper paintball)
-const PAINT_BALL = 6; // taille des billes tirées (x6 par rapport à une vraie bille de 17 mm grossie)
+const PAINT_BALL = { paintball: 3, psniper: 6 }, PAINT_BLOT = 3; // taille des billes tirées et des taches qu'elles laissent (par rapport à une vraie bille de 17 mm grossie)
 const PAINT_V = VMAX, PAINT_COLS = [0xffe81a, 0xff2f9a, 0x2fd8ff, 0x7dff36, 0xff7a1a];
 // minigun : balles traçantes à 110 m/s qui tombent un peu (gravité x0,35) ; 20 HP au corps, 60 HP à la tête
 const MINI_V = 110, MINI_G = G * 0.35;
@@ -1282,12 +1282,12 @@ function updateSplash(dt) {
 }
 // paintball : bille de 17 mm (grossie pour se voir) et éclaboussures de sa couleur
 const paintGeo = new T.SphereGeometry(0.014, 10, 8), paintCol = new T.Color();
-function paintAt(p, col) {
+function paintAt(p, col, k = 1) { // k : taille de l'éclaboussure
   paintCol.setHex(col || PAINT_COLS[0]);
   for (let i = 0; i < 12; i++) {
     const k = dropNext; dropNext = (dropNext + 1) % (SPLASH_N / 2); const j = SPLASH_N / 2 + k;
     dropMesh.setColorAt(k, paintCol);
-    splash[j] = { mesh: dropMesh, i: k, p: p.clone(), v: new T.Vector3(rand(-1.8, 1.8), rand(0.3, 2), rand(-1.8, 1.8)), r: new T.Vector3(), w: 0, life: rand(0.25, 0.6), s: rand(0.6, 1.3), drop: true };
+    splash[j] = { mesh: dropMesh, i: k, p: p.clone(), v: new T.Vector3(rand(-1.8, 1.8) * k, rand(0.3, 2) * k, rand(-1.8, 1.8) * k), r: new T.Vector3(), w: 0, life: rand(0.25, 0.6), s: rand(0.6, 1.3) * k, drop: true };
   }
   dropMesh.instanceColor.needsUpdate = true;
 }
@@ -2410,7 +2410,7 @@ function makeProjectile(owner, kind, streak) {
   if (isBullet(kind) || kind === 'minigun') return makeBullet(owner);
   if (kind === 'beer') return makeBeerProjectile();
   if (kind === 'grenade') return makeGrenade();
-  if (isPaint(kind)) { const m = new T.Mesh(paintGeo, new T.MeshStandardMaterial({ color: PAINT_COLS[0], roughness: .3 })); m.scale.setScalar(PAINT_BALL); return m; } // grosses billes tirées
+  if (isPaint(kind)) { const m = new T.Mesh(paintGeo, new T.MeshStandardMaterial({ color: PAINT_COLS[0], roughness: .3 })); m.scale.setScalar(PAINT_BALL[kind]); return m; } // grosses billes tirées
   const m = makeArrow(owner, streak); if (kind === 'bolt') m.scale.set(1, 1, BOLT_LEN); return m;
 }
 function spawnArrow(owner, p, v, id = 0, kind = 'arrow', noSmoke = false) {
@@ -2488,7 +2488,7 @@ function pierceDepth(p, dir, model, head, len = 0.9) {
 function plantInArcher(a, model, head) {
   stopArrow(a); a.pending = 0;
   if (isBullet(a.kind) || a.kind === 'minigun') { a.m.visible = false; a.gone = true; a.part = 'r'; tintSmoke(a); return; } // la balle ne reste pas dans le corps
-  if (isPaint(a.kind)) { a.m.visible = false; a.gone = true; a.part = 'r'; tintSmoke(a); paintAt(a.p, a.col); sfx('splat', 0.8); return; } // la bille éclate sur le joueur
+  if (isPaint(a.kind)) { a.m.visible = false; a.gone = true; a.part = 'r'; tintSmoke(a); paintAt(a.p, a.col, a.kind === 'psniper' ? 0.5 : 1); sfx('splat', 0.8); return; } // la bille éclate sur le joueur
   if (a.kind === 'beer') { shatter(a); a.part = 'r'; return; } // la bouteille éclate sur le joueur
   a.m.visible = true;
   orient(a); tmpV.copy(a.v).normalize();
@@ -2565,8 +2565,8 @@ function collide(a) {
   // bille de paintball : elle éclate et laisse une tache de peinture sur l'arbre, le rocher ou le sol
   if (isPaint(a.kind) && ((obstacles.length && inObstacle(p)) || (!map.lateral && p.y < 0))) {
     if (p.y < 0) p.y = 0.01;
-    stopArrow(a); orient(a); a.m.position.copy(p).addScaledVector(tmpV.copy(a.v).normalize(), -0.012 * PAINT_BALL); a.m.scale.set(3.2 * PAINT_BALL, 3.2 * PAINT_BALL, 0.22 * PAINT_BALL); // tache à la taille de la bille
-    paintAt(p, a.col); sfx('splat', a.owner === 'me' ? 0.35 : 0.6); return;
+    stopArrow(a); orient(a); a.m.position.copy(p).addScaledVector(tmpV.copy(a.v).normalize(), -0.012 * PAINT_BLOT); a.m.scale.set(3.2 * PAINT_BLOT, 3.2 * PAINT_BLOT, 0.22 * PAINT_BLOT); // tache : même taille pour les deux armes
+    paintAt(p, a.col, a.kind === 'psniper' ? 0.5 : 1); sfx('splat', a.owner === 'me' ? 0.35 : 0.6); return;
   }
   if (a.kind === 'beer' && ((obstacles.length && inObstacle(p)) || (!map.lateral && p.y < 0))) { if (p.y < 0) p.y = 0.02; shatter(a); return; }
   if (obstacles.length && inObstacle(p)) { stopArrow(a); a.m.position.copy(p); sfx('thunk', a.owner === 'me' ? 0.3 : 0.5); return; }
