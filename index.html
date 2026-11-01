@@ -2408,6 +2408,8 @@ function fpCamera(dt) {
   camera.position.set(me.x - Math.sin(me.yaw) * 0.12 + Math.cos(me.yaw) * bx, 1.68 + by, me.z - Math.cos(me.yaw) * 0.12 - Math.sin(me.yaw) * bx);
   forward(me.yaw, me.pitch, camF); camera.lookAt(look.copy(camera.position).add(camF)); camera.rotateZ(-fpRoll * 0.022);
 }
+// quand on vise, l'arme s'arrête juste sous le cercle du viseur : baisse propre à chacune, selon la hauteur de sa hausse ou de sa lunette
+const FP_LOW = { arrow: 0, pistol: 0.007, revolver: 0.021, deagle: 0.033, vector: 0.073, m4: 0.073, shotgun: 0.124, grenade: 0.094, paintball: 0.19, bolt: 0.08, bullet: 0.098, barrett: 0.185, psniper: 0.162 };
 // les bras et l'arme : ils suivent le regard avec un peu de retard, balancent, respirent, reculent au tir et remontent quand on vise
 function updateViewmodel(dt) {
   const ease = 1 - Math.exp(-dt * 9), wy = (me.yaw - vmLastYaw) / Math.max(dt, 0.001), wp = (me.pitch - vmLastPitch) / Math.max(dt, 0.001);
@@ -2415,11 +2417,11 @@ function updateViewmodel(dt) {
   fpA.setPose(0, me.draw, me.reload <= 0); fpA.placeHands();
   const ads = me.drawing ? Math.sin(me.draw * Math.PI / 2) : 0, loose = 1 - 0.8 * ads, breath = Math.sin(t * 1.7) * 0.004 * loose;
   // en bas de l'écran vue de trois quarts (l'arc à gauche), et bien au centre quand on vise
-  const kd = curWpn().kind, starLow = portrait && kd === 'shuriken', side = (portrait ? 0.13 : 0.24) * (kd === 'arrow' ? -0.7 : 1) * (thrown(kd) ? (starLow ? 1.8 : 1.15) : 1 - ads), turn = side * 0.34; // (une arme lancée reste sur le côté et ne cache pas la cible)
+  const kd = curWpn().kind, starLow = portrait && kd === 'shuriken', side = (portrait ? 0.13 : 0.24) * (kd === 'arrow' ? (portrait ? -1.1 : -0.76) : 1) * (thrown(kd) ? (starLow ? 1.8 : 1.15) : kd === 'melee' || kd === 'arrow' ? 1 : 1 - ads), turn = side * 0.34; // (l'arc, la batte et les armes lancées restent sur le côté : ils passeraient devant la cible)
   fpPivot.position.set(side + Math.cos(fpWalk) * 0.012 * fpBob * loose + vmYaw * 0.012 * loose, -Math.abs(Math.sin(fpWalk)) * 0.016 * fpBob * loose + breath - vmPitch * 0.008 * loose, vmKick);
   fpPivot.rotation.set(vmKick * 1.3 + vmPitch * 0.015 * loose, turn + vmYaw * 0.02 * loose, -fpRoll * 0.05 * loose - side * 0.12);
   // la sarbacane est tenue à la bouche : on la garde sous le regard, le tube file vers le viseur sans le cacher
-  fpA.root.position.set(0, kd === 'dart' ? -1.87 + ads * 0.06 : starLow ? -1.68 : thrown(kd) ? -1.55 : -1.67 + ads * 0.115, -0.2 + ads * 0.05);
+  fpA.root.position.set(0, kd === 'dart' ? -1.87 + ads * 0.06 : starLow ? -1.68 : thrown(kd) ? -1.55 : -1.67 + ads * (0.115 - (FP_LOW[kd] || 0)), -0.2 + ads * 0.05);
   fpHemi.color.copy(hemi.color); fpHemi.groundColor.copy(hemi.groundColor); fpHemi.intensity = hemi.intensity; fpSun.color.copy(sunL.color); fpSun.intensity = sunL.intensity;
   fpCam.aspect = camera.aspect; fpCam.fov = portrait ? 76 : 58; fpCam.updateProjectionMatrix();
 }
