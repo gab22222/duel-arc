@@ -2442,10 +2442,11 @@ function updateViewmodel(dt, V = me) {
   vmLastYaw = V.yaw; vmLastPitch = V.pitch; vmYaw += (clamp(wy, -3, 3) - vmYaw) * ease; vmPitch += (clamp(wp, -3, 3) - vmPitch) * ease; vmKick *= Math.exp(-dt * 11);
   fpA.setPose(0, V.draw, V === me ? me.reload <= 0 : V.nock !== false); fpA.placeHands(); fpA.setSilencer(V === me ? silencer : V.sil === true); fpA.wear(V === me ? meA : specTarget().A);
   const ads = V === me ? (me.drawing ? Math.sin(me.draw * Math.PI / 2) : 0) : Math.sin(V.draw * Math.PI / 2), loose = 1 - 0.8 * ads, breath = Math.sin(t * 1.7) * 0.004 * loose;
-  // en bas de l'écran vue de trois quarts (l'arc à gauche), et bien au centre quand on vise
+  // en bas de l'écran vue de trois quarts, et bien au centre quand on vise ; l'arc se dessine à gauche, puis toute la scène (lumières comprises) passe au miroir : il apparaît à droite
   const kd = curWpn().kind, starLow = portrait && kd === 'shuriken', side = (portrait ? 0.13 : 0.24) * (kd === 'arrow' ? (portrait ? -1.1 : -0.76) : 1) * (thrown(kd) ? (starLow ? 1.8 : 1.15) : kd === 'melee' || kd === 'arrow' ? 1 : 1 - ads), turn = side * 0.34; // (l'arc, la batte et les armes lancées restent sur le côté : ils passeraient devant la cible)
-  fpPivot.position.set(side + Math.cos(fpWalk) * 0.012 * fpBob * loose + vmYaw * 0.012 * loose, -Math.abs(Math.sin(fpWalk)) * 0.016 * fpBob * loose + breath - vmPitch * 0.008 * loose, vmKick);
-  fpPivot.rotation.set(vmKick * 1.3 + vmPitch * 0.015 * loose, turn + vmYaw * 0.02 * loose, -fpRoll * 0.05 * loose - side * 0.12);
+  const flip = kd === 'arrow' ? -1 : 1; fpScene.scale.x = flip; // (le balancement, lui, garde le même sens à l'écran)
+  fpPivot.position.set(side + Math.cos(fpWalk) * 0.012 * fpBob * loose + flip * vmYaw * 0.012 * loose, -Math.abs(Math.sin(fpWalk)) * 0.016 * fpBob * loose + breath - vmPitch * 0.008 * loose, vmKick);
+  fpPivot.rotation.set(vmKick * 1.3 + vmPitch * 0.015 * loose, turn + flip * vmYaw * 0.02 * loose, -flip * fpRoll * 0.05 * loose - side * 0.12);
   // la sarbacane est tenue à la bouche : on la garde sous le regard, le tube file vers le viseur sans le cacher
   fpA.root.position.set(0, kd === 'dart' ? -1.87 + ads * 0.06 : starLow ? -1.68 : thrown(kd) ? -1.55 : -1.67 + ads * (0.115 - (FP_LOW[kd] || 0)), -0.2 + ads * 0.05);
   fpHemi.color.copy(hemi.color); fpHemi.groundColor.copy(hemi.groundColor); fpHemi.intensity = hemi.intensity; fpSun.color.copy(sunL.color); fpSun.intensity = sunL.intensity;
