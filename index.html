@@ -45,7 +45,7 @@ body{position:fixed;inset:0;touch-action:none;-webkit-user-select:none;user-sele
 .wheel .pointer{position:absolute;left:50%;top:-6px;width:0;height:0;transform:translateX(-50%);border-left:13px solid transparent;border-right:13px solid transparent;border-top:24px solid #f5efe2;filter:drop-shadow(0 2px 3px rgba(0,0,0,.6))}
 .wresult{font:800 26px var(--display);color:var(--ember);min-height:30px;letter-spacing:.03em;opacity:0;transform:scale(.85);transition:opacity .2s,transform .25s cubic-bezier(.2,1.6,.4,1)}
 .wresult.on{opacity:1;transform:none}
-#spec{position:fixed;z-index:6;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 18px);transform:translateX(-50%);display:flex;align-items:center;gap:10px;padding:8px 8px 8px 14px;border-radius:14px;background:rgba(14,12,22,.7);border:1px solid var(--line);font-size:14px;color:var(--bone);white-space:nowrap}
+#spec{position:fixed;z-index:6;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 18px);transform:translateX(-50%);display:flex;align-items:center;gap:10px;padding:8px 8px 8px 14px;border-radius:14px;background:rgba(14,12,22,.7);border:1px solid var(--line);font-size:14px;color:var(--bone);white-space:nowrap;flex-wrap:wrap;justify-content:center;width:max-content;max-width:calc(100vw - 24px)}
 #spec[hidden]{display:none}
 #spec .btn{padding:8px 12px;font-size:14px}
 #lobby .modesel{grid-template-columns:repeat(3,1fr)}
@@ -232,7 +232,7 @@ p{margin:0}
   <div class="wgrid" id="pGrid"></div>
   <div class="rspec" id="pSpec"></div>
 </div></div>
-<div id="spec" hidden><span id="specTxt">Tu regardes</span><button class="btn" id="specBtn">Changer de vue</button></div>
+<div id="spec" hidden><span id="specTxt">Tu regardes</span><button class="btn" id="specBtn">Joueur suivant</button><button class="btn" id="specCam">Vue 3ᵉ personne</button></div>
 <button id="quit" aria-label="Quitter la partie" hidden>✕</button>
 <button id="sil" aria-pressed="false" hidden>Silencieux</button>
 
@@ -2031,11 +2031,12 @@ function makeArcher(cloth, hoodCol, owner, fpv = false) { // fpv : seulement les
   }
   scene.add(root);
   function setColors(c, h) { clothM.color.setHex(c); hoodM.color.setHex(h); }
+  function wear(B) { clothM.color.copy(B.clothM.color); hoodM.color.copy(B.hoodM.color); } // les couleurs d'un autre joueur
   // première personne : pas de corps, et des mains au bout des bras
   const hands = [armL, armR].map(a => { const h = new T.Mesh(new T.BoxGeometry(0.066, 0.076, 0.1), std(0x2b2d33, { roughness: .7 })), cuff = new T.Mesh(new T.BoxGeometry(0.074, 0.074, 0.03), skin); cuff.position.z = -0.065; h.add(cuff); h.visible = fpv; upper.add(h); return [a.m, h]; }); // gants et poignets
   if (fpv) for (const [m] of heatParts) if (m !== armL.m && m !== armR.m) m.visible = false;
   function placeHands() { for (const [m, h] of hands) { h.quaternion.copy(m.quaternion); h.position.set(0, 0, m.scale.z / 2).applyQuaternion(m.quaternion).add(m.position); } }
-  return { root, upper, setPose, setWeapon, swing, setSilencer, recoil, bowWorld, updateHead, zoneAt, heatParts, placeHands, headPos, laser, laserFrom, setColors, get wpn() { return wpn; } };
+  return { root, upper, setPose, setWeapon, swing, setSilencer, recoil, bowWorld, updateHead, zoneAt, heatParts, placeHands, headPos, laser, laserFrom, setColors, wear, clothM, hoodM, get wpn() { return wpn; } };
 }
 const meA = makeArcher(0x2f8f83, 0x1f5f58, 'me');
 const oppA = makeArcher(0xa8342a, 0x6e1f1a, 'opp');
@@ -2221,7 +2222,8 @@ let nPlayers = 2, mySlot = 0;
 // À 2 : manches en BO3. Chaque duel commence par une roulette qui tire l'arme au hasard.
 // Tous les tirages viennent d'une graine commune (les jetons des joueurs) : chaque téléphone calcule la même chose.
 const TOUR = { on: false, mode: 'tour', order: [], waitPick: false, pickT: 0, base: '', ids: [], n: 0, round: 0, champ: null, wins: 0, sc: {}, title: '', big: false, cur: null };
-let specIdx = 0;
+let specIdx = 0, specThird = false; // joueur regardé ; vue de derrière lui plutôt que dans ses yeux
+try { specThird = localStorage.getItem('duelarc-spec3') === '1'; } catch (e) {}
 const trio = () => nPlayers === 3;
 const foeByPeer = id => foes.find(f => f.peer === id);
 const entryByKey = k => k === 'me' ? ME : FOES[k];
@@ -2420,24 +2422,25 @@ function release() {
   me.drawing = false; me.draw = 0;
 }
 function forward(yaw, pitch, out) { return out.set(-Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), -Math.cos(yaw) * Math.cos(pitch)); }
-let fpWalk = 0, fpBob = 0, fpRoll = 0, vmKick = 0, vmYaw = 0, vmPitch = 0, vmLastYaw = 0, vmLastPitch = 0, flashT = -9;
-const inFP = () => !!mode && phase !== 'idle' && !isDead(ME) && !(TOUR.on && mySlot === 2); // le joueur est toujours à la première personne ; éliminé ou spectateur, la caméra suit le combat de derrière
+let fpPX = 0, fpPZ = 0, fpWalk = 0, fpBob = 0, fpRoll = 0, vmKick = 0, vmYaw = 0, vmPitch = 0, vmLastYaw = 0, vmLastPitch = 0, flashT = -9;
+const inFP = () => !!mode && phase !== 'idle' && !isDead(ME) && !(TOUR.on && mySlot === 2); // le joueur est toujours à la première personne
 // le regard : à hauteur des yeux, la tête balance avec les pas et penche un peu dans les pas de côté
-function fpCamera(dt) {
-  const sp = Math.hypot(me.vx, me.vz), side = me.vx * Math.cos(me.yaw) - me.vz * Math.sin(me.yaw), k = 1 - Math.exp(-dt * 8);
+function fpCamera(dt, V = me) {
+  const vx = V === me ? me.vx : (V.x - fpPX) / Math.max(dt, 0.001), vz = V === me ? me.vz : (V.z - fpPZ) / Math.max(dt, 0.001); fpPX = V.x; fpPZ = V.z; // (un autre joueur : sa vitesse se déduit de ses positions)
+  const sp = Math.hypot(vx, vz), side = vx * Math.cos(V.yaw) - vz * Math.sin(V.yaw), k = 1 - Math.exp(-dt * 8);
   fpWalk += dt * sp * 3.6; fpBob += (Math.min(1.2, sp / map.maxv) - fpBob) * k; fpRoll += (clamp(side / map.maxv, -1, 1) - fpRoll) * k;
-  const quiet = 1 - 0.75 * Math.sin(me.draw * Math.PI / 2), bx = Math.cos(fpWalk) * 0.02 * fpBob * quiet, by = Math.abs(Math.sin(fpWalk)) * 0.035 * fpBob * quiet;
-  camera.position.set(me.x - Math.sin(me.yaw) * 0.12 + Math.cos(me.yaw) * bx, 1.68 + by, me.z - Math.cos(me.yaw) * 0.12 - Math.sin(me.yaw) * bx);
-  forward(me.yaw, me.pitch, camF); camera.lookAt(look.copy(camera.position).add(camF)); camera.rotateZ(-fpRoll * 0.022);
+  const quiet = 1 - 0.75 * Math.sin(V.draw * Math.PI / 2), bx = Math.cos(fpWalk) * 0.02 * fpBob * quiet, by = Math.abs(Math.sin(fpWalk)) * 0.035 * fpBob * quiet;
+  camera.position.set(V.x - Math.sin(V.yaw) * 0.12 + Math.cos(V.yaw) * bx, 1.68 + by, V.z - Math.cos(V.yaw) * 0.12 - Math.sin(V.yaw) * bx);
+  forward(V.yaw, V.pitch, camF); camera.lookAt(look.copy(camera.position).add(camF)); camera.rotateZ(-fpRoll * 0.022);
 }
 // quand on vise, l'arme s'arrête juste sous le cercle du viseur : baisse propre à chacune, selon la hauteur de sa hausse ou de sa lunette
 const FP_LOW = { arrow: 0, pistol: 0.007, revolver: 0.021, deagle: 0.033, vector: 0.073, m4: 0.073, shotgun: 0.124, grenade: 0.094, paintball: 0.19, bolt: 0.08, bullet: 0.098, barrett: 0.185, psniper: 0.162 };
 // les bras et l'arme : ils suivent le regard avec un peu de retard, balancent, respirent, reculent au tir et remontent quand on vise
-function updateViewmodel(dt) {
-  const ease = 1 - Math.exp(-dt * 9), wy = (me.yaw - vmLastYaw) / Math.max(dt, 0.001), wp = (me.pitch - vmLastPitch) / Math.max(dt, 0.001);
-  vmLastYaw = me.yaw; vmLastPitch = me.pitch; vmYaw += (clamp(wy, -3, 3) - vmYaw) * ease; vmPitch += (clamp(wp, -3, 3) - vmPitch) * ease; vmKick *= Math.exp(-dt * 11);
-  fpA.setPose(0, me.draw, me.reload <= 0); fpA.placeHands();
-  const ads = me.drawing ? Math.sin(me.draw * Math.PI / 2) : 0, loose = 1 - 0.8 * ads, breath = Math.sin(t * 1.7) * 0.004 * loose;
+function updateViewmodel(dt, V = me) {
+  const ease = 1 - Math.exp(-dt * 9), wy = (V.yaw - vmLastYaw) / Math.max(dt, 0.001), wp = (V.pitch - vmLastPitch) / Math.max(dt, 0.001);
+  vmLastYaw = V.yaw; vmLastPitch = V.pitch; vmYaw += (clamp(wy, -3, 3) - vmYaw) * ease; vmPitch += (clamp(wp, -3, 3) - vmPitch) * ease; vmKick *= Math.exp(-dt * 11);
+  fpA.setPose(0, V.draw, V === me ? me.reload <= 0 : V.nock !== false); fpA.placeHands(); fpA.setSilencer(V === me ? silencer : V.sil === true); fpA.wear(V === me ? meA : specTarget().A);
+  const ads = V === me ? (me.drawing ? Math.sin(me.draw * Math.PI / 2) : 0) : Math.sin(V.draw * Math.PI / 2), loose = 1 - 0.8 * ads, breath = Math.sin(t * 1.7) * 0.004 * loose;
   // en bas de l'écran vue de trois quarts (l'arc à gauche), et bien au centre quand on vise
   const kd = curWpn().kind, starLow = portrait && kd === 'shuriken', side = (portrait ? 0.13 : 0.24) * (kd === 'arrow' ? (portrait ? -1.1 : -0.76) : 1) * (thrown(kd) ? (starLow ? 1.8 : 1.15) : kd === 'melee' || kd === 'arrow' ? 1 : 1 - ads), turn = side * 0.34; // (l'arc, la batte et les armes lancées restent sur le côté : ils passeraient devant la cible)
   fpPivot.position.set(side + Math.cos(fpWalk) * 0.012 * fpBob * loose + vmYaw * 0.012 * loose, -Math.abs(Math.sin(fpWalk)) * 0.016 * fpBob * loose + breath - vmPitch * 0.008 * loose, vmKick);
@@ -2453,11 +2456,11 @@ function renderViewmodel() {
   if (f) { fpA.bowWorld(fpFlash.position); fpFlash.scale.setScalar(rand(0.22, 0.34)); fpFlash.material.rotation = rand(0, 6.28); }
   renderer.autoClear = false; renderer.clearDepth(); renderer.render(fpScene, fpCam); renderer.autoClear = true;
 }
-function fpShot(kind) { // au tir : l'arme recule et la flamme sort du canon
-  if (!inFP()) return;
+function fpShot(kind, sil = silencer) { // au tir : l'arme recule et la flamme sort du canon
+  if (!inFP() && !inSpecFP()) return;
   vmKick = bigGun(kind) ? 0.075 : kind === 'barrett' ? 0.11 : kind === 'shotgun' || kind === 'grenade' ? 0.085 : kind === 'minigun' ? 0.022 : kind === 'dart' || thrown(kind) ? 0.02 : kind === 'bow' || kind === 'arrow' || kind === 'bolt' || kind === 'beer' ? 0.03 : 0.04;
   if (!(bigGun(kind) || kind === 'barrett' || kind === 'shotgun' || kind === 'grenade' || kind === 'minigun' || kind === 'dart' || thrown(kind)) && !isPaint(kind)) { camKick = t; camKickA = 0.024; }
-  if ((isBullet(kind) || kind === 'minigun' || kind === 'grenade') && !(silencer && SIL_SFX[kind])) flashT = t;
+  if ((isBullet(kind) || kind === 'minigun' || kind === 'grenade') && !(sil && SIL_SFX[kind])) flashT = t;
 }
 function hitMark(head) { const h = $('#hitm'); h.classList.remove('on', 'head'); void h.getBoundingClientRect(); h.classList.add('on'); h.classList.toggle('head', head); }
 function camOffset(out, v = me) {
@@ -2724,6 +2727,7 @@ function botMelee(dt) {
 function updateOpp(dt) {
   if (mode === 'practice') return;
   if (mode === 'bot') botUpdate(dt);
+  const seen = inSpecFP() && specTarget(); // on est dans ses yeux : on ne voit pas son corps
   const k = 1 - Math.exp(-dt * 14);
   for (const f of foes) {
     const s = f.s;
@@ -2736,6 +2740,7 @@ function updateOpp(dt) {
     deadPose(f.A, trio() && isDead(f));
     tags[f.key].visible = mode === 'online' && phase !== 'idle' && !isDead(f); // pseudo au-dessus de la tête
     if (TOUR.on && f.slot === 2) f.A.root.visible = false; // le spectateur de la tournante n'est pas sur le terrain
+    if (f === seen) { f.A.root.visible = false; tags[f.key].visible = false; }
     f.A.setPose(s.pitch, s.draw, s.nock);
     f.A.updateHead();
     updateLaser(f, isDead(f));
@@ -2812,7 +2817,7 @@ function updateLaser(f, dead) {
   if (!hasLaser(A.wpn) || dead || !mode || phase === 'idle') { A.laser(null); return; }
   A.laserFrom(laserO);
   // première personne : le laser part de l'arme affichée (on repasse de sa caméra à celle du jeu, juste devant les yeux)
-  if (f === ME && inFP()) { fpA.laserFrom(laserO).project(fpCam); laserO.z = 0.5; laserD.copy(laserO.unproject(camera)).sub(camera.position).normalize(); laserO.copy(camera.position).addScaledVector(laserD, 0.5); }
+  if ((f === ME && inFP()) || (inSpecFP() && f === specTarget())) { fpA.laserFrom(laserO).project(fpCam); laserO.z = 0.5; laserD.copy(laserO.unproject(camera)).sub(camera.position).normalize(); laserO.copy(camera.position).addScaledVector(laserD, 0.5); }
   if (f === ME) { rayEnd(camera.position, camF, ME, laserE); laserD.copy(laserE).sub(laserO).normalize(); }
   else laserD.set(0, 0, -1).transformDirection(A.upper.matrixWorld);
   A.laser(laserO, rayEnd(laserO, laserD, f, laserE));
@@ -3020,10 +3025,10 @@ function updateCamera(dt) {
     const base = portrait ? 72 : 52;
     const zx = curWpn().zoomX;
     const zoom = zx ? 2 * Math.atan(Math.tan(base * Math.PI / 360) / zx) * 180 / Math.PI : curWpn().melee || curWpn().auto ? base : (portrait ? 46 : 32);
-    const want = base + (zoom - base) * (me.drawing ? Math.sin(me.draw * Math.PI / 2) : 0) + (inFP() && !me.drawing ? fpBob * 3 : 0); // à la première personne, le champ s'ouvre un peu en courant
+    const V = viewOf(), eyes = inFP() || inSpecFP(), aim = inSpecFP() ? V.draw : me.drawing ? me.draw : 0; // V : moi, ou le combattant que je regarde quand je suis spectateur
+    const want = base + (zoom - base) * Math.sin(aim * Math.PI / 2) + (eyes && !aim ? fpBob * 3 : 0); // à la première personne, le champ s'ouvre un peu en courant
     fov += (want - fov) * (1 - Math.exp(-dt * 10));
-    const V = viewOf(); // moi, ou le combattant que je regarde quand je suis spectateur
-    if (inFP()) { fpCamera(dt); updateViewmodel(dt); }
+    if (eyes) { fpCamera(dt, V); updateViewmodel(dt, V); }
     else {
       camOffset(camera.position, V);
       if (obstacles.length) { // la caméra ne traverse pas les arbres
@@ -3091,8 +3096,9 @@ function drawRadar() {
 }
 function drawHud() {
   updateDeadSpec(); drawRadar();
-  $('#fpv').hidden = !inFP();
-  const scoped = !!mode && phase !== 'idle' && !!curWpn().zoomX && me.drawing && me.draw > 0.6;
+  $('#fpv').hidden = !inFP() && !inSpecFP();
+  if (watchable().length) crossEl.toggleAttribute('hidden', !inSpecFP()); // spectateur : le viseur du joueur regardé, dans ses yeux seulement
+  const scoped = !!mode && phase !== 'idle' && !!curWpn().zoomX && (inSpecFP() ? viewOf().draw > 0.6 : me.drawing && me.draw > 0.6);
   thermalOn = scoped && !!curWpn().ir; scopeEl.classList.toggle('ir', thermalOn);
   scopeEl.hidden = !scoped; crossEl.style.visibility = scoped ? 'hidden' : '';
   if (!mode || phase === 'idle') return;
@@ -3306,7 +3312,7 @@ function applyOppPres(p, f) {
   s.tpitch = clamp(num(p.pitch, 0), -0.5, 0.8);
   s.draw = clamp(num(p.draw, 0), 0, 1);
   s.nock = p.nock !== false;
-  f.A.setSilencer(p.sil === true);
+  s.sil = p.sil === true; f.A.setSilencer(s.sil);
   if (net.started && p.started === net.started && p.dealt && typeof p.dealt === 'object') {
     // touches publiées par ce joueur (rattrape un message « touché » perdu)
     const d = dealt[f.peer] || (dealt[f.peer] = {});
@@ -3322,7 +3328,7 @@ function applyOppPres(p, f) {
 function fromOpp(msg) { return msg && !msg.sameTab && mode === 'online' && msg.data && net.started && msg.data.g === net.started && !!foeByPeer(msg.peer); }
 function onShot(msg) {
   if (!fromOpp(msg) || !(phase === 'fight' || phase === 'ending')) return;
-  if (msg.data.k === 'm') { const f = foeByPeer(msg.peer); if (!isDead(f)) { f.A.swing(); sfx('whoosh', 0.5); } return; } // coup de batte
+  if (msg.data.k === 'm') { const f = foeByPeer(msg.peer); if (!isDead(f)) { f.A.swing(); sfx('whoosh', 0.5); if (inSpecFP() && f === specTarget()) fpA.swing(); } return; } // coup de batte
   const o = msg.data.o, v = msg.data.v;
   if (!Array.isArray(o) || !Array.isArray(v) || o.length !== 3 || v.length !== 3) return;
   const f = foeByPeer(msg.peer), k = trio() ? 1 : -1;
@@ -3334,6 +3340,7 @@ function onShot(msg) {
   shotSfx(kind, msg.data.s === 1, isBullet(kind) ? 0.5 : 0.35);
   if (SIL_SFX[kind]) f.A.setSilencer(msg.data.s === 1);
   if (kicks(kind)) f.A.recoil();
+  if (inSpecFP() && f === specTarget()) { if (kicks(kind)) fpA.recoil(); fpShot(kind, msg.data.s === 1); } // je suis dans ses yeux : je vois son arme tirer
 }
 function onHit(msg) {
   if (!fromOpp(msg)) return;
@@ -3555,8 +3562,11 @@ const fighters = () => foes.filter(f => f.slot !== 2);
 const tourSpec = () => TOUR.on && TOUR.n === 3 && mySlot === 2 && phase !== 'idle';
 const deadSpec = () => !TOUR.on && mode === 'online' && trio() && isDead(ME) && (phase === 'fight' || phase === 'ending');
 const watchable = () => tourSpec() ? fighters() : deadSpec() ? foes.filter(f => !isDead(f)) : [];
-function viewOf() { const F = watchable(); return F.length ? F[specIdx % F.length].s : me; }
-function updateSpecTxt() { const F = watchable(); if (F.length) $('#specTxt').textContent = `Tu regardes ${F[specIdx % F.length].name}`; }
+const specTarget = () => { const F = watchable(); return F.length ? F[specIdx % F.length] : null; };
+// spectateur : dans les yeux du joueur regardé (tant qu'il est en vie), ou de derrière lui si on l'a choisi
+const inSpecFP = () => { const f = !specThird && specTarget(); return !!f && !isDead(f); };
+function viewOf() { const f = specTarget(); return f ? f.s : me; }
+function updateSpecTxt() { const f = specTarget(); if (f) $('#specTxt').textContent = `Tu regardes ${f.name}`; }
 // éliminé à 3 : la barre « Tu regardes … / Changer de vue » remplace les commandes jusqu'à la fin de la partie
 let wasDeadSpec = false;
 function updateDeadSpec() {
@@ -3648,6 +3658,9 @@ $('#btnPractice').addEventListener('click', () => { audioInit(); menuNote(''); p
 $('#btnReady').addEventListener('click', pressReady);
 document.querySelectorAll('.modesel button').forEach(b => b.addEventListener('click', () => chooseGameMode(b.dataset.gm)));
 $('#specBtn').addEventListener('click', () => { specIdx++; updateSpecTxt(); });
+const specCamLabel = () => { $('#specCam').textContent = specThird ? 'Vue 1ʳᵉ personne' : 'Vue 3ᵉ personne'; };
+$('#specCam').addEventListener('click', () => { specThird = !specThird; specCamLabel(); sfx('tick', 0.6); try { localStorage.setItem('duelarc-spec3', specThird ? '1' : '0'); } catch (e) {} });
+specCamLabel();
 // pseudo facultatif : enregistré sur ce téléphone et envoyé aux autres
 $('#nameIn').value = myName;
 $('#nameIn').addEventListener('input', () => {
@@ -3737,7 +3750,7 @@ function frame(now) {
   drawHud();
   updateSmoke();
   if (thermalOn) renderThermal(); else renderer.render(scene, camera);
-  if (inFP() && scopeEl.hidden) renderViewmodel();
+  if ((inFP() || inSpecFP()) && scopeEl.hidden) renderViewmodel();
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
