@@ -109,7 +109,7 @@ body{position:fixed;inset:0;touch-action:none;-webkit-user-select:none;user-sele
 #stick::after{right:10px;border-left-color:var(--bone)}
 #stick.round{width:124px;height:124px;border-radius:50%}
 /* petit joystick caméra, dans le coin en bas à droite : tourne la vue sans bander ni tirer */
-#lookMark{right:0;top:80%;width:30px;height:2px;margin-top:-1px;background:rgba(200,200,200,.65)} /* environ un demi-centimètre sur un téléphone */
+#lookMark{right:0;top:85%;width:30px;height:2px;margin-top:-1px;background:rgba(200,200,200,.65)} /* environ un demi-centimètre sur un téléphone */
 #stick.round #knob{top:40px;left:40px;width:44px;height:44px;border-radius:50%}
 #stick.round::before,#stick.round::after{display:none}
 
@@ -2370,8 +2370,8 @@ const touch = $('#touch');
 const STICK_R = 50;
 // joystick caméra : touche dans le petit rond en bas à droite (zone un peu plus large que le dessin) ; l'écart au centre
 // donne une vitesse de rotation (courbe douce pour viser fin), sans bander ni tirer
-// zone caméra : le bas de la zone de tir (20 % de la hauteur de l'écran) tourne la vue comme la zone de tir, mais sans tirer
-const LOOK_TOP = 0.8, AIM_LEFT = 0.42;
+// zone caméra : le bas de la zone de tir (15 % de la hauteur de l'écran) tourne la vue comme la zone de tir, mais sans tirer
+const LOOK_TOP = 0.85, AIM_LEFT = 0.42;
 let lookId = null, lookX = 0, lookY = 0;
 function inLookZone(x, y) { return !$('#lookMark').hidden && x >= innerWidth * AIM_LEFT && y >= innerHeight * LOOK_TOP; }
 let moveId = null, moveX0 = 0, moveY0 = 0, aimId = null, aimX = 0, aimY = 0;
