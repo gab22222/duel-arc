@@ -3116,6 +3116,7 @@ const BROKERS = ['wss://broker.emqx.io:8084/mqtt', 'wss://broker.hivemq.com:8884
 // le relais accepte 10 messages par seconde par joueur (rafale de 10 au plus) et perd le reste, tirs compris : on reste à 8 par seconde, avec de la marge pour ses à-coups.
 // Tout ce qui attend part dans le même message : le mouvement 7 fois par seconde, l'état du salon à chaque changement et une fois par seconde, les tirs tout de suite
 const NET_RATE = 8, NET_BURST = 4, NET_TICK = 143;
+const NET_BASE = 'duelarc/v2/', NET_BYE = NET_BASE + 'bye', ROOMS = 10, ROOM_SCAN = 1600; // chaque salon a son sujet (v2 : messages groupés, illisibles pour une ancienne version)
 const myId = Math.random().toString(36).slice(2, 12);
 let nroom = null, subs = [], roomCode = '';
 let peersNow = []; // les autres joueurs du salon (2 au plus), triés par identifiant : { peer, presence }
@@ -3123,13 +3124,13 @@ let net = { rp: false, tok: '', started: '' };
 let mapV = 0;
 const myPres = {};
 let lastSent = '', lastSendAt = 0;
-function connectBroker(url, topic) {
+function connectBroker(url) {
   return new Promise((res, rej) => {
     let c;
     try {
       c = window.mqtt.connect(url, {
         clientId: 'duelarc_' + myId, clean: true, connectTimeout: 6000, reconnectPeriod: 1500, keepalive: 20,
-        will: { topic, payload: JSON.stringify({ f: myId, bye: true }), qos: 0, retain: false },
+        will: { topic: NET_BYE, payload: JSON.stringify({ f: myId, bye: true }), qos: 0, retain: false }, // connexion coupée : prévenu quel que soit le salon
       });
     } catch (e) { rej(e); return; }
     const to = setTimeout(() => { try { c.end(true); } catch (e) {} rej(new Error('timeout')); }, 7000);
@@ -3137,12 +3138,31 @@ function connectBroker(url, topic) {
     c.on('error', () => {});
   });
 }
-async function joinRoom(code) {
+// numéro libre, de 1 à 10 : on écoute tous les salons le temps que chaque joueur ait donné signe de vie (une fois par seconde) ; null si tout est pris
+function pickRoom(client) {
+  return new Promise(res => {
+    const rooms = new Map(), watch = NET_BASE + '+';
+    const on = (tp, buf) => {
+      let m; try { m = JSON.parse(buf.toString()); } catch (e) { return; }
+      if (!m || typeof m.f !== 'string') return;
+      if (m.bye) { for (const who of rooms.values()) who.delete(m.f); return; }
+      const n = tp.slice(NET_BASE.length); if (!rooms.has(n)) rooms.set(n, new Set()); rooms.get(n).add(m.f);
+    };
+    client.on('message', on);
+    client.subscribe(watch, { qos: 0 }, () => setTimeout(() => {
+      client.removeListener('message', on); client.unsubscribe(watch);
+      const free = []; for (let i = 1; i <= ROOMS; i++) if (!rooms.get(String(i))?.size) free.push(String(i));
+      res(free.length ? free[Math.floor(Math.random() * free.length)] : null);
+    }, ROOM_SCAN));
+  });
+}
+async function joinRoom(code) { // sans numéro : on crée la partie dans un salon libre
   if (!window.mqtt) throw new Error('no-lib');
-  const topic = 'duelarc/v2/' + code; // v2 : messages groupés, illisibles pour une ancienne version
   let client = null;
-  for (const url of BROKERS) { try { client = await connectBroker(url, topic); break; } catch (e) {} }
+  for (const url of BROKERS) { try { client = await connectBroker(url); break; } catch (e) {} }
   if (!client) throw new Error('no-broker');
+  if (!code) { code = await pickRoom(client); if (!code) { client.end(true); throw new Error('full'); } }
+  const topic = NET_BASE + code;
   const handlers = {}, peerCbs = new Set(), peers = new Map();
   let state = {}, stateDue = false, move = null, lastMove = null, events = [];
   let tokens = NET_BURST, tokT = performance.now(), lastState = 0, timer = 0, queued = false, closed = false;
@@ -3164,8 +3184,9 @@ async function joinRoom(code) {
     if (timer || queued || closed) return;
     queued = true; queueMicrotask(() => { queued = false; if (!timer) flush(); });
   }
-  client.subscribe(topic, { qos: 0 });
+  client.subscribe([topic, NET_BYE], { qos: 0 });
   client.on('message', (tp, buf) => {
+    if (tp !== topic && tp !== NET_BYE) return;
     let m; try { m = JSON.parse(buf.toString()); } catch (e) { return; }
     if (!m || typeof m.f !== 'string' || m.f === myId || m.f.length > 24) return;
     if (m.bye) { if (peers.delete(m.f)) notify(); return; }
@@ -3189,6 +3210,7 @@ async function joinRoom(code) {
     if (gone) notify();
   }, 500);
   return {
+    code,
     presence(patch) {
       if ('x' in patch) move = lastMove = patch; else { Object.assign(state, patch); stateDue = true; }
       schedule(); return Promise.resolve();
@@ -3212,7 +3234,6 @@ function netTick(now) {
   const key = JSON.stringify(p);
   if (key !== lastSent) { lastSent = key; pres(p); }
 }
-function randCode() { return String(1 + Math.floor(Math.random() * 10)); } // un numéro, de 1 à 10
 function menuNote(t) { $('#menuNote').textContent = t; }
 let joining = false;
 // mode de jeu entre amis : « tournante » (par défaut) ou « classique » ; choisi dans le salon, synchronisé comme la carte
@@ -3245,8 +3266,8 @@ async function enterRoom(code, creator) {
   audioInit();
   menuNote('Connexion…');
   try { nroom = await joinRoom(code); }
-  catch (e) { nroom = null; joining = false; menuNote("Connexion impossible pour l'instant. Vérifie ta connexion internet et réessaie."); return; }
-  joining = false;
+  catch (e) { nroom = null; joining = false; menuNote(e.message === 'full' ? 'Serveurs pleins, revenez plus tard' : "Connexion impossible pour l'instant. Vérifie ta connexion internet et réessaie."); return; }
+  joining = false; code = nroom.code;
   menuNote('');
   mode = 'online'; roomCode = code; peersNow = []; FOES.opp.peer = FOES.opp2.peer = null; foes = [FOES.opp]; nPlayers = 2;
   net = { rp: false, tok: '', started: '' }; lastSent = '';
@@ -3646,7 +3667,7 @@ function renderOverStatus() {
 // ---------- buttons
 document.querySelectorAll('.mapsel button').forEach(b => b.addEventListener('click', () => chooseMap(b.dataset.map)));
 document.querySelectorAll('.wpnsel button').forEach(b => b.addEventListener('click', () => chooseWeapon(b.dataset.wpn)));
-$('#btnCreate').addEventListener('click', () => enterRoom(randCode(), true));
+$('#btnCreate').addEventListener('click', () => enterRoom(null, true));
 $('#btnJoin').addEventListener('click', () => {
   const c = Number($('#code').value.replace(/[^0-9]/g, '') || 0);
   if (c < 1 || c > 10) { menuNote('Tape le numéro, de 1 à 10, que ton adversaire voit sur son écran.'); return; }
