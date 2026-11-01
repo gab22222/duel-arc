@@ -69,6 +69,7 @@ body{position:fixed;inset:0;touch-action:none;-webkit-user-select:none;user-sele
 .them{color:var(--crimson)}
 .them2{color:#e8b93a}
 .mapsel button:disabled{opacity:.35;cursor:default}
+.mapsel button[hidden]{display:none}
 #lobby .mapsel,#over .mapsel{grid-template-columns:repeat(2,1fr)}
 .vs{color:var(--mute);font-size:12px;letter-spacing:.12em}
 
@@ -2221,7 +2222,7 @@ let nPlayers = 2, mySlot = 0;
 // celui qui gagne deux duels de suite a gagné, puis on continue de la même façon.
 // À 2 : manches en BO3. Chaque duel commence par une roulette qui tire l'arme au hasard.
 // Tous les tirages viennent d'une graine commune (les jetons des joueurs) : chaque téléphone calcule la même chose.
-const TOUR = { on: false, mode: 'tour', order: [], waitPick: false, pickT: 0, base: '', ids: [], n: 0, round: 0, champ: null, wins: 0, sc: {}, title: '', big: false, cur: null };
+const TOUR = { on: false, mode: 'tour', map: 'forestV2', order: [], waitPick: false, pickT: 0, base: '', ids: [], n: 0, round: 0, champ: null, wins: 0, sc: {}, title: '', big: false, cur: null };
 let specIdx = 0, specThird = false; // joueur regardé ; vue de derrière lui plutôt que dans ses yeux
 try { specThird = localStorage.getItem('duelarc-spec3') === '1'; } catch (e) {}
 const trio = () => nPlayers === 3;
@@ -3241,7 +3242,12 @@ let gameMode = 'tour';
 function setGameMode(g) {
   gameMode = g === 'classic' || g === 'roul' ? g : 'tour'; // tournante (choix de l'arme, par défaut), tournante roulette, classique
   document.querySelectorAll('.modesel button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.gm === gameMode)));
-  const L = $('#lobby .mapsel'); if (L) L.hidden = gameMode !== 'classic';
+  // les tournantes se jouent en duel, en forêt 1 ou 2 : ni canyon, ni Japon, et la forêt 2 reste possible à 3
+  const duels = gameMode !== 'classic';
+  document.querySelectorAll('#lobby .mapsel [data-map=canyon], #lobby .mapsel [data-map=japan]').forEach(b => { b.hidden = duels; });
+  $('#lobby [data-map=forestV2] small').textContent = duels ? 'symétrique' : 'symétrique · géante à 3';
+  $('#lobby [data-map=forestV3] small').textContent = duels ? 'troncs égaux' : 'troncs égaux, à 2';
+  if (duels && mapKey !== 'forestV2' && mapKey !== 'forestV3') applyMap('forestV2');
   document.querySelectorAll('#lobby .wpnrow').forEach(r => { r.hidden = gameMode !== 'classic' || map.lateral; });
 }
 function chooseGameMode(g) {
@@ -3392,7 +3398,7 @@ function chooseMap(k) {
   if (!MAPS[k]) return;
   if (mode === 'online') {
     if (!(phase === 'idle' || phase === 'over')) return;
-    if ((k === 'canyon' || k === 'forestV3') && peersNow.length > 1) return; // à 3 : forêt 1 (la géante) ou Japon
+    if ((k === 'canyon' || (k === 'forestV3' && gameMode === 'classic')) && peersNow.length > 1) return; // à 3 en classique : forêt 1 (la géante) ou Japon
     if (k === 'japan' && peersNow.length < 2) return;
     mapV = Math.max(mapV, ...peersNow.map(x => num(x.presence.mapV, 0))) + 1;
     applyMap(k); pres({ mapK: k, wpn: weapon, mapV });
@@ -3417,12 +3423,12 @@ function evaluateReady() {
   const ps = peersNow.map(x => x.presence);
   // un autre a déjà lancé une partie qui m'inclut
   const st = ps.find(p => typeof p.started === 'string' && p.started.split('|').includes(net.tok));
-  if (st) return st.tourBase && st.started.startsWith(st.tourBase + '|r') ? startTour(st.tourBase, st.tourMode) : startOnline(st.started, MAPS[st.smap] ? st.smap : mapKey, st.swpn ? wpnKey(st.swpn) : weapon);
+  if (st) return st.tourBase && st.started.startsWith(st.tourBase + '|r') ? startTour(st.tourBase, st.tourMode, st.smap) : startOnline(st.started, MAPS[st.smap] ? st.smap : mapKey, st.swpn ? wpnKey(st.swpn) : weapon);
   // tout le monde est prêt : la carte et l'arme sont celles du joueur au plus petit jeton (même choix sur chaque téléphone)
   if (ps.every(p => p.rdy === true && okTok(p.tok))) {
     const toks = [net.tok, ...ps.map(p => p.tok)].sort();
     const lead = toks[0] === net.tok ? { mapK: mapKey, wpn: weapon, gm: gameMode } : ps.find(p => p.tok === toks[0]);
-    if (lead.gm !== 'classic') return startTour(toks.join('|'), lead.gm === 'roul' ? 'roul' : 'tour');
+    if (lead.gm !== 'classic') return startTour(toks.join('|'), lead.gm === 'roul' ? 'roul' : 'tour', lead.mapK);
     const k = toks.length === 3 ? (lead.mapK === 'japan' ? 'japan' : 'forestXL') : lead.mapK === 'canyon' || lead.mapK === 'forestV3' ? lead.mapK : 'forestV2'; // à 3 : forêt géante ou Japon ; à 2 : forêt 1 sauf choix contraire
     startOnline(toks.join('|'), k, wpnKey(lead.wpn));
   }
@@ -3453,11 +3459,11 @@ function tourPair() {
   for (let i = ids.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [ids[i], ids[j]] = [ids[j], ids[i]]; }
   return TOUR.n === 3 ? { a: ids[0], b: ids[1], s: ids[2] } : { a: ids[0], b: ids[1] };
 }
-function startTour(base, gm) {
+function startTour(base, gm, k) {
   // participants dans l'ordre des jetons (même ordre partout)
   const ids = base.split('|').map(tk => tk === net.tok ? myId : (peersNow.find(x => x.presence.tok === tk) || {}).peer).filter(Boolean);
   if (ids.length < 2) return;
-  Object.assign(TOUR, { on: true, mode: gm === 'roul' ? 'roul' : 'tour', base, ids, n: ids.length, round: 0, champ: null, wins: 0, sc: {}, title: '', big: false });
+  Object.assign(TOUR, { on: true, mode: gm === 'roul' ? 'roul' : 'tour', map: k === 'forestV3' ? 'forestV3' : 'forestV2', base, ids, n: ids.length, round: 0, champ: null, wins: 0, sc: {}, title: '', big: false });
   // qui choisit l'arme : à tour de rôle dans l'ordre du salon (Joueur 1 à la manche 1, Joueur 2 à la manche 2…)
   TOUR.order = lobbyPlayers().map(x => x.id).filter(id => ids.includes(id));
   TOUR.cur = tourPair(); TOUR.cur.w = tourWeapon();
@@ -3471,15 +3477,15 @@ function startTourRound() {
   foes = [FOES.opp, FOES.opp2].slice(0, nPlayers - 1);
   foes.forEach((f, i) => { f.peer = others[i]; f.slot = ids.indexOf(others[i]); });
   dealt = {};
-  pres({ rdy: false, started: net.started, tourBase: TOUR.base, tourMode: TOUR.mode, smap: 'forestV2', swpn: R.w, dealt: {} });
-  phase = 'idle'; clearArrows(); setPlayingHud(false); showPanel(null); applyMap('forestV2'); setWeapon(R.w);
+  pres({ rdy: false, started: net.started, tourBase: TOUR.base, tourMode: TOUR.mode, smap: TOUR.map, swpn: R.w, dealt: {} });
+  phase = 'idle'; clearArrows(); setPlayingHud(false); showPanel(null); applyMap(TOUR.map); setWeapon(R.w);
   const vs = `${tourName(R.a)} contre ${tourName(R.b)}`;
   const score = TOUR.n === 2 ? ` · ${TOUR.sc[R.a] || 0} – ${TOUR.sc[R.b] || 0}` : '';
   if (TOUR.mode === 'tour') return showWeaponPick(vs + score, R); // tournante : un joueur choisit l'arme
   // tournante roulette : la roue, puis le duel
   showRoulette(TOUR.round ? (TOUR.title || 'Duel suivant') : 'Tournante', vs + score, R.s ? `Spectateur : ${tourName(R.s)}` : (TOUR.n === 2 ? 'BO3 : deux manches gagnantes' : ''), R.w, () => {
     if (!TOUR.on || net.started !== TOUR.base + '|r' + TOUR.round) return;
-    setWeapon(R.w); resetMatch('forestV2'); tourRoles();
+    setWeapon(R.w); resetMatch(TOUR.map); tourRoles();
   });
 }
 // tournante (choix) : le joueur dont c'est le tour choisit l'arme ; les autres attendent son choix (envoyé dans sa présence).
@@ -3518,7 +3524,7 @@ function weaponChosen(w) {
   setTimeout(() => {
     $('#wpick').hidden = true;
     if (!TOUR.on || net.started !== rid) return;
-    setWeapon(w); resetMatch('forestV2'); tourRoles();
+    setWeapon(w); resetMatch(TOUR.map); tourRoles();
   }, 1200);
 }
 // roulette des armes : une roue de casino à une case par arme ; elle tourne, ralentit en cliquetant à chaque case
@@ -3634,8 +3640,8 @@ function renderLobby() {
   if (mode !== 'online') return;
   const n = peersNow.length, ok = n > 0, rdy = peersNow.filter(x => x.presence.rdy === true).length;
   $('#lobbyDot').classList.toggle('ok', ok);
-  // à 3, le canyon (deux piliers face à face) et la forêt 2 (duel) ne sont pas proposés
-  document.querySelectorAll('#lobby .mapsel [data-map=canyon], #over .mapsel [data-map=canyon], #lobby .mapsel [data-map=forestV3], #over .mapsel [data-map=forestV3]').forEach(b => { b.disabled = n > 1; });
+  // à 3, le canyon (deux piliers face à face) et, en classique, la forêt 2 (duel) ne sont pas proposés
+  document.querySelectorAll('#lobby .mapsel [data-map=canyon], #over .mapsel [data-map=canyon], #lobby .mapsel [data-map=forestV3], #over .mapsel [data-map=forestV3]').forEach(b => { b.disabled = n > 1 && (gameMode === 'classic' || b.dataset.map === 'canyon'); });
   document.querySelectorAll('#lobby .mapsel [data-map=japan], #over .mapsel [data-map=japan]').forEach(b => { b.disabled = n < 2; }); // le Japon : à 3 seulement
   // qui est là : toi + les autres, et qui est prêt ; la partie part dès que tous ceux présents sont prêts
   const L = lobbyPlayers(), mine = L.find(x => x.me), esc = v => v.replace(/&/g, '&amp;').replace(/</g, '&lt;');
