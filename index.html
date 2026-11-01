@@ -88,8 +88,6 @@ body{position:fixed;inset:0;touch-action:none;-webkit-user-select:none;user-sele
 #scope::before{width:min(100vw,100vh);height:1.5px;transform:translate(-50%,-50%)}
 #scope::after{width:1.5px;height:min(100vw,100vh);transform:translate(-50%,-50%)}
 #scope.ir::before,#scope.ir::after{background:rgba(255,255,255,.75)}
-#camBtn{position:fixed;z-index:6;top:calc(env(safe-area-inset-top,0px) + 52px);left:50%;transform:translateX(-50%);padding:7px 14px;border-radius:999px;border:1px solid var(--line);background:rgba(14,12,22,.55);color:var(--bone);font:700 13px/1 var(--body);letter-spacing:.03em;white-space:nowrap;cursor:pointer;touch-action:manipulation}
-#camBtn[hidden]{display:none}
 #fpv{inset:0;background:radial-gradient(ellipse at center,transparent 58%,rgba(0,0,0,.42))}
 #hitm{left:50%;top:50%;width:44px;height:44px;margin:-22px 0 0 -22px;fill:none;stroke:#fff;stroke-width:3;stroke-linecap:round;opacity:0;filter:drop-shadow(0 0 3px rgba(0,0,0,.8))}
 #hitm.head{stroke:#ff4a3a}
@@ -237,7 +235,6 @@ p{margin:0}
 <div id="spec" hidden><span id="specTxt">Tu regardes</span><button class="btn" id="specBtn">Changer de vue</button></div>
 <button id="quit" aria-label="Quitter la partie" hidden>✕</button>
 <button id="sil" aria-pressed="false" hidden>Silencieux</button>
-<button id="camBtn" hidden>Passer en 1ʳᵉ personne</button>
 
 <section class="panel" id="menu">
   <div class="sheet">
@@ -2414,7 +2411,7 @@ touch.addEventListener('pointerup', endPointer);
 touch.addEventListener('pointercancel', endPointer);
 touch.addEventListener('contextmenu', e => e.preventDefault());
 document.addEventListener('gesturestart', e => e.preventDefault());
-addEventListener('keydown', e => { if (e.target.tagName === 'INPUT') return; keys[e.code] = true; if (e.code === 'KeyV' && !e.repeat && playing()) setFP(!fpOn); if (e.code === 'Space' && playing() && aimId === null) { aimId = 'key'; } });
+addEventListener('keydown', e => { if (e.target.tagName === 'INPUT') return; keys[e.code] = true; if (e.code === 'Space' && playing() && aimId === null) { aimId = 'key'; } });
 addEventListener('keyup', e => { keys[e.code] = false; if (e.code === 'Space' && aimId === 'key') { aimId = null; release(); } });
 addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
 
@@ -2423,9 +2420,8 @@ function release() {
   me.drawing = false; me.draw = 0;
 }
 function forward(yaw, pitch, out) { return out.set(-Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), -Math.cos(yaw) * Math.cos(pitch)); }
-let fpOn = false, fpWalk = 0, fpBob = 0, fpRoll = 0, vmKick = 0, vmYaw = 0, vmPitch = 0, vmLastYaw = 0, vmLastPitch = 0, flashT = -9;
-try { fpOn = localStorage.getItem('duelarc-fp') === '1'; } catch (e) {}
-const inFP = () => fpOn && !!mode && phase !== 'idle' && !isDead(ME) && !(TOUR.on && mySlot === 2);
+let fpWalk = 0, fpBob = 0, fpRoll = 0, vmKick = 0, vmYaw = 0, vmPitch = 0, vmLastYaw = 0, vmLastPitch = 0, flashT = -9;
+const inFP = () => !!mode && phase !== 'idle' && !isDead(ME) && !(TOUR.on && mySlot === 2); // le joueur est toujours à la première personne ; éliminé ou spectateur, la caméra suit le combat de derrière
 // le regard : à hauteur des yeux, la tête balance avec les pas et penche un peu dans les pas de côté
 function fpCamera(dt) {
   const sp = Math.hypot(me.vx, me.vz), side = me.vx * Math.cos(me.yaw) - me.vz * Math.sin(me.yaw), k = 1 - Math.exp(-dt * 8);
@@ -2464,10 +2460,6 @@ function fpShot(kind) { // au tir : l'arme recule et la flamme sort du canon
   if ((isBullet(kind) || kind === 'minigun' || kind === 'grenade') && !(silencer && SIL_SFX[kind])) flashT = t;
 }
 function hitMark(head) { const h = $('#hitm'); h.classList.remove('on', 'head'); void h.getBoundingClientRect(); h.classList.add('on'); h.classList.toggle('head', head); }
-function setFP(on) {
-  fpOn = on; try { localStorage.setItem('duelarc-fp', on ? '1' : '0'); } catch (e) {}
-  $('#camBtn').textContent = on ? 'Passer en 3ᵉ personne' : 'Passer en 1ʳᵉ personne'; sfx('tick', 0.6);
-}
 function camOffset(out, v = me) {
   // centrée : juste derrière et un peu plus haut, pour que la tête du personnage passe sous le viseur
   const oz = 2.9 - (v.draw || 0) * 0.8;
@@ -3099,7 +3091,7 @@ function drawRadar() {
 }
 function drawHud() {
   updateDeadSpec(); drawRadar();
-  $('#camBtn').hidden = !playing() || tourSpec() || deadSpec(); $('#fpv').hidden = !inFP();
+  $('#fpv').hidden = !inFP();
   const scoped = !!mode && phase !== 'idle' && !!curWpn().zoomX && me.drawing && me.draw > 0.6;
   thermalOn = scoped && !!curWpn().ir; scopeEl.classList.toggle('ir', thermalOn);
   scopeEl.hidden = !scoped; crossEl.style.visibility = scoped ? 'hidden' : '';
@@ -3663,8 +3655,6 @@ $('#nameIn').addEventListener('input', () => {
   try { localStorage.setItem('duelarc-name', myName); } catch (e) {}
   pres({ nm: myName }); renderLobby();
 });
-$('#camBtn').addEventListener('click', () => { audioInit(); setFP(!fpOn); });
-if (fpOn) $('#camBtn').textContent = 'Passer en 3ᵉ personne';
 // visser / dévisser le silencieux de l'arme à feu
 $('#sil').addEventListener('click', () => {
   silencer = !silencer; $('#sil').setAttribute('aria-pressed', String(silencer)); meA.setSilencer(silencer); fpA.setSilencer(silencer);
