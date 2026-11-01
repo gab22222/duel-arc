@@ -2222,7 +2222,7 @@ let nPlayers = 2, mySlot = 0;
 // celui qui gagne deux duels de suite a gagné, puis on continue de la même façon.
 // À 2 : manches en BO3. Chaque duel commence par une roulette qui tire l'arme au hasard.
 // Tous les tirages viennent d'une graine commune (les jetons des joueurs) : chaque téléphone calcule la même chose.
-const TOUR = { on: false, mode: 'tour', map: 'forestV2', order: [], waitPick: false, pickT: 0, base: '', ids: [], n: 0, round: 0, champ: null, wins: 0, sc: {}, title: '', big: false, cur: null };
+const TOUR = { on: false, mode: 'tour', map: 'forestV2', picked: {}, order: [], waitPick: false, pickT: 0, base: '', ids: [], n: 0, round: 0, champ: null, wins: 0, sc: {}, title: '', big: false, cur: null };
 let specIdx = 0, specThird = false; // joueur regardé ; vue de derrière lui plutôt que dans ses yeux
 try { specThird = localStorage.getItem('duelarc-spec3') === '1'; } catch (e) {}
 const trio = () => nPlayers === 3;
@@ -3463,10 +3463,10 @@ function startTour(base, gm, k) {
   // participants dans l'ordre des jetons (même ordre partout)
   const ids = base.split('|').map(tk => tk === net.tok ? myId : (peersNow.find(x => x.presence.tok === tk) || {}).peer).filter(Boolean);
   if (ids.length < 2) return;
-  Object.assign(TOUR, { on: true, mode: gm === 'roul' ? 'roul' : 'tour', map: k === 'forestV3' ? 'forestV3' : 'forestV2', base, ids, n: ids.length, round: 0, champ: null, wins: 0, sc: {}, title: '', big: false });
-  // qui choisit l'arme : à tour de rôle dans l'ordre du salon, parmi les deux joueurs du duel (voir chooserOf)
+  Object.assign(TOUR, { on: true, mode: gm === 'roul' ? 'roul' : 'tour', map: k === 'forestV3' ? 'forestV3' : 'forestV2', picked: {}, base, ids, n: ids.length, round: 0, champ: null, wins: 0, sc: {}, title: '', big: false });
+  // ordre du salon : il départage ceux qui n'ont pas encore choisi l'arme (voir tourChooser)
   TOUR.order = lobbyPlayers().map(x => x.id).filter(id => ids.includes(id));
-  TOUR.cur = tourPair(); TOUR.cur.w = tourWeapon();
+  TOUR.cur = tourPair(); TOUR.cur.w = tourWeapon(); TOUR.cur.by = tourChooser(TOUR.cur);
   startTourRound();
 }
 function startTourRound() {
@@ -3490,11 +3490,14 @@ function startTourRound() {
 }
 // tournante (choix) : le joueur dont c'est le tour choisit l'arme ; les autres attendent son choix (envoyé dans sa présence).
 // Sans choix au bout de 25 s, une arme est tirée au hasard pour lui.
-function chooserOf() { // le suivant dans l'ordre du salon, en sautant le spectateur
-  const O = TOUR.order, R = TOUR.cur;
-  for (let i = 0; i < O.length; i++) { const id = O[(TOUR.round + i) % O.length]; if (id !== R.s) return id; }
-  return R.a;
+// des deux joueurs du duel, celui qui n'a pas choisi depuis le plus longtemps : le spectateur ne choisit jamais, et personne ne choisit deux fois de suite.
+// Chacun fait ce calcul de son côté, à partir des mêmes manches, et trouve le même nom
+function tourChooser(R) {
+  const seen = id => TOUR.picked[id] ?? -1, a = seen(R.a), b = seen(R.b);
+  const who = a !== b ? (a < b ? R.a : R.b) : TOUR.order.indexOf(R.a) < TOUR.order.indexOf(R.b) ? R.a : R.b;
+  TOUR.picked[who] = TOUR.round; return who;
 }
+function chooserOf() { return TOUR.cur.by; }
 function showWeaponPick(match, R) {
   const who = chooserOf(), mine = who === myId, rid = net.started;
   $('#pTitle').textContent = TOUR.round ? (TOUR.title || 'Duel suivant') : 'Tournante';
@@ -3638,7 +3641,7 @@ function tourAdvance(winner) {
     // toujours : le gagnant affronte le spectateur de ce duel, le perdant regarde (personne n'est spectateur deux fois de suite)
     next = { a: winner, b: P.s, s: loser };
   }
-  next.w = tourWeapon(); TOUR.cur = next;
+  next.w = tourWeapon(); next.by = tourChooser(next); TOUR.cur = next;
 }
 function renderLobby() {
   if (mode !== 'online') return;
