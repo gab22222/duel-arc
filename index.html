@@ -3464,7 +3464,7 @@ function startTour(base, gm, k) {
   const ids = base.split('|').map(tk => tk === net.tok ? myId : (peersNow.find(x => x.presence.tok === tk) || {}).peer).filter(Boolean);
   if (ids.length < 2) return;
   Object.assign(TOUR, { on: true, mode: gm === 'roul' ? 'roul' : 'tour', map: k === 'forestV3' ? 'forestV3' : 'forestV2', base, ids, n: ids.length, round: 0, champ: null, wins: 0, sc: {}, title: '', big: false });
-  // qui choisit l'arme : à tour de rôle dans l'ordre du salon (Joueur 1 à la manche 1, Joueur 2 à la manche 2…)
+  // qui choisit l'arme : à tour de rôle dans l'ordre du salon, parmi les deux joueurs du duel (voir chooserOf)
   TOUR.order = lobbyPlayers().map(x => x.id).filter(id => ids.includes(id));
   TOUR.cur = tourPair(); TOUR.cur.w = tourWeapon();
   startTourRound();
@@ -3490,7 +3490,11 @@ function startTourRound() {
 }
 // tournante (choix) : le joueur dont c'est le tour choisit l'arme ; les autres attendent son choix (envoyé dans sa présence).
 // Sans choix au bout de 25 s, une arme est tirée au hasard pour lui.
-function chooserOf() { return TOUR.order[TOUR.round % TOUR.order.length] || TOUR.ids[0]; }
+function chooserOf() { // le suivant dans l'ordre du salon, en sautant le spectateur
+  const O = TOUR.order, R = TOUR.cur;
+  for (let i = 0; i < O.length; i++) { const id = O[(TOUR.round + i) % O.length]; if (id !== R.s) return id; }
+  return R.a;
+}
 function showWeaponPick(match, R) {
   const who = chooserOf(), mine = who === myId, rid = net.started;
   $('#pTitle').textContent = TOUR.round ? (TOUR.title || 'Duel suivant') : 'Tournante';
@@ -3651,7 +3655,7 @@ function renderLobby() {
   $('#youAre').innerHTML = `Tu es <b style="color:${PALETTE[mine.col].css}">${esc(mine.name)}</b> (${PALETTE[mine.col].label})`;
   $('#nameIn').placeholder = 'Joueur ' + mine.n;
   $('#rosterN').textContent = n + 1; $('#rosterN').classList.toggle('full', n === 2);
-  let s = !ok ? 'Seul pour l’instant : donne le numéro aux autres.' : gameMode !== 'classic' ? (gameMode === 'roul' ? 'Roulette : arme tirée à la roue à chaque manche. ' : 'Chaque manche, un joueur choisit l’arme, à tour de rôle (Joueur 1, puis 2, puis 3…). ') + (n === 1 ? 'À 2 : manches en BO3 (deux manches gagnantes).' : 'À 3 : deux s’affrontent, le troisième regarde ; le gagnant reste. Deux duels gagnés de suite = victoire.') : n === 1 ? 'À 2 : la partie part dès que vous êtes prêts tous les deux. Pour jouer à 3, attends le 3e joueur avant d’appuyer sur Prêt.' : (mapKey === 'japan' ? 'Classique à 3 : chacun pour soi, dans les jardins de temples, avec un radar.' : 'Classique à 3 : chacun pour soi, dans la forêt géante, avec un radar.');
+  let s = !ok ? 'Seul pour l’instant : donne le numéro aux autres.' : gameMode !== 'classic' ? (gameMode === 'roul' ? 'Roulette : arme tirée à la roue à chaque manche. ' : 'Chaque manche, un des deux joueurs du duel choisit l’arme, à tour de rôle. ') + (n === 1 ? 'À 2 : manches en BO3 (deux manches gagnantes).' : 'À 3 : deux s’affrontent, le troisième regarde ; le gagnant reste. Deux duels gagnés de suite = victoire.') : n === 1 ? 'À 2 : la partie part dès que vous êtes prêts tous les deux. Pour jouer à 3, attends le 3e joueur avant d’appuyer sur Prêt.' : (mapKey === 'japan' ? 'Classique à 3 : chacun pour soi, dans les jardins de temples, avec un radar.' : 'Classique à 3 : chacun pour soi, dans la forêt géante, avec un radar.');
   if (ok && rdy && !net.rp) s = n === 1 ? 'Ton adversaire est prêt : appuie sur Prêt pour lancer à 2.' : rdy === n ? 'Les deux autres sont prêts : appuie sur Prêt pour lancer à 3.' : 'Un adversaire est prêt.';
   if (net.rp) s = ok ? `Prêt. On attend que ${n === 1 ? 'l’autre appuie' : 'les autres appuient'} aussi…` : 'Prêt. En attente d’un adversaire…';
   $('#lobbyStatus').textContent = s;
