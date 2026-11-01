@@ -9,7 +9,7 @@ Commandes en partie : à gauche, le joystick pour se déplacer (hors canyon, on 
 Deux cartes :
 - **Canyon** : face à face sur deux piliers, on ne peut que se décaler sur le côté pour esquiver.
 - **Forêt 1** (la forêt des duels) : déplacements libres avec un joystick, arbres et rochers pour se cacher ou foncer sur l'adversaire. La zone de jeu va jusqu'aux arbres de la lisière, qui sont solides (environ 58 × 82 m), et les deux joueurs apparaissent à 51 m l'un de l'autre. La carte est parfaitement symétrique : chaque arbre, rocher, touffe d'herbe et relief du sol a son jumeau exact à l'opposé, tourné de 180° autour du centre. Le tir libre se joue toujours sur elle, et les modes en ligne aussi sauf si on choisit une autre carte. Un mini radar montre l'adversaire toutes les 5 s. On y choisit son arme :
-  - **Arc** (par défaut) : flèches à 150 m/s bandé à fond, avec une chute divisée par 3 (au canyon : 84 m/s et la chute d'origine).
+  - **Arc** (par défaut) : flèches à 150 m/s bandé à fond, avec une chute divisée par 3, canyon compris.
   - **Arbalète** avec lunette x2,5 : ses carreaux tombent et volent comme une flèche tirée à fond (150 m/s), et tuent d'un coup où qu'ils touchent.
   - **Carabine** de chasse en bois avec lunette x3 : les balles ne tombent pas et arrivent instantanément.
   - **Batte** de baseball : corps à corps (portée environ 2 m, devant soi), 100 HP par coup, et on court 3 fois plus vite.

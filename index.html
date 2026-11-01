@@ -446,7 +446,7 @@ function mulberry32(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = 
 
 // ---------- tuning
 const G = 3.4;                 // gravité (8,5 réduite de 60 % : peu de chute)
-const VMIN = 36, VMAX = 84, BOW_V = 150; // vitesse de la flèche selon la tension : à fond, VMAX au canyon, BOW_V ailleurs (arc et arbalète)
+const VMIN = 36, VMAX = 84, BOW_V = 150; // vitesse de la flèche selon la tension, jusqu'à BOW_V à fond (arc et arbalète) ; VMAX : base des balles et du sniper paintball
 const DRAW_T = 0.8 / 1.3 / 1.2; // temps pour bander l'arc à fond (≈ 0,51 s)
 const RELOAD = 0.75;
 const BULLET_V = VMAX * 2;     // carabine : balle sans chute ; seule sa direction compte, elle arrive instantanément
@@ -507,7 +507,7 @@ const BOOM_V = 95; // boomerang : très rapide
 const DART_V = 300, DART_LEN = 0.2, DART_TRAIL = 0.3; // fléchette : vitesse, longueur, durée de sa traînée (s)
 const STAR_ROLL = 0.9, SHUR_V = 300, BEER_V = 80; // shuriken : presque pas de temps de vol
 const thrown = k => k === 'boomerang' || k === 'shuriken'; // armes lancées à la main
-const shotG = k => isBullet(k) ? 0 : k === 'minigun' ? MINI_G : isPaint(k) || k === 'beer' || k === 'dart' || thrown(k) ? 0 : k === 'grenade' ? G / 2 : map.lateral ? G : G / 3; // billes de peinture, bière, fléchette et armes lancées : en ligne droite, sans chute ; grenade : chute /2 ; arc et arbalète : chute /3, sauf au canyon
+const shotG = k => isBullet(k) ? 0 : k === 'minigun' ? MINI_G : isPaint(k) || k === 'beer' || k === 'dart' || thrown(k) ? 0 : k === 'grenade' ? G / 2 : G / 3; // billes de peinture, bière, fléchette et armes lancées : en ligne droite, sans chute ; grenade : chute /2 ; arc et arbalète : chute /3
 // grenade : 40 m/s, tombe deux fois moins vite que la gravité normale ; à l'explosion, 300 HP jusqu'à 0,6 m du corps, puis de moins en moins jusqu'à 0 à 5 m
 const GREN_V = 40, GREN_R = 5;
 function grenadeDamage(d) { return d <= 0.6 ? WIN : Math.max(0, WIN * (1 - (d - 0.6) / (GREN_R - 0.6))); }
@@ -2505,7 +2505,7 @@ function flightEnd(o, v, g = G) {
   return simP;
 }
 // vitesse et gravité d'un projectile : la balle file droit, le carreau vole comme une flèche tirée à fond
-function shotSpeed(kind, draw) { return isBullet(kind) ? BULLET_V : kind === 'bolt' ? BOW_V : kind === 'beer' ? BEER_V : kind === 'grenade' ? GREN_V : kind === 'dart' ? DART_V : kind === 'shuriken' ? SHUR_V : kind === 'boomerang' ? BOOM_V : kind === 'minigun' ? MINI_V : kind === 'psniper' ? PSNIPER_V : isPaint(kind) ? PAINT_V : VMIN + ((map.lateral ? VMAX : BOW_V) - VMIN) * draw; }
+function shotSpeed(kind, draw) { return isBullet(kind) ? BULLET_V : kind === 'bolt' ? BOW_V : kind === 'beer' ? BEER_V : kind === 'grenade' ? GREN_V : kind === 'dart' ? DART_V : kind === 'shuriken' ? SHUR_V : kind === 'boomerang' ? BOOM_V : kind === 'minigun' ? MINI_V : kind === 'psniper' ? PSNIPER_V : isPaint(kind) ? PAINT_V : VMIN + (BOW_V - VMIN) * draw; }
 function shotSfx(kind, sil, v = 1) { sfx(sil && SIL_SFX[kind] ? SIL_SFX[kind] : kind === 'pistol' ? 'pbang' : kind === 'revolver' ? 'rbang' : kind === 'deagle' ? 'dbang' : kind === 'vector' ? 'vbang' : kind === 'm4' ? 'mbang' : kind === 'barrett' ? 'fbang' : kind === 'shotgun' ? 'sbang' : kind === 'beer' ? 'whoosh' : kind === 'grenade' ? 'thoomp' : kind === 'minigun' ? 'mini' : kind === 'paintball' ? 'paint' : kind === 'psniper' ? 'psnip' : kind === 'bullet' ? 'bang' : kind === 'dart' ? 'dart' : kind === 'shuriken' ? 'shur' : kind === 'boomerang' ? 'boomt' : 'twang', v); }
 function fire() {
   const kind = curWpn().kind, g = shotG(kind);
