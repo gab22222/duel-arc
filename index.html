@@ -88,6 +88,13 @@ body{position:fixed;inset:0;touch-action:none;-webkit-user-select:none;user-sele
 #scope::before{width:min(100vw,100vh);height:1.5px;transform:translate(-50%,-50%)}
 #scope::after{width:1.5px;height:min(100vw,100vh);transform:translate(-50%,-50%)}
 #scope.ir::before,#scope.ir::after{background:rgba(255,255,255,.75)}
+#camBtn{position:fixed;z-index:6;top:calc(env(safe-area-inset-top,0px) + 52px);left:50%;transform:translateX(-50%);padding:7px 14px;border-radius:999px;border:1px solid var(--line);background:rgba(14,12,22,.55);color:var(--bone);font:700 13px/1 var(--body);letter-spacing:.03em;white-space:nowrap;cursor:pointer;touch-action:manipulation}
+#camBtn[hidden]{display:none}
+#fpv{inset:0;background:radial-gradient(ellipse at center,transparent 58%,rgba(0,0,0,.42))}
+#hitm{left:50%;top:50%;width:44px;height:44px;margin:-22px 0 0 -22px;fill:none;stroke:#fff;stroke-width:3;stroke-linecap:round;opacity:0;filter:drop-shadow(0 0 3px rgba(0,0,0,.8))}
+#hitm.head{stroke:#ff4a3a}
+#hitm.on{animation:hitm .28s ease-out}
+@keyframes hitm{0%{opacity:1;transform:scale(.7) rotate(0)}35%{opacity:1;transform:scale(1.15)}100%{opacity:0;transform:scale(1.3)}}
 #scope i{position:absolute;left:50%;top:50%;width:5px;height:5px;margin:-2.5px 0 0 -2.5px;border-radius:50%;background:#ef5a45;box-shadow:0 0 6px #ef5a45;z-index:1}
 #big{left:0;right:0;top:26%;text-align:center;font-family:var(--display);font-weight:800;font-size:clamp(44px,10vw,92px);line-height:1;text-shadow:0 4px 24px rgba(0,0,0,.65);opacity:0;transform:scale(.9);transition:opacity .18s,transform .18s}
 #big.show{opacity:1;transform:scale(1)}
@@ -205,7 +212,9 @@ p{margin:0}
   <circle cx="36" cy="36" r="2.2" fill="#efe6d6"/>
   <path d="M36 14v7M36 51v7M14 36h7M51 36h7" stroke="#efe6d6" stroke-width="2" stroke-linecap="round" opacity=".85"/>
 </svg>
+<div class="hud" id="fpv" hidden></div>
 <div class="hud" id="scope" hidden><i></i></div>
+<svg class="hud" id="hitm" viewBox="0 0 44 44"><path d="M8 8l9 9M36 8l-9 9M8 36l9-9M36 36l-9-9"/></svg>
 <div class="hud" id="big"></div>
 <div class="hud" id="toast"></div>
 <div class="hud" id="hurt"></div>
@@ -229,6 +238,7 @@ p{margin:0}
 <div id="spec" hidden><span id="specTxt">Tu regardes</span><button class="btn" id="specBtn">Changer de vue</button></div>
 <button id="quit" aria-label="Quitter la partie" hidden>✕</button>
 <button id="sil" aria-pressed="false" hidden>Silencieux</button>
+<button id="camBtn" hidden>Passer en 1ʳᵉ personne</button>
 
 <section class="panel" id="menu">
   <div class="sheet">
@@ -1127,7 +1137,7 @@ function setWeapon(w) {
   dressArchers();
 }
 const archers = []; // remplis à la création des deux archers
-function dressArchers() { for (const A of archers) A.setWeapon(curW()); }
+function dressArchers() { for (const A of archers) A.setWeapon(curW()); fpA.setWeapon(curW()); }
 function updateFlags(t) {
   for (const f of flags) {
     if (!f.group.visible) continue;
@@ -1520,7 +1530,7 @@ function explode(a) {
 const beamGeo = new T.CylinderGeometry(0.0035, 0.0035, 1, 5).rotateX(Math.PI / 2).translate(0, 0, 0.5);
 const beamMat = new T.MeshBasicMaterial({ color: 0xff2414, transparent: true, opacity: 0.6, depthWrite: false });
 const dotMat = new T.SpriteMaterial({ map: (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d'), gr = g.createRadialGradient(32, 32, 0, 32, 32, 32); gr.addColorStop(0, 'rgba(255,240,230,1)'); gr.addColorStop(0.25, 'rgba(255,40,20,.9)'); gr.addColorStop(1, 'rgba(255,0,0,0)'); g.fillStyle = gr; g.fillRect(0, 0, 64, 64); return new T.CanvasTexture(c); })(), blending: T.AdditiveBlending, depthWrite: false, transparent: true });
-function makeArcher(cloth, hoodCol, owner) {
+function makeArcher(cloth, hoodCol, owner, fpv = false) { // fpv : seulement les bras et l'arme, pour la vue à la première personne
   const root = new T.Group();
   const clothM = std(cloth, { roughness: .9 }), hoodM = std(hoodCol, { roughness: .9 });
   const dark = std(0x2b2228), skin = std(0xd8a47c), wood = std(0x6e3f1f);
@@ -1809,9 +1819,9 @@ function makeArcher(cloth, hoodCol, owner) {
   const strGeo = new T.BufferGeometry().setFromPoints([new T.Vector3(0, 0.66, 0.07), new T.Vector3(0, 0, 0.07), new T.Vector3(0, -0.66, 0.07)]);
   bow.add(new T.Line(strGeo, new T.LineBasicMaterial({ color: 0xf2eadc })));
   const nocked = makeArrow(owner, false); bow.add(nocked);
-  const armL = limb(clothM, 0.09 * BODY_W), armR = limb(clothM, 0.09 * BODY_W);
+  const armL = limb(clothM, fpv ? 0.062 : 0.09 * BODY_W), armR = limb(clothM, fpv ? 0.062 : 0.09 * BODY_W);
   upper.add(armL.m, armR.m);
-  const shL = new T.Vector3(-0.2 * BODY_W, 0.18, 0), shR = new T.Vector3(0.2 * BODY_W, 0.18, 0);
+  const shL = fpv ? new T.Vector3(-0.3, -0.3, 0.1) : new T.Vector3(-0.2 * BODY_W, 0.18, 0), shR = fpv ? new T.Vector3(0.3, -0.3, 0.1) : new T.Vector3(0.2 * BODY_W, 0.18, 0); // à la première personne, les bras arrivent des coins bas de l'écran
   armL.set(shL, grip);
   const headPos = new T.Vector3();
   // boîtier thermique des versions infrarouges : par-dessus la lunette, gros objectif sombre à l'avant, petit voyant rouge
@@ -1828,6 +1838,7 @@ function makeArcher(cloth, hoodCol, owner) {
     irSights.forEach(G => { G.visible = ir; });
     wpn = w; const bowOn = w === 'bow';
     bow.visible = quiver.visible = bowOn; quiverArrows.forEach(f => { f.visible = bowOn; });
+    if (fpv) { quiver.visible = false; quiverArrows.forEach(f => { f.visible = false; }); }
     rifle.visible = w === 'rifle'; xbow.visible = w === 'crossbow'; batSwing.visible = w === 'bat'; pistolG.visible = w === 'pistol'; revG.visible = w === 'revolver'; dgG.visible = w === 'deagle'; vecG.visible = w === 'vector'; m4G.visible = w === 'm4'; bwG.visible = w === 'barrett'; sgG.visible = w === 'shotgun'; bottle.visible = w === 'beer'; glG.visible = w === 'grenade'; mgG.visible = w === 'minigun'; pbG.visible = w === 'paintball'; psG.visible = w === 'psniper'; if (!hasLaser(w)) laser(null);
     if (bowOn) armL.set(shL, grip);
     else if (w === 'pistol' || bigGun(w)) { armL.set(shL, tmpA.copy(handP).add(tmpB.set(0, -0.03, 0.03))); armR.set(shR, handP); }
@@ -1933,11 +1944,24 @@ function makeArcher(cloth, hoodCol, owner) {
   }
   scene.add(root);
   function setColors(c, h) { clothM.color.setHex(c); hoodM.color.setHex(h); }
-  return { root, upper, setPose, setWeapon, swing, setSilencer, recoil, bowWorld, updateHead, zoneAt, heatParts, headPos, laser, laserFrom, setColors, get wpn() { return wpn; } };
+  // première personne : pas de corps, et des mains au bout des bras
+  const hands = [armL, armR].map(a => { const h = new T.Mesh(new T.BoxGeometry(0.066, 0.076, 0.1), std(0x2b2d33, { roughness: .7 })), cuff = new T.Mesh(new T.BoxGeometry(0.074, 0.074, 0.03), skin); cuff.position.z = -0.065; h.add(cuff); h.visible = fpv; upper.add(h); return [a.m, h]; }); // gants et poignets
+  if (fpv) for (const [m] of heatParts) if (m !== armL.m && m !== armR.m) m.visible = false;
+  function placeHands() { for (const [m, h] of hands) { h.quaternion.copy(m.quaternion); h.position.set(0, 0, m.scale.z / 2).applyQuaternion(m.quaternion).add(m.position); } }
+  return { root, upper, setPose, setWeapon, swing, setSilencer, recoil, bowWorld, updateHead, zoneAt, heatParts, placeHands, headPos, laser, laserFrom, setColors, get wpn() { return wpn; } };
 }
 const meA = makeArcher(0x2f8f83, 0x1f5f58, 'me');
 const oppA = makeArcher(0xa8342a, 0x6e1f1a, 'opp');
 const opp2A = makeArcher(0xc99a2e, 0x7d5a14, 'opp2'); opp2A.root.visible = false;
+// ---------- vue à la première personne : la caméra dans les yeux du joueur (son corps disparaît pour lui), et par-dessus l'image,
+// ses bras et son arme dans une petite scène à part (ils ne traversent jamais les arbres), qui balancent, reculent et suivent le regard
+const fpScene = new T.Scene(), fpCam = new T.PerspectiveCamera(62, 1, 0.02, 12), fpPivot = new T.Group();
+fpScene.fog = new T.Fog(0x000000, 1000, 2000); fpScene.add(fpPivot);
+const fpHemi = new T.HemisphereLight(0xffffff, 0x444444, 1), fpSun = new T.DirectionalLight(0xffffff, 1), fpBack = new T.DirectionalLight(0xbfd4ff, 0.35);
+fpSun.position.set(-1, 2, 1.6); fpBack.position.set(1.5, 0.4, -1); fpScene.add(fpHemi, fpSun, fpBack);
+const fpA = makeArcher(0x2f8f83, 0x1f5f58, 'me', true); fpPivot.add(fpA.root);
+const fpFlash = new T.Sprite(new T.SpriteMaterial({ map: (() => { const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d'), gr = g.createRadialGradient(64, 64, 0, 64, 64, 64); gr.addColorStop(0, 'rgba(255,255,235,1)'); gr.addColorStop(.22, 'rgba(255,214,120,.95)'); gr.addColorStop(.55, 'rgba(255,120,30,.4)'); gr.addColorStop(1, 'rgba(255,80,0,0)'); g.fillStyle = gr; g.fillRect(0, 0, 128, 128); g.globalCompositeOperation = 'lighter'; g.fillStyle = 'rgba(255,230,170,.9)'; g.translate(64, 64); for (let i = 0; i < 5; i++) { g.rotate(Math.PI * 2 / 5); g.beginPath(); g.moveTo(-7, 0); g.lineTo(0, -62); g.lineTo(7, 0); g.fill(); } return new T.CanvasTexture(c); })(), blending: T.AdditiveBlending, depthTest: false, depthWrite: false, transparent: true }));
+fpFlash.visible = false; fpScene.add(fpFlash);
 archers.push(meA, oppA, opp2A); dressArchers();
 // couleurs des joueurs : en ligne, chacun garde la couleur de son numéro de salon (1 vert d'eau, 2 rouge, 3 jaune) chez tout le monde
 const PALETTE = [
@@ -1951,7 +1975,7 @@ function applyColors(map) {
   const A = { me: meA, opp: oppA, opp2: opp2A }, U = { me: 'uMe', opp: 'uOpp', opp2: 'uOpp2' };
   for (const k in A) {
     const P = PALETTE[colorOf[k]];
-    A[k].setColors(P.cloth, P.hood); fletchMat[k].color.setHex(P.fletch); streakMat[k].color.setHex(P.streak); smokeMat.uniforms[U[k]].value.setHex(P.smoke);
+    A[k].setColors(P.cloth, P.hood); if (k === 'me') fpA.setColors(P.cloth, P.hood); fletchMat[k].color.setHex(P.fletch); streakMat[k].color.setHex(P.streak); smokeMat.uniforms[U[k]].value.setHex(P.smoke);
   }
   $('#score .side.me').style.color = PALETTE[colorOf.me].css; $('#score .side.them').style.color = PALETTE[colorOf.opp].css; $('#score .side.them2').style.color = PALETTE[colorOf.opp2].css;
 }
@@ -2293,7 +2317,7 @@ touch.addEventListener('pointerup', endPointer);
 touch.addEventListener('pointercancel', endPointer);
 touch.addEventListener('contextmenu', e => e.preventDefault());
 document.addEventListener('gesturestart', e => e.preventDefault());
-addEventListener('keydown', e => { if (e.target.tagName === 'INPUT') return; keys[e.code] = true; if (e.code === 'Space' && playing() && aimId === null) { aimId = 'key'; } });
+addEventListener('keydown', e => { if (e.target.tagName === 'INPUT') return; keys[e.code] = true; if (e.code === 'KeyV' && !e.repeat && playing()) setFP(!fpOn); if (e.code === 'Space' && playing() && aimId === null) { aimId = 'key'; } });
 addEventListener('keyup', e => { keys[e.code] = false; if (e.code === 'Space' && aimId === 'key') { aimId = null; release(); } });
 addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
 
@@ -2302,6 +2326,48 @@ function release() {
   me.drawing = false; me.draw = 0;
 }
 function forward(yaw, pitch, out) { return out.set(-Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), -Math.cos(yaw) * Math.cos(pitch)); }
+let fpOn = false, fpWalk = 0, fpBob = 0, fpRoll = 0, vmKick = 0, vmYaw = 0, vmPitch = 0, vmLastYaw = 0, vmLastPitch = 0, flashT = -9;
+try { fpOn = localStorage.getItem('duelarc-fp') === '1'; } catch (e) {}
+const inFP = () => fpOn && !!mode && phase !== 'idle' && !isDead(ME) && !(TOUR.on && mySlot === 2);
+// le regard : à hauteur des yeux, la tête balance avec les pas et penche un peu dans les pas de côté
+function fpCamera(dt) {
+  const sp = Math.hypot(me.vx, me.vz), side = me.vx * Math.cos(me.yaw) - me.vz * Math.sin(me.yaw), k = 1 - Math.exp(-dt * 8);
+  fpWalk += dt * sp * 3.6; fpBob += (Math.min(1.2, sp / map.maxv) - fpBob) * k; fpRoll += (clamp(side / map.maxv, -1, 1) - fpRoll) * k;
+  const quiet = 1 - 0.75 * Math.sin(me.draw * Math.PI / 2), bx = Math.cos(fpWalk) * 0.02 * fpBob * quiet, by = Math.abs(Math.sin(fpWalk)) * 0.035 * fpBob * quiet;
+  camera.position.set(me.x - Math.sin(me.yaw) * 0.12 + Math.cos(me.yaw) * bx, 1.68 + by, me.z - Math.cos(me.yaw) * 0.12 - Math.sin(me.yaw) * bx);
+  forward(me.yaw, me.pitch, camF); camera.lookAt(look.copy(camera.position).add(camF)); camera.rotateZ(-fpRoll * 0.022);
+}
+// les bras et l'arme : ils suivent le regard avec un peu de retard, balancent, respirent, reculent au tir et remontent quand on vise
+function updateViewmodel(dt) {
+  const ease = 1 - Math.exp(-dt * 9), wy = (me.yaw - vmLastYaw) / Math.max(dt, 0.001), wp = (me.pitch - vmLastPitch) / Math.max(dt, 0.001);
+  vmLastYaw = me.yaw; vmLastPitch = me.pitch; vmYaw += (clamp(wy, -3, 3) - vmYaw) * ease; vmPitch += (clamp(wp, -3, 3) - vmPitch) * ease; vmKick *= Math.exp(-dt * 11);
+  fpA.setPose(0, me.draw, me.reload <= 0); fpA.placeHands();
+  const ads = me.drawing ? Math.sin(me.draw * Math.PI / 2) : 0, loose = 1 - 0.8 * ads, breath = Math.sin(t * 1.7) * 0.004 * loose;
+  // en bas de l'écran vue de trois quarts (l'arc à gauche), et bien au centre quand on vise
+  const side = (portrait ? 0.13 : 0.24) * (curWpn().kind === 'arrow' ? -0.7 : 1) * (1 - ads), turn = side * 0.34;
+  fpPivot.position.set(side + Math.cos(fpWalk) * 0.012 * fpBob * loose + vmYaw * 0.012 * loose, -Math.abs(Math.sin(fpWalk)) * 0.016 * fpBob * loose + breath - vmPitch * 0.008 * loose, vmKick);
+  fpPivot.rotation.set(vmKick * 1.3 + vmPitch * 0.015 * loose, turn + vmYaw * 0.02 * loose, -fpRoll * 0.05 * loose - side * 0.12);
+  fpA.root.position.set(0, -1.67 + ads * 0.115, -0.2 + ads * 0.05);
+  fpHemi.color.copy(hemi.color); fpHemi.groundColor.copy(hemi.groundColor); fpHemi.intensity = hemi.intensity; fpSun.color.copy(sunL.color); fpSun.intensity = sunL.intensity;
+  fpCam.aspect = camera.aspect; fpCam.fov = portrait ? 76 : 58; fpCam.updateProjectionMatrix();
+}
+function renderViewmodel() {
+  fpScene.updateMatrixWorld(true); const f = t - flashT < 0.055;
+  fpFlash.visible = f;
+  if (f) { fpA.bowWorld(fpFlash.position); fpFlash.scale.setScalar(rand(0.22, 0.34)); fpFlash.material.rotation = rand(0, 6.28); }
+  renderer.autoClear = false; renderer.clearDepth(); renderer.render(fpScene, fpCam); renderer.autoClear = true;
+}
+function fpShot(kind) { // au tir : l'arme recule et la flamme sort du canon
+  if (!inFP()) return;
+  vmKick = bigGun(kind) ? 0.075 : kind === 'barrett' ? 0.11 : kind === 'shotgun' || kind === 'grenade' ? 0.085 : kind === 'minigun' ? 0.022 : kind === 'bow' || kind === 'arrow' || kind === 'bolt' || kind === 'beer' ? 0.03 : 0.04;
+  if (!(bigGun(kind) || kind === 'barrett' || kind === 'shotgun' || kind === 'grenade' || kind === 'minigun') && !isPaint(kind)) { camKick = t; camKickA = 0.024; }
+  if ((isBullet(kind) || kind === 'minigun' || kind === 'grenade') && !(silencer && SIL_SFX[kind])) flashT = t;
+}
+function hitMark(head) { const h = $('#hitm'); h.classList.remove('on', 'head'); void h.getBoundingClientRect(); h.classList.add('on'); h.classList.toggle('head', head); }
+function setFP(on) {
+  fpOn = on; try { localStorage.setItem('duelarc-fp', on ? '1' : '0'); } catch (e) {}
+  $('#camBtn').textContent = on ? 'Passer en 3ᵉ personne' : 'Passer en 1ʳᵉ personne'; sfx('tick', 0.6);
+}
 function camOffset(out, v = me) {
   // centrée : juste derrière et un peu plus haut, pour que la tête du personnage passe sous le viseur
   const oz = 2.9 - (v.draw || 0) * 0.8;
@@ -2369,7 +2435,8 @@ function fire() {
   me.reload = curWpn().rate || RELOAD; shotSfx(kind, silencer);
   // tir continu : cadence exacte, sans dériver avec la durée des images
   if (curWpn().auto) { const ns = me.nextShot; me.nextShot = (t - ns < me.reload ? ns : t) + me.reload; }
-  if (kicks(kind)) meA.recoil();
+  if (kicks(kind)) { meA.recoil(); fpA.recoil(); }
+  fpShot(kind);
   if (kind === 'minigun') { camKick = t; camKickA = 0.022; } // la vue tremble en continu pendant la rafale
   if (bigGun(kind) || kind === 'barrett' || kind === 'shotgun' || kind === 'grenade') { camKick = t; camKickA = kind === 'barrett' ? 0.22 : kind === 'deagle' ? 0.16 : kind === 'shotgun' ? 0.11 : kind === 'grenade' ? 0.09 : 0.13; }
 }
@@ -2381,7 +2448,7 @@ function inBatReach(ax, az, yaw, tg) {
   return lineOfSight(losA.set(ax, 1.2, az), losB.set(tg.s.x, 1.2, tg.s.z));
 }
 function swingBat() {
-  meA.swing(); sfx('whoosh', 0.6); me.reload = BAT_COOLDOWN; me.swingHit = 0.1;
+  meA.swing(); fpA.swing(); sfx('whoosh', 0.6); me.reload = BAT_COOLDOWN; me.swingHit = 0.1;
   if (mode === 'online' && nroom) nroom.emit('shot', { g: net.started, id: ++shotSeq, k: 'm' }).catch(() => {});
 }
 function meleeStrike() {
@@ -2406,7 +2473,7 @@ function updateMe(dt) {
     iy = ((keys.KeyS) ? 1 : 0) - ((keys.KeyW || keys.KeyZ) ? 1 : 0);
   }
   const out = isDead(ME); // éliminé (à 3) : on regarde la fin sans bouger ni tirer
-  meA.root.visible = !(TOUR.on && mySlot === 2); // spectateur de la tournante : invisible
+  meA.root.visible = !(TOUR.on && mySlot === 2) && !inFP(); // spectateur de la tournante : invisible ; à la première personne, on ne voit pas son propre corps
   if (out) { me.drawing = false; me.draw = 0; }
   const slow = (me.drawing && !curWpn().melee ? (map.lateral ? 0.65 : 0.55) : 1) * speedMul(), act = canMove() && !out;
   let tvx = 0, tvz = 0;
@@ -2649,6 +2716,8 @@ function updateLaser(f, dead) {
   const A = f.A;
   if (!hasLaser(A.wpn) || dead || !mode || phase === 'idle') { A.laser(null); return; }
   A.laserFrom(laserO);
+  // première personne : le laser part de l'arme affichée (on repasse de sa caméra à celle du jeu, juste devant les yeux)
+  if (f === ME && inFP()) { fpA.laserFrom(laserO).project(fpCam); laserO.z = 0.5; laserD.copy(laserO.unproject(camera)).sub(camera.position).normalize(); laserO.copy(camera.position).addScaledVector(laserD, 0.5); }
   if (f === ME) { rayEnd(camera.position, camF, ME, laserE); laserD.copy(laserE).sub(laserO).normalize(); }
   else laserD.set(0, 0, -1).transformDirection(A.upper.matrixWorld);
   A.laser(laserO, rayEnd(laserO, laserD, f, laserE));
@@ -2732,6 +2801,7 @@ function registerTaken(e, n, head, byKey) {
   } else if (byKey === 'me') {
     if (wasHead) { if (n >= WIN) headshot = true; big('Tir à la tête !', 1.1, 'var(--teal)'); sfx('head'); }
     else { big(trio() && n >= WIN ? 'Éliminé !' : 'Touché !', 0.9, 'var(--teal)'); sfx('hit'); }
+    if (inFP()) hitMark(wasHead);
   } else if (n >= WIN && trio()) toast(`${e.name} est éliminé`, 1.6, 'var(--bone)');
   renderScore(); checkEnd();
 }
@@ -2819,23 +2889,26 @@ function updateCamera(dt) {
     const base = portrait ? 72 : 52;
     const zx = curWpn().zoomX;
     const zoom = zx ? 2 * Math.atan(Math.tan(base * Math.PI / 360) / zx) * 180 / Math.PI : curWpn().melee || curWpn().auto ? base : (portrait ? 46 : 32);
-    const want = base + (zoom - base) * (me.drawing ? Math.sin(me.draw * Math.PI / 2) : 0);
+    const want = base + (zoom - base) * (me.drawing ? Math.sin(me.draw * Math.PI / 2) : 0) + (inFP() && !me.drawing ? fpBob * 3 : 0); // à la première personne, le champ s'ouvre un peu en courant
     fov += (want - fov) * (1 - Math.exp(-dt * 10));
     const V = viewOf(); // moi, ou le combattant que je regarde quand je suis spectateur
-    camOffset(camera.position, V);
-    if (obstacles.length) { // la caméra ne traverse pas les arbres
-      pivot.set(V.x, 2.0, V.z);
-      let t = 1;
-      for (let s = 0.2; s <= 1.0001; s += 0.1) { camTry.lerpVectors(pivot, camera.position, s); if (inObstacle(camTry, 0.25)) { t = Math.max(0.12, s - 0.12); break; } }
-      camera.position.lerpVectors(pivot, camera.position, t);
+    if (inFP()) { fpCamera(dt); updateViewmodel(dt); }
+    else {
+      camOffset(camera.position, V);
+      if (obstacles.length) { // la caméra ne traverse pas les arbres
+        pivot.set(V.x, 2.0, V.z);
+        let t = 1;
+        for (let s = 0.2; s <= 1.0001; s += 0.1) { camTry.lerpVectors(pivot, camera.position, s); if (inObstacle(camTry, 0.25)) { t = Math.max(0.12, s - 0.12); break; } }
+        camera.position.lerpVectors(pivot, camera.position, t);
+      }
+      forward(V.yaw, V.pitch, camF);
+      camera.lookAt(look.copy(camera.position).add(camF));
     }
-    forward(V.yaw, V.pitch, camF);
-    camera.lookAt(look.copy(camera.position).add(camF));
     // recul du revolver et du deagle : la vue saute vers le haut et revient (la visée, elle, ne bouge pas)
     const ck = clamp((t - camKick) / 0.5, 0, 1);
     if (ck < 1) camera.rotateX(camKickA * (1 - ck) * (1 - ck));
   } else {
-    orbitT += dt * 0.06;
+    orbitT += dt * 0.06; meA.root.visible = true;
     fov = portrait ? 70 : 50;
     const R = map.lateral ? 26 : 24, H = map.lateral ? 7 : 13;
     camera.position.set(Math.sin(orbitT) * R, H + Math.sin(orbitT * 0.7) * 2, Math.cos(orbitT) * R);
@@ -2887,6 +2960,7 @@ function drawRadar() {
 }
 function drawHud() {
   updateDeadSpec(); drawRadar();
+  $('#camBtn').hidden = !playing() || tourSpec() || deadSpec(); $('#fpv').hidden = !inFP();
   const scoped = !!mode && phase !== 'idle' && !!curWpn().zoomX && me.drawing && me.draw > 0.6;
   thermalOn = scoped && !!curWpn().ir; scopeEl.classList.toggle('ir', thermalOn);
   scopeEl.hidden = !scoped; crossEl.style.visibility = scoped ? 'hidden' : '';
@@ -3434,9 +3508,11 @@ $('#nameIn').addEventListener('input', () => {
   try { localStorage.setItem('duelarc-name', myName); } catch (e) {}
   pres({ nm: myName }); renderLobby();
 });
+$('#camBtn').addEventListener('click', () => { audioInit(); setFP(!fpOn); });
+if (fpOn) $('#camBtn').textContent = 'Passer en 3ᵉ personne';
 // visser / dévisser le silencieux de l'arme à feu
 $('#sil').addEventListener('click', () => {
-  silencer = !silencer; $('#sil').setAttribute('aria-pressed', String(silencer)); meA.setSilencer(silencer);
+  silencer = !silencer; $('#sil').setAttribute('aria-pressed', String(silencer)); meA.setSilencer(silencer); fpA.setSilencer(silencer);
   sfx('tick', 0.6);
 });
 $('#btnLeave').addEventListener('click', leaveRoom);
@@ -3516,6 +3592,7 @@ function frame(now) {
   drawHud();
   updateSmoke();
   if (thermalOn) renderThermal(); else renderer.render(scene, camera);
+  if (inFP() && scopeEl.hidden) renderViewmodel();
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
