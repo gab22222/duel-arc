@@ -3087,6 +3087,9 @@ function drawHud() {
 
 // ---------- online (relais MQTT public : pas de compte, marche en Wi-Fi comme en 4G)
 const BROKERS = ['wss://broker.emqx.io:8084/mqtt', 'wss://broker.hivemq.com:8884/mqtt'];
+// le relais accepte 10 messages par seconde par joueur (rafale de 10 au plus) et perd le reste, tirs compris : on reste à 8 par seconde, avec de la marge pour ses à-coups.
+// Tout ce qui attend part dans le même message : le mouvement 7 fois par seconde, l'état du salon à chaque changement et une fois par seconde, les tirs tout de suite
+const NET_RATE = 8, NET_BURST = 4, NET_TICK = 143;
 const myId = Math.random().toString(36).slice(2, 12);
 let nroom = null, subs = [], roomCode = '';
 let peersNow = []; // les autres joueurs du salon (2 au plus), triés par identifiant : { peer, presence }
@@ -3094,13 +3097,13 @@ let net = { rp: false, tok: '', started: '' };
 let mapV = 0;
 const myPres = {};
 let lastSent = '', lastSendAt = 0;
-function connectBroker(url, base) {
+function connectBroker(url, topic) {
   return new Promise((res, rej) => {
     let c;
     try {
       c = window.mqtt.connect(url, {
         clientId: 'duelarc_' + myId, clean: true, connectTimeout: 6000, reconnectPeriod: 1500, keepalive: 20,
-        will: { topic: base + 'p', payload: JSON.stringify({ f: myId, bye: true }), qos: 0, retain: false },
+        will: { topic, payload: JSON.stringify({ f: myId, bye: true }), qos: 0, retain: false },
       });
     } catch (e) { rej(e); return; }
     const to = setTimeout(() => { try { c.end(true); } catch (e) {} rej(new Error('timeout')); }, 7000);
@@ -3110,52 +3113,65 @@ function connectBroker(url, base) {
 }
 async function joinRoom(code) {
   if (!window.mqtt) throw new Error('no-lib');
-  const base = 'duelarc/v1/' + code + '/';
+  const topic = 'duelarc/v2/' + code; // v2 : messages groupés, illisibles pour une ancienne version
   let client = null;
-  for (const url of BROKERS) { try { client = await connectBroker(url, base); break; } catch (e) {} }
+  for (const url of BROKERS) { try { client = await connectBroker(url, topic); break; } catch (e) {} }
   if (!client) throw new Error('no-broker');
   const handlers = {}, peerCbs = new Set(), peers = new Map();
-  let full = {}, lastPub = 0, timer = 0, closed = false;
+  let state = {}, stateDue = false, move = null, lastMove = null, events = [];
+  let tokens = NET_BURST, tokT = performance.now(), lastState = 0, timer = 0, queued = false, closed = false;
   const list = () => [...peers.values()].map(p => ({ peer: p.peer, presence: p.presence, sameTab: false, isMe: false, kind: 'viewer' }));
   const notify = () => { const l = list(); peerCbs.forEach(fn => fn({ peers: l })); };
-  function publish() {
-    timer = 0; if (closed) return; lastPub = performance.now();
-    client.publish(base + 'p', JSON.stringify({ f: myId, d: full }), { qos: 0 });
+  function flush() {
+    timer = 0; if (closed) return;
+    const now = performance.now();
+    tokens = Math.min(NET_BURST, tokens + (now - tokT) / 1000 * NET_RATE); tokT = now;
+    if (tokens < 1) { timer = setTimeout(flush, (1 - tokens) / NET_RATE * 1000 + 1); return; }
+    const m = { f: myId };
+    if (stateDue) { m.s = state; stateDue = false; lastState = now; }
+    if (move) { m.m = move; move = null; }
+    if (events.length) { m.e = events; events = []; }
+    if (m.s || m.m || m.e) { tokens--; client.publish(topic, JSON.stringify(m), { qos: 0 }); }
   }
+  // en fin de tâche : un tir, ses touches et ses dégâts partent ensemble
   function schedule() {
-    if (timer || closed) return;
-    const wait = Math.max(0, 66 - (performance.now() - lastPub));
-    timer = setTimeout(publish, wait);
+    if (timer || queued || closed) return;
+    queued = true; queueMicrotask(() => { queued = false; if (!timer) flush(); });
   }
-  client.subscribe(base + '#', { qos: 0 });
-  client.on('message', (topic, buf) => {
+  client.subscribe(topic, { qos: 0 });
+  client.on('message', (tp, buf) => {
     let m; try { m = JSON.parse(buf.toString()); } catch (e) { return; }
     if (!m || typeof m.f !== 'string' || m.f === myId || m.f.length > 24) return;
-    if (topic === base + 'p') {
-      if (m.bye) { if (peers.delete(m.f)) notify(); return; }
-      const known = peers.has(m.f);
-      peers.set(m.f, { peer: m.f, presence: (m.d && typeof m.d === 'object') ? m.d : {}, seen: performance.now() });
-      if (!known) schedule(); // on répond tout de suite pour que l'autre nous voie
-      notify();
-    } else if (topic === base + 'e' && typeof m.t === 'string') {
-      (handlers[m.t] || []).forEach(fn => fn({ peer: m.f, sameTab: false, isMe: false, kind: 'viewer', topic: m.t, data: m.d }));
-    }
+    if (m.bye) { if (peers.delete(m.f)) notify(); return; }
+    const known = peers.get(m.f), isObj = o => o && typeof o === 'object';
+    if (!known && !isObj(m.s)) return; // on attend son état complet
+    const p = known || { peer: m.f, presence: {}, seen: 0 };
+    peers.set(m.f, p); p.seen = performance.now();
+    if (isObj(m.s)) Object.assign(p.presence, m.s);
+    if (isObj(m.m)) Object.assign(p.presence, m.m);
+    if (!known) { stateDue = true; schedule(); } // on répond tout de suite pour que l'autre nous voie
+    if (m.s || m.m) notify();
+    if (Array.isArray(m.e)) for (const ev of m.e) if (ev && typeof ev.t === 'string') (handlers[ev.t] || []).forEach(fn => fn({ peer: m.f, sameTab: false, isMe: false, kind: 'viewer', topic: ev.t, data: ev.d }));
   });
-  client.on('connect', () => schedule()); // reconnexion
+  client.on('connect', () => { stateDue = true; schedule(); }); // reconnexion
   const beat = setInterval(() => {
-    if (performance.now() - lastPub > 900) schedule();
-    let gone = false; const now = performance.now();
+    const now = performance.now();
+    if (now - lastState > 900) { stateDue = true; if (lastMove && !move) move = lastMove; schedule(); } // une fois par seconde : répare un message perdu
+    let gone = false;
     for (const [id, p] of peers) if (now - p.seen > 4500) { peers.delete(id); gone = true; }
     if (gone) notify();
   }, 500);
   return {
-    presence(patch) { Object.assign(full, patch); schedule(); return Promise.resolve(); },
-    emit(t, d) { if (!closed) client.publish(base + 'e', JSON.stringify({ f: myId, t, d }), { qos: 0 }); return Promise.resolve(); },
+    presence(patch) {
+      if ('x' in patch) move = lastMove = patch; else { Object.assign(state, patch); stateDue = true; }
+      schedule(); return Promise.resolve();
+    },
+    emit(t, d) { if (!closed) { events.push({ t, d }); schedule(); } return Promise.resolve(); },
     on(t, fn) { (handlers[t] = handlers[t] || []).push(fn); return () => { handlers[t] = handlers[t].filter(x => x !== fn); }; },
     onPeers(fn) { peerCbs.add(fn); setTimeout(() => fn({ peers: list() }), 0); return () => peerCbs.delete(fn); },
     leave() {
       if (closed) return Promise.resolve(); closed = true; clearInterval(beat); clearTimeout(timer);
-      try { client.publish(base + 'p', JSON.stringify({ f: myId, bye: true }), { qos: 0 }, () => client.end()); } catch (e) {}
+      try { client.publish(topic, JSON.stringify({ f: myId, bye: true }), { qos: 0 }, () => client.end()); } catch (e) {}
       setTimeout(() => { try { client.end(true); } catch (e) {} }, 800);
       return Promise.resolve();
     },
@@ -3163,8 +3179,8 @@ async function joinRoom(code) {
 }
 function pres(patch) { Object.assign(myPres, patch); if (nroom) nroom.presence(patch).catch(() => {}); }
 function netTick(now) {
-  if (mode !== 'online' || !nroom || now - lastSendAt < 66) return;
-  lastSendAt = now;
+  if (mode !== 'online' || !nroom || now - lastSendAt < NET_TICK) return;
+  lastSendAt = Math.max(lastSendAt + NET_TICK, now - NET_TICK);
   const p = { x: r3(me.x), z: r3(me.z), yaw: r3(me.yaw), pitch: r3(me.pitch), draw: Math.round(me.draw * 100) / 100, nock: me.reload <= 0, sil: silencer };
   const key = JSON.stringify(p);
   if (key !== lastSent) { lastSent = key; pres(p); }
