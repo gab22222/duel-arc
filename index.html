@@ -416,8 +416,9 @@ const SCOPE_X = 3;             // grossissement de la lunette
 const ARROW_STEP = 0.05;       // pas de collision des flèches (m) : assez fin pour ne pas sauter le bord d'un tronc
 const WIN = 3;                 // flèches pour gagner (une dans la tête suffit)
 const HP_MAX = 300;            // barre de vie : chaque flèche enlève HP_MAX / WIN
-const BODY_R = 0.27, BODY_TOP = 1.52;  // corps : capsule verticale des pieds (y=0) jusqu'aux épaules
-const HEAD_R = 0.21;                   // tête : une touche = victoire
+const BODY_R = 0.27, BODY_TOP = 1.52;  // corps : gabarit pour le souffle des grenades et la profondeur des flèches (les touches se font sur le vrai modèle, voir hitZone)
+const HEAD_R = 0.21;                   // tête : même gabarit
+const HIT_REACH = 1.2;                 // au-delà de cette distance de l'axe d'un joueur (bras tendus compris), inutile de tester son modèle
 const PLAYER_R = 0.35;                 // rayon de collision pour les déplacements
 const SENS = 0.0028;
 // réglages fixes : visée linéaire, caméra centrée derrière le personnage, fumée colorée quand un tir touche un joueur
@@ -1215,6 +1216,20 @@ function updateSmoke() {
 
 // ---------- archers (face -Z)
 const tmpA = new T.Vector3(), tmpB = new T.Vector3(), tmpL = new T.Vector3(), tmpV = new T.Vector3();
+// faces d'une forme convexe (boîte, cylindre, cône, icosaèdre), dans son repère : un point est dedans s'il est sous toutes ses faces
+function convexPlanes(geo) {
+  const g = geo.index ? geo.toNonIndexed() : geo, P = g.attributes.position, a = new T.Vector3(), b = new T.Vector3(), c = new T.Vector3(), n = new T.Vector3(), seen = new Set(), out = [];
+  const add = (x, y, z, d) => { const k = [x, y, z, d].map(v => v.toFixed(4)).join(); if (!seen.has(k)) { seen.add(k); out.push([x, y, z, d]); } };
+  for (let i = 0; i < P.count; i += 3) {
+    a.fromBufferAttribute(P, i); b.fromBufferAttribute(P, i + 1); c.fromBufferAttribute(P, i + 2);
+    n.copy(b).sub(a).cross(c.sub(a)); if (n.lengthSq() < 1e-12) continue; // triangle plat (pointe d'un cône)
+    n.normalize(); add(n.x, n.y, n.z, n.dot(a));
+  }
+  // la boîte englobante ferme les formes ouvertes (la cape)
+  geo.computeBoundingBox(); const { min, max } = geo.boundingBox;
+  add(1, 0, 0, max.x); add(0, 1, 0, max.y); add(0, 0, 1, max.z); add(-1, 0, 0, -min.x); add(0, -1, 0, -min.y); add(0, 0, -1, -min.z);
+  return out;
+}
 function limb(mat, thick) {
   const m = new T.Mesh(new T.BoxGeometry(thick, thick, 1), mat);
   return { m, set(a, b) { m.position.copy(a).add(b).multiplyScalar(0.5); tmpL.copy(b).sub(a); m.scale.set(1, 1, Math.max(0.01, tmpL.length())); m.quaternion.setFromUnitVectors(Z1, tmpL.normalize()); } };
@@ -1358,19 +1373,20 @@ function updatePaint(dt) {
   }
   blobMesh.instanceMatrix.needsUpdate = true; blobsOn = alive;
 }
-// taches collées sur le joueur, sur la peau du personnage (la zone de touche est plus large que lui)
+// taches collées sur le joueur, là où la bille l'a touché
 const stainGeo = new T.SphereGeometry(1, 10, 8), stainMats = {}, stains = [], stainC = new T.Vector3();
 function paintStain(model, p, dir, col) {
-  const mat = stainMats[col] || (stainMats[col] = std(col, { roughness: .35, flatShading: false })), head = p.distanceTo(model.headPos) < HEAD_R * 1.3, R = model.root;
+  const mat = stainMats[col] || (stainMats[col] = std(col, { roughness: .35, flatShading: false })), head = model.zoneAt(p) === 2, R = model.root;
   if (head) stainC.copy(model.headPos); else stainC.set(R.position.x, clamp(p.y, 0.1, 1.5), R.position.z);
   burstN.copy(p).sub(stainC); if (burstN.lengthSq() < 1e-4) burstN.copy(dir).negate(); burstN.normalize();
   R.updateMatrixWorld(true);
   const part = R.worldToLocal(tmpA.copy(p)).y > 1.15 ? model.upper : R;
   burstU.set(0, 1, 0).cross(burstN); if (burstU.lengthSq() < 1e-4) burstU.set(1, 0, 0); burstU.normalize(); burstW.crossVectors(burstN, burstU);
   for (let i = 0; i < 2; i++) {
-    const r = i ? rand(0.035, 0.06) : rand(0.09, 0.13), m = new T.Mesh(stainGeo, mat), a = rand(0, 6.283), off = i ? rand(0.1, 0.17) : 0;
-    m.position.copy(stainC).addScaledVector(burstN, head ? 0.15 : 0.25).addScaledVector(burstU, Math.cos(a) * off).addScaledVector(burstW, Math.sin(a) * off);
-    m.quaternion.setFromUnitVectors(Z_AXIS, burstN); m.scale.set(r, r * rand(0.75, 1.1), r * 0.22);
+    const r = i ? rand(0.035, 0.06) : rand(0.09, 0.13), a = rand(0, 6.283), off = i ? rand(0.1, 0.17) : 0;
+    stainC.copy(p).addScaledVector(burstU, Math.cos(a) * off).addScaledVector(burstW, Math.sin(a) * off);
+    if (i && !model.zoneAt(tmpB.copy(stainC).addScaledVector(burstN, -0.03))) continue; // la petite tache doit tomber sur le joueur, pas à côté d'un bras
+    const m = new T.Mesh(stainGeo, mat); m.position.copy(stainC); m.quaternion.setFromUnitVectors(Z_AXIS, burstN); m.scale.set(r, r * rand(0.75, 1.1), r * 0.22);
     scene.add(m); part.attach(m); stains.push(m);
     if (stains.length > 40) { const o = stains.shift(); if (o.parent) o.parent.remove(o); }
   }
@@ -1450,7 +1466,8 @@ function makeArcher(cloth, hoodCol, owner) {
   const root = new T.Group();
   const clothM = std(cloth, { roughness: .9 }), hoodM = std(hoodCol, { roughness: .9 });
   const dark = std(0x2b2228), skin = std(0xd8a47c), wood = std(0x6e3f1f);
-  for (const sx of [-0.11, 0.11]) { const l = new T.Mesh(new T.BoxGeometry(0.15, 0.86, 0.17), dark); l.position.set(sx, 0.43, 0); root.add(l); }
+  const legs = [];
+  for (const sx of [-0.11, 0.11]) { const l = new T.Mesh(new T.BoxGeometry(0.15, 0.86, 0.17), dark); l.position.set(sx, 0.43, 0); root.add(l); legs.push(l); }
   const torso = new T.Mesh(new T.CylinderGeometry(0.21, 0.29, 0.66, 7), clothM); torso.position.y = 1.08; root.add(torso);
   const belt = new T.Mesh(new T.CylinderGeometry(0.235, 0.24, 0.07, 7), dark); belt.position.y = 0.98; root.add(belt);
   const upper = new T.Group(); upper.position.y = 1.32; root.add(upper);
@@ -1810,7 +1827,17 @@ function makeArcher(cloth, hoodCol, owner) {
     armR.set(shR, tmpA.set(grip.x, grip.y, grip.z + nz));
   }
   // centre de la zone « tête » (tête + capuche), suit l'inclinaison du buste
-  function updateHead() { root.updateMatrixWorld(true); return upper.localToWorld(headPos.set(0, 0.42, 0.02)); }
+  // hitbox : les formes exactes du personnage, qui suivent sa pose (pas l'arme qu'il tient) ; la tête d'abord, chapeau compris
+  const hitParts = [[head, true], [hood, true], ...[chest, torso, belt, cape, quiver, ...legs, armL.m, armR.m].map(m => [m, false])].map(([m, isHead]) => ({ m, isHead, planes: convexPlanes(m.geometry), inv: new T.Matrix4() }));
+  function zoneAt(p) { // 2 : tête, 1 : corps, 0 : rien
+    for (const h of hitParts) {
+      if (!h.m.visible) continue;
+      const e = h.inv.elements, x = e[0] * p.x + e[4] * p.y + e[8] * p.z + e[12], y = e[1] * p.x + e[5] * p.y + e[9] * p.z + e[13], z = e[2] * p.x + e[6] * p.y + e[10] * p.z + e[14];
+      if (h.planes.every(f => f[0] * x + f[1] * y + f[2] * z <= f[3])) return h.isHead ? 2 : 1;
+    }
+    return 0;
+  }
+  function updateHead() { root.updateMatrixWorld(true); for (const h of hitParts) h.inv.copy(h.m.matrixWorld).invert(); return upper.localToWorld(headPos.set(0, 0.42, 0.02)); }
   setPose(0, 0, true);
   // point de départ du tir : devant l'arc, ou bout du canon
   function bowWorld(out) {
@@ -1834,7 +1861,7 @@ function makeArcher(cloth, hoodCol, owner) {
   }
   scene.add(root);
   function setColors(c, h) { clothM.color.setHex(c); hoodM.color.setHex(h); }
-  return { root, upper, setPose, setWeapon, swing, setSilencer, recoil, bowWorld, updateHead, headPos, laser, laserFrom, setColors, get wpn() { return wpn; } };
+  return { root, upper, setPose, setWeapon, swing, setSilencer, recoil, bowWorld, updateHead, zoneAt, headPos, laser, laserFrom, setColors, get wpn() { return wpn; } };
 }
 const meA = makeArcher(0x2f8f83, 0x1f5f58, 'me');
 const oppA = makeArcher(0xa8342a, 0x6e1f1a, 'opp');
@@ -2211,9 +2238,10 @@ function camOffset(out, v = me) {
 const camF = new T.Vector3(), aimP = new T.Vector3();
 // point réellement sous le viseur : on suit le rayon de la caméra avec les mêmes collisions que les flèches
 function hitsFoe(p) { for (const f of foes) if (!isDead(f) && hitZone(p, f.s, f.A)) return true; return false; }
+function nearFoe(p) { for (const f of foes) if (!isDead(f) && Math.hypot(p.x - f.s.x, p.z - f.s.z) < HIT_REACH + 0.1) return true; return false; }
 function aimPoint(o, out) {
   const c = camera.position, s0 = Math.max(0.5, tmpV.copy(o).sub(c).dot(camF));
-  for (let d = s0; d < 250; d += 0.1) {
+  for (let d = s0; d < 250; d += nearFoe(out) ? 0.02 : 0.1) { // pas fin près d'un joueur : le viseur attrape aussi un bras ou la pointe du chapeau
     out.copy(c).addScaledVector(camF, d);
     if (mode === 'practice') {
       if (Math.abs(out.z - TARGET.z) < 0.1 && Math.hypot(out.x - TARGET.x, out.y - TARGET.y) < TARGET.r) return out;
@@ -2536,10 +2564,10 @@ const laserO = new T.Vector3(), laserE = new T.Vector3(), laserD = new T.Vector3
 function rayEnd(o, dir, self, out) {
   const all = [ME, ...foes];
   const blocked = p => (obstacles.length && inObstacle(p)) || (!map.lateral && p.y < 0) || all.some(f => f !== self && f.A.root.visible && !isDead(f) && hitZone(p, f.s, f.A));
-  for (let d = 0.3; d < 80; d += 0.2) {
-    if (!blocked(out.copy(o).addScaledVector(dir, d))) continue;
+  for (let d = 0.3, step = 0.2; d < 80; d += step) {
+    if (!blocked(out.copy(o).addScaledVector(dir, d))) { step = all.some(f => f !== self && !isDead(f) && Math.hypot(out.x - f.s.x, out.z - f.s.z) < HIT_REACH + 0.2) ? 0.04 : 0.2; continue; } // pas fin près d'un joueur
     // affine au centimètre pour poser le point sur la surface
-    let a = d - 0.2, b = d;
+    let a = d - step, b = d;
     for (let i = 0; i < 5; i++) { const m = (a + b) / 2; if (blocked(out.copy(o).addScaledVector(dir, m))) b = m; else a = m; }
     return out.copy(o).addScaledVector(dir, a);
   }
@@ -2554,12 +2582,20 @@ function updateLaser(f, dead) {
   A.laser(laserO, rayEnd(laserO, laserD, f, laserE));
 }
 function hitZone(p, who, model) {
-  const h = model.headPos, hx = p.x - h.x, hy = p.y - h.y, hz = p.z - h.z;
-  if (hx * hx + hy * hy + hz * hz < HEAD_R * HEAD_R) return 2;
-  const dx = p.x - who.x, dz = p.z - who.z, d2 = dx * dx + dz * dz;
-  if (d2 > 0.5) return 0;
-  const dy = p.y - clamp(p.y, 0, BODY_TOP);
-  return d2 + dy * dy < BODY_R * BODY_R ? 1 : 0;
+  const dx = p.x - who.x, dz = p.z - who.z;
+  return dx * dx + dz * dz > HIT_REACH * HIT_REACH ? 0 : model.zoneAt(p);
+}
+// un projectile avance par pas de 5 cm : près d'un joueur, on repasse le dernier pas au centimètre pour ne pas sauter un bras ou la pointe du chapeau
+const hitDir = new T.Vector3(), hitQ = new T.Vector3();
+function hitStep(a, tg) {
+  const p = a.p, dx = p.x - tg.s.x, dz = p.z - tg.s.z;
+  if (dx * dx + dz * dz > (HIT_REACH + ARROW_STEP) ** 2) return 0;
+  hitDir.copy(a.v).normalize();
+  for (let i = 4; i >= 0; i--) {
+    const z = hitZone(hitQ.copy(p).addScaledVector(hitDir, -i * ARROW_STEP / 5), tg.s, tg.A);
+    if (z) { p.copy(hitQ); return z; }
+  }
+  return 0;
 }
 // la flèche traverse : la pointe et un bout de tige ressortent de l'autre côté (visible même de dos), l'empennage reste devant
 function pierceDepth(p, dir, model, head, len = 0.9) {
@@ -2639,13 +2675,13 @@ function collide(a) {
   const p = a.p;
   // grenade : explose au premier contact (joueur, arbre, rocher, sol)
   if (a.kind === 'grenade') {
-    if ((mode !== 'practice' && [ME, ...foes].some(tg => tg.key !== a.owner && !isDead(tg) && hitZone(p, tg.s, tg.A))) || (obstacles.length && inObstacle(p)) || (!map.lateral && p.y < 0)) explode(a);
+    if ((mode !== 'practice' && [ME, ...foes].some(tg => tg.key !== a.owner && !isDead(tg) && hitStep(a, tg))) || (obstacles.length && inObstacle(p)) || (!map.lateral && p.y < 0)) explode(a);
     return;
   }
   if (mode === 'practice') { if (hitTarget(a)) return; }
   else for (const tg of [ME, ...foes]) {
     if (tg.key === a.owner || isDead(tg)) continue;
-    const z = hitZone(p, tg.s, tg.A);
+    const z = hitStep(a, tg);
     if (!z) continue;
     // en ligne, la flèche d'un autre attend la confirmation de son tireur (elle sera replantée à l'endroit qu'il a vu)
     if (a.owner !== 'me' && mode === 'online') { a.flying = false; a.pending = 1.2; a.zone = z; a.victim = tg.key; a.m.visible = false; if (a.kind === 'beer') shatterAt(a.p, a.v), sfx('glass', 1); if (isPaint(a.kind)) { a.splashed = true; paintHit(tg.A, a.p, a.v, a.col, a.kind); sfx('splat', 0.8); } return; }

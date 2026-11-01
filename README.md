@@ -27,6 +27,7 @@ Deux cartes :
   - **Sniper paintball** : version longue du lanceur (corps vert olive, long canon gainé, lunette x4 sur rail devant la réserve de billes, bouteille d'air avec appui-joue). Une bille par seconde, chargeur infini ; elle va deux fois plus vite qu'une flèche d'arc tirée à fond (168 m/s), en ligne droite sans tomber, et ne laisse pas de traînée. Ses billes sont deux fois plus grosses que celles du paintball, pour une tache de même taille et une éclaboussure deux fois plus petite. Une bille dans la tête tue d'un coup, une bille dans le corps enlève 75 HP.
 
 - **Silencieux** : sur toutes les armes à feu (carabine, pistolet, revolver, deagle, vector, M4, Barrett, fusil à pompe, minigun, lance-grenades), un petit bouton au-dessus du joystick visse ou dévisse un silencieux, visible au bout du canon. Chaque arme a son propre son silencieux ; seul le bruit change, pas les dégâts ni la trajectoire.
+- **Hitbox** : les touches se font sur les formes exactes du personnage, qui suivent sa pose : chaque jambe, le torse, la cape, les bras (et le carquois avec l'arc). La tête compte la tête et tout le chapeau. L'arme tenue n'est pas touchable. Les projectiles sont suivis au centimètre près d'un joueur.
 - **Tir à la tête** : quel que soit le mode et l'arme, quand on met une tête, en plus du « Tir à la tête ! », on entend le « Fahhh » (le vrai son, fichier `fhaaa.m4a`, chargé au premier toucher ; tant qu'il n'est pas chargé, une voix de synthèse le remplace).
 
 Pour jouer : https://gab22222.github.io/duel-arc/
