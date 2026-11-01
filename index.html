@@ -69,7 +69,7 @@ body{position:fixed;inset:0;touch-action:none;-webkit-user-select:none;user-sele
 .them{color:var(--crimson)}
 .them2{color:#e8b93a}
 .mapsel button:disabled{opacity:.35;cursor:default}
-#lobby .mapsel,#over .mapsel{grid-template-columns:repeat(3,1fr)}
+#lobby .mapsel,#over .mapsel{grid-template-columns:repeat(2,1fr)}
 .vs{color:var(--mute);font-size:12px;letter-spacing:.12em}
 
 #hp{left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 8px);transform:translateX(-50%);display:flex;align-items:center;gap:10px;font-family:var(--display);font-weight:700;font-size:14px;letter-spacing:.06em;color:var(--teal);text-shadow:0 1px 6px rgba(0,0,0,.8);white-space:nowrap;transition:color .3s}
@@ -254,6 +254,7 @@ p{margin:0}
       <div class="seg mapsel" role="group" aria-label="Carte">
         <button data-map="canyon" aria-pressed="true">Canyon<small>face à face, esquive sur le côté</small></button>
         <button data-map="forest" aria-pressed="false">Forêt<small>cours partout, cache-toi</small></button>
+        <button data-map="forestV2" aria-pressed="false">Forêt V2<small>parfaitement symétrique</small></button>
       </div>
       <div class="opt wpnrow" hidden><span>Arme</span>
       <div class="seg wpnsel" role="group" aria-label="Arme en forêt">
@@ -320,6 +321,7 @@ p{margin:0}
     <div class="seg mapsel" role="group" aria-label="Carte">
       <button data-map="canyon" aria-pressed="true">Canyon<small>face à face</small></button>
       <button data-map="forest" aria-pressed="false">Forêt<small>déplacements libres</small></button>
+      <button data-map="forestV2" aria-pressed="false">Forêt V2<small>symétrique, à 2</small></button>
       <button data-map="japan" aria-pressed="false" disabled>Japon<small>temples, à 3</small></button>
     </div>
     <div class="opt wpnrow" hidden><span>Arme</span>
@@ -361,6 +363,7 @@ p{margin:0}
     <div class="seg mapsel" role="group" aria-label="Carte">
       <button data-map="canyon" aria-pressed="true">Canyon<small>face à face</small></button>
       <button data-map="forest" aria-pressed="false">Forêt<small>déplacements libres</small></button>
+      <button data-map="forestV2" aria-pressed="false">Forêt V2<small>symétrique, à 2</small></button>
       <button data-map="japan" aria-pressed="false" disabled>Japon<small>temples, à 3</small></button>
     </div>
     <div class="opt wpnrow" hidden><span>Arme</span>
@@ -426,6 +429,7 @@ try { ['duelarc-aim', 'duelarc-cam', 'duelarc-tint'].forEach(k => localStorage.r
 const MAPS = {
   canyon: { key: 'canyon', spawnZ: 12, lateral: true, xlim: 2.1, zlim: 12, maxv: 1.8, acc: 15, yawLim: 0.5 },
   forest: { key: 'forest', spawnZ: 25.5, lateral: false, xlim: 29, zlim: 41, maxv: 3.1, acc: 22, yawLim: Infinity }, // zone x2 (les arbres de la lisière comptent), apparitions à 51 m
+  forestV2: { key: 'forestV2', spawnZ: 25.5, lateral: false, xlim: 29, zlim: 41, maxv: 3.1, acc: 22, yawLim: Infinity }, // la même forêt, parfaitement symétrique
   // 1v1v1 : forêt géante de 124 m de côté (plus de 3 fois plus grande dans chaque direction), apparitions à 94 m les unes des autres
   forestXL: { key: 'forestXL', spawnZ: 17, lateral: false, xlim: 62, zlim: 62, maxv: 3.1, acc: 22, yawLim: Infinity, big: true, spawnR: 54 },
   // 1v1v1 : jardins de temples japonais de 140 m de côté ; chacun apparaît dans une cour fermée, porte tournée vers l'extérieur
@@ -520,6 +524,7 @@ function skyTex(stops) {
 const SKY = {
   canyon: skyTex([[0, '#11132e'], [0.3, '#36284f'], [0.44, '#a85462'], [0.49, '#f0a46a'], [0.505, '#f7c27e'], [0.53, '#b4685a'], [1, '#2a1c2c']]),
   get forestXL() { return this.forest; },
+  get forestV2() { return this.forest; },
   japan: skyTex([[0, '#2b2b5a'], [0.28, '#6c5a8e'], [0.42, '#c98aa6'], [0.49, '#f4c7a1'], [0.51, '#f6d5b5'], [0.54, '#c9a7a8'], [1, '#3a2c33']]),
   forest: skyTex([[0, '#2c4a5e'], [0.3, '#5f8796'], [0.46, '#b9cbb6'], [0.5, '#d8dfc2'], [0.53, '#93a796'], [1, '#33402f']]),
 };
@@ -543,7 +548,7 @@ function rough(geo, amt) {
   return geo;
 }
 const std = (color, extra) => new T.MeshStandardMaterial(Object.assign({ color, flatShading: true, roughness: 1, metalness: 0 }, extra || {}));
-const OBST = { canyon: [], forest: [], forestXL: [], japan: [] };
+const OBST = { canyon: [], forest: [], forestV2: [], forestXL: [], japan: [] };
 const OB_CELL = 8, obNear = []; // grille des obstacles de la forêt géante (cases de 8 m)
 // forme réelle d'un tronc : les triangles de son flanc tels qu'ils sont dessinés (cylindre irrégulier qui s'affine)
 function trunkTris(geo, h, x, z) {
@@ -618,6 +623,7 @@ const canyonG = new T.Group(); scene.add(canyonG);
 
 // ---------- map 2 : forêt (symétrique par rotation de 180° pour que les deux joueurs aient la même carte)
 const forestG = new T.Group(); scene.add(forestG); forestG.visible = false;
+const forestV2G = new T.Group(); scene.add(forestV2G); forestV2G.visible = false;
 {
   const F = MAPS.forest, G0 = { xlim: 14.5, zlim: 20.5, spawnZ: 17 }; // G0 : dimensions d'origine, pour garder la même disposition des arbres
   const R = mulberry32(20261027);
@@ -633,7 +639,8 @@ const forestG = new T.Group(); scene.add(forestG); forestG.visible = false;
       col.push(0.27 + k * 0.08, 0.36 + k * 0.1, 0.18 + k * 0.05);
     }
     gGeo.setAttribute('color', new T.Float32BufferAttribute(col, 3)); gGeo.computeVertexNormals(); }
-  forestG.add(new T.Mesh(gGeo, new T.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 1 })));
+  const groundM = new T.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 1 }), ground = new T.Mesh(gGeo, groundM);
+  forestG.add(ground);
   // un sentier clair entre les deux camps
   const path = new T.Mesh(new T.PlaneGeometry(2.2, 2 * F.spawnZ + 6, 1, 8), new T.MeshStandardMaterial({ color: 0x8a7a55, roughness: 1, transparent: true, opacity: .45 }));
   path.rotation.x = -Math.PI / 2; path.position.y = 0.01; forestG.add(path);
@@ -711,6 +718,36 @@ const forestG = new T.Group(); scene.add(forestG); forestG.visible = false;
     (t.oak ? oakTree : pineTree)(-t.x, -t.z, t.r, true);
   }
   gridObstacles(OBST.forest);
+
+  // forêt V2 : la moitié sud de cette même forêt, plus cette moitié tournée de 180° autour du centre.
+  // Mêmes formes et mêmes couleurs : chaque point de la carte a exactement son jumeau à l'opposé, pour les deux joueurs
+  const south = (x, z) => z > 1e-6 || (Math.abs(z) <= 1e-6 && x > 1e-6);
+  const flip = new T.Group(); flip.rotation.y = Math.PI; forestV2G.add(flip);
+  const oak0 = forestG.children.find(c => c.isGroup && c.position.x === 0 && c.position.z === 0);
+  for (const c of forestG.children) if (c !== ground && c !== path && c !== oak0 && !c.isInstancedMesh && south(c.position.x, c.position.z)) { forestV2G.add(c.clone()); flip.add(c.clone()); }
+  // sol : les reliefs et les teintes du nord copient ceux du sud
+  const g2 = gGeo.clone(), gp = g2.attributes.position, gc = g2.attributes.color;
+  for (let i = 0; i < gp.count; i++) if (!south(gp.getX(i), gp.getZ(i))) { const j = gp.count - 1 - i; gp.setY(i, gp.getY(j)); gc.setXYZ(i, gc.getX(j), gc.getY(j), gc.getZ(j)); }
+  g2.computeVertexNormals(); forestV2G.add(new T.Mesh(g2, groundM), path.clone());
+  // herbes
+  const blades = []; for (let i = 0; i < 700; i++) { grass.getMatrixAt(i, m4); if (south(m4.elements[12], m4.elements[14])) blades.push(m4.clone()); }
+  const grass2 = new T.InstancedMesh(grass.geometry, grass.material, blades.length * 2), half = new T.Matrix4().makeRotationY(Math.PI);
+  blades.forEach((b, i) => { grass2.setMatrixAt(2 * i, b); grass2.setMatrixAt(2 * i + 1, b.clone().premultiply(half)); });
+  forestV2G.add(grass2);
+  // grand chêne du centre : il est son propre jumeau, donc un tronc symétrique et ses deux premières touffes en double
+  const oakBase = new T.CylinderGeometry(0.8, 1.15, 8, 8, 3), B = oakBase.attributes.position, oakGeo = rough(new T.CylinderGeometry(0.8, 1.15, 8, 8, 3), 0.2), P = oakGeo.attributes.position;
+  for (let i = 0; i < B.count; i++) {
+    const x = B.getX(i), y = B.getY(i), z = B.getZ(i);
+    if (Math.hypot(x, z) < 1e-6) { P.setX(i, 0); P.setZ(i, 0); continue; }
+    if (south(x, z)) for (let j = 0; j < B.count; j++) if (Math.abs(B.getX(j) + x) + Math.abs(B.getY(j) - y) + Math.abs(B.getZ(j) + z) < 1e-4) P.setXYZ(j, -P.getX(i), P.getY(i), -P.getZ(i));
+  }
+  oakGeo.computeVertexNormals();
+  const oakTrunk = new T.Mesh(oakGeo, oak0.children[0].material); oakTrunk.position.y = 4; forestV2G.add(oakTrunk);
+  for (const c of oak0.children.slice(1, 3)) { forestV2G.add(c.clone()); flip.add(c.clone()); }
+  // obstacles, avec les mêmes jumeaux
+  OBST.forestV2.push({ ...OBST.forest[0], tris: trunkTris(oakGeo, 8, 0, 0) });
+  for (const o of OBST.forest) if (south(o.x, o.z)) OBST.forestV2.push(o, { ...o, x: -o.x, z: -o.z, ...(o.tris ? { tris: o.tris.map((v, i) => i % 3 === 1 ? v : -v) } : {}) });
+  gridObstacles(OBST.forestV2);
 }
 
 // ---------- map 3 : forêt géante du 1v1v1 (même graine chez tous les joueurs : mêmes arbres au même endroit).
@@ -1041,6 +1078,7 @@ function hitTarget(a) {
 let practicePrevMap = null;
 
 const MAPLOOK = {
+  get forestV2() { return this.forest; },
   canyon: { fog: 0xb4685a, near: 40, far: 200, hs: 0xffd8b8, hg: 0x3b2a44, sun: 0xffb27a, sunI: 0.95 },
   forest: { fog: 0x9fb2a3, near: 10, far: 72, hs: 0xe4f0d6, hg: 0x3a4630, sun: 0xfff0c8, sunI: 0.8 },
   // grandes cartes du 1v1v1 : pas de brume sur la zone de jeu, seulement un voile très loin pour fondre l'horizon
@@ -1049,7 +1087,7 @@ const MAPLOOK = {
 };
 function applyMap(k) {
   mapKey = k; map = MAPS[k]; obstacles = OBST[k];
-  canyonG.visible = k === 'canyon'; forestG.visible = k === 'forest'; bigForestG.visible = k === 'forestXL'; japanG.visible = k === 'japan';
+  canyonG.visible = k === 'canyon'; forestG.visible = k === 'forest'; forestV2G.visible = k === 'forestV2'; bigForestG.visible = k === 'forestXL'; japanG.visible = k === 'japan';
   skyMat.map = SKY[k]; skyMat.needsUpdate = true;
   const L = MAPLOOK[k];
   scene.fog.color.setHex(L.fog); scene.fog.near = L.near; scene.fog.far = L.far;
@@ -3069,7 +3107,7 @@ function chooseMap(k) {
   if (!MAPS[k]) return;
   if (mode === 'online') {
     if (!(phase === 'idle' || phase === 'over')) return;
-    if (k === 'canyon' && peersNow.length > 1) return; // à 3 : forêt ou Japon
+    if ((k === 'canyon' || k === 'forestV2') && peersNow.length > 1) return; // à 3 : forêt ou Japon
     if (k === 'japan' && peersNow.length < 2) return;
     mapV = Math.max(mapV, ...peersNow.map(x => num(x.presence.mapV, 0))) + 1;
     applyMap(k); pres({ mapK: k, wpn: weapon, mapV });
@@ -3100,7 +3138,7 @@ function evaluateReady() {
     const toks = [net.tok, ...ps.map(p => p.tok)].sort();
     const lead = toks[0] === net.tok ? { mapK: mapKey, wpn: weapon, gm: gameMode } : ps.find(p => p.tok === toks[0]);
     if (lead.gm !== 'classic') return startTour(toks.join('|'), lead.gm === 'roul' ? 'roul' : 'tour');
-    const k = toks.length === 3 ? (lead.mapK === 'japan' ? 'japan' : 'forestXL') : lead.mapK === 'canyon' ? 'canyon' : 'forest'; // à 3 : forêt géante ou Japon
+    const k = toks.length === 3 ? (lead.mapK === 'japan' ? 'japan' : 'forestXL') : lead.mapK === 'canyon' || lead.mapK === 'forestV2' ? lead.mapK : 'forest'; // à 3 : forêt géante ou Japon
     startOnline(toks.join('|'), k, wpnKey(lead.wpn));
   }
 }
@@ -3308,8 +3346,8 @@ function renderLobby() {
   if (mode !== 'online') return;
   const n = peersNow.length, ok = n > 0, rdy = peersNow.filter(x => x.presence.rdy === true).length;
   $('#lobbyDot').classList.toggle('ok', ok);
-  // à 3, le canyon (deux piliers face à face) n'est pas proposé
-  document.querySelectorAll('#lobby .mapsel [data-map=canyon], #over .mapsel [data-map=canyon]').forEach(b => { b.disabled = n > 1; });
+  // à 3, le canyon (deux piliers face à face) et la forêt V2 (duel) ne sont pas proposés
+  document.querySelectorAll('#lobby .mapsel [data-map=canyon], #over .mapsel [data-map=canyon], #lobby .mapsel [data-map=forestV2], #over .mapsel [data-map=forestV2]').forEach(b => { b.disabled = n > 1; });
   document.querySelectorAll('#lobby .mapsel [data-map=japan], #over .mapsel [data-map=japan]').forEach(b => { b.disabled = n < 2; }); // le Japon : à 3 seulement
   // qui est là : toi + les autres, et qui est prêt ; la partie part dès que tous ceux présents sont prêts
   const L = lobbyPlayers(), mine = L.find(x => x.me), esc = v => v.replace(/&/g, '&amp;').replace(/</g, '&lt;');
