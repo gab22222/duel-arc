@@ -444,7 +444,7 @@ const WPN = {
   m4: { kind: 'm4', aimT: 0.2, zoomX: null, auto: true, rate: 0.5 },             // M4 à laser : tir continu, une balle toutes les 0,5 s, tête = mort, corps = 100 HP
   barrett: { kind: 'barrett', aimT: 0.4, zoomX: 4, rate: 3 },                       // Barrett .50 : lunette x4, une balle toutes les 3 s, tue d'un coup où qu'elle touche
   shotgun: { kind: 'shotgun', aimT: 0.15, zoomX: null, rate: 1.2 },                  // fusil à pompe : 9 plombs en gerbe fixe, dégâts selon la distance
-  beer: { kind: 'beer', aimT: 0.45, zoomX: null, rate: 1 },                          // bouteille de bière lancée : tombe comme une flèche, éclate au contact, tue d'un coup
+  beer: { kind: 'beer', aimT: 0.45, zoomX: null, rate: 1 },                          // bouteille de bière lancée : part en ligne droite, éclate au contact, tue d'un coup
   grenade: { kind: 'grenade', aimT: 0.2, zoomX: null, rate: 1.2 },                   // lance-grenades : tir en cloche, explose au contact, dégâts selon la distance
   minigun: { kind: 'minigun', aimT: 0.5, zoomX: null, auto: true, rate: 0.1 },       // minigun : 0,5 s pour lancer les canons, puis une balle toutes les 0,1 s
   paintball: { kind: 'paintball', aimT: 0.15, zoomX: null, auto: true, rate: 0.2 },  // paintball : tir continu, billes comme une flèche d'arc, 30 HP corps / 60 HP tête
@@ -456,7 +456,7 @@ const PAINT_BALL = 6; // taille des billes tirées (x6 par rapport à une vraie 
 const PAINT_V = VMAX, PAINT_COLS = [0xffe81a, 0xff2f9a, 0x2fd8ff, 0x7dff36, 0xff7a1a];
 // minigun : balles traçantes à 110 m/s qui tombent un peu (gravité x0,35) ; 20 HP au corps, 60 HP à la tête
 const MINI_V = 110, MINI_G = G * 0.35;
-const shotG = k => isBullet(k) ? 0 : k === 'minigun' ? MINI_G : isPaint(k) ? 0 : G; // billes de peinture : en ligne droite, sans chute
+const shotG = k => isBullet(k) ? 0 : k === 'minigun' ? MINI_G : isPaint(k) || k === 'beer' ? 0 : G; // billes de peinture et bière : en ligne droite, sans chute
 // grenade : 32 m/s, tombe comme une flèche ; à l'explosion, 300 HP jusqu'à 0,6 m du corps, puis de moins en moins jusqu'à 0 à 5 m
 const GREN_V = 32, GREN_R = 5;
 function grenadeDamage(d) { return d <= 0.6 ? WIN : Math.max(0, WIN * (1 - (d - 0.6) / (GREN_R - 0.6))); }
@@ -467,6 +467,8 @@ function sgTotal(d) { return d <= 6 ? WIN : d <= 30 ? WIN + (0.6 - WIN) * (d - 6
 const isBullet = k => k === 'bullet' || k === 'pistol' || k === 'revolver' || k === 'deagle' || k === 'vector' || k === 'm4' || k === 'barrett' || k === 'shotgun'; // pas de chute, pas de temps de vol
 const hasLaser = w => w === 'vector' || w === 'm4';
 const bigGun = k => k === 'revolver' || k === 'deagle'; // armes de poing à gros recul (visuel)
+// armes à feu qui acceptent un silencieux, et leur son de tir silencieux (un par arme)
+const SIL_SFX = { bullet: 'bsil', pistol: 'psil', revolver: 'rsil', deagle: 'dsil', vector: 'vsil', m4: 'msil', barrett: 'fsil', shotgun: 'ssil', minigun: 'zsil', grenade: 'gsil' };
 const kicks = k => k === 'pistol' || k === 'vector' || k === 'm4' || k === 'barrett' || k === 'shotgun' || k === 'beer' || k === 'grenade' || k === 'minigun' || isPaint(k) || bigGun(k); // (bière : le geste du lancer) // l'arme bouge au tir
 // dégâts en « touches » (1 touche = 100 HP, WIN touches = mort)
 function hitDamage(a, head) {
@@ -479,7 +481,7 @@ function hitDamage(a, head) {
   if (a.kind === 'shotgun') return sgTotal(a.p.distanceTo(a.o0)) / SG_PELLETS * (head ? 1.5 : 1);
   return head || a.kill ? WIN : 1;
 }
-let silencer = false; // pistolet : silencieux vissé ou non (change le bruit du tir)
+let silencer = false; // armes à feu : silencieux vissé ou non (change le bruit du tir)
 const BAT_RANGE = 2.3, BAT_ARC = 1.0, BAT_COOLDOWN = 0.55, BAT_SPEED = 3; // portée (m), demi-angle devant soi (rad), délai entre deux coups (s)
 const speedMul = () => curWpn().melee ? BAT_SPEED : 1;
 const wpnKey = w => WPN[w] ? w : 'bow';
@@ -1629,7 +1631,14 @@ function makeArcher(cloth, hoodCol, owner) {
     dot.scale.setScalar(0.04 + 0.009 * camera.position.distanceTo(end)); // reste visible de loin
   }
   let pKick = -9;
-  function setSilencer(on) { sil.visible = on; }
+  // silencieux des autres armes à feu, au bout du canon : [arme, y, z du bout du canon, rayon, longueur]
+  // (la balle part du même endroit qu'avant : le silencieux ne change que le bruit)
+  const sils = [sil];
+  for (const [g, y, z, r, l] of [[rifle, 0.02, -0.87, 0.024, 0.26], [revG, 0.05, -0.22, 0.016, 0.13], [dgG, 0.056, -0.196, 0.021, 0.15], [vecG, 0.02, -0.45, 0.02, 0.18], [m4G, 0.018, -0.54, 0.02, 0.2],
+    [bwG, 0.056, -0.975, 0.04, 0.36], [sgG, 0.042, -0.65, 0.026, 0.3], [mgG, 0, -0.62, 0.05, 0.3], [glG, 0.032, -0.48, 0.04, 0.24]]) {
+    const m = new T.Mesh(new T.CylinderGeometry(r, r, l, 12), steel); m.rotation.x = Math.PI / 2; m.position.set(0, y, z - l / 2); m.visible = false; g.add(m); sils.push(m);
+  }
+  function setSilencer(on) { for (const m of sils) m.visible = on; }
   function recoil() { pKick = t; }
   const handL = new T.Vector3(0.12, 0.13, -0.63), handR = new T.Vector3(0.12, 0.12, -0.32);
   let wpn = 'bow';
@@ -1849,6 +1858,19 @@ function sfx(k, v = 1) {
     else if (k === 'whoosh') hiss('bandpass', 700, 2600, 0.45, 0.22 * v);
     else if (k === 'pbang') { hiss('highpass', 4200, 1400, 0.14, 0.5 * v); tone('square', 240, 70, 0.09, 0.22 * v); hiss('lowpass', 2500, 300, 0.12, 0.35 * v); }
     else if (k === 'psil') { hiss('bandpass', 1600, 500, 0.07, 0.16 * v); tone('sine', 150, 70, 0.06, 0.1 * v); }
+    else if (k === 'bsil') { hiss('bandpass', 1000, 320, 0.14, 0.3 * v); tone('sine', 150, 55, 0.11, 0.2 * v); hiss('highpass', 4500, 2500, 0.02, 0.1 * v); } // carabine : « pff » boisé
+    else if (k === 'rsil') { hiss('bandpass', 1300, 450, 0.09, 0.22 * v); tone('sine', 130, 60, 0.08, 0.14 * v); tone('square', 2200, 1800, 0.012, 0.035 * v, 0.02); } // revolver : « pft » et claquement du barillet
+    else if (k === 'dsil') { hiss('lowpass', 1100, 220, 0.16, 0.4 * v); tone('sine', 95, 40, 0.14, 0.32 * v); hiss('bandpass', 2800, 1800, 0.03, 0.12 * v, 0.05); } // deagle : « poumf » lourd, puis la culasse
+    else if (k === 'vsil') { hiss('bandpass', 2400, 900, 0.035, 0.16 * v); tone('square', 1100, 900, 0.012, 0.03 * v); } // vector : « tsk » sec et léger
+    else if (k === 'msil') { hiss('highpass', 3200, 1400, 0.045, 0.18 * v); hiss('bandpass', 1100, 350, 0.08, 0.22 * v); tone('sine', 120, 60, 0.06, 0.12 * v); } // M4 : « tchk »
+    else if (k === 'fsil') { hiss('lowpass', 1800, 100, 0.5, 0.7 * v); tone('sine', 60, 22, 0.42, 0.65 * v); hiss('highpass', 3000, 1500, 0.05, 0.2 * v); } // Barrett : gros « boumf » étouffé
+    else if (k === 'ssil') { // fusil à pompe : « pfoum » étouffé, puis le « clac-clac » de la pompe
+      hiss('lowpass', 1600, 160, 0.26, 0.5 * v); tone('sine', 80, 32, 0.2, 0.38 * v);
+      hiss('bandpass', 2600, 1800, 0.045, 0.3 * v, 0.33); tone('square', 950, 600, 0.025, 0.07 * v, 0.33);
+      hiss('bandpass', 3200, 2200, 0.04, 0.32 * v, 0.55); tone('square', 1200, 800, 0.02, 0.08 * v, 0.55);
+    }
+    else if (k === 'zsil') { hiss('bandpass', 1800, 800, 0.04, 0.2 * v); tone('sine', 130, 70, 0.035, 0.1 * v); tone('sawtooth', 420, 400, 0.1, 0.035 * v); } // minigun : rafale de « tff », le moteur reste
+    else if (k === 'gsil') { tone('sine', 240, 80, 0.12, 0.4 * v); hiss('lowpass', 600, 150, 0.09, 0.18 * v); } // lance-grenades : « ploup » de tube
     else if (k === 'psnip') { hiss('bandpass', 1500, 500, 0.09, 0.45 * v); tone('sine', 220, 90, 0.07, 0.2 * v); tone('square', 1500, 1400, 0.01, 0.05 * v); } // « pof » plus gros
     else if (k === 'paint') { hiss('bandpass', 1900, 700, 0.06, 0.32 * v); tone('sine', 260, 120, 0.045, 0.14 * v); tone('square', 1600, 1500, 0.008, 0.04 * v); } // « pof » pneumatique
     else if (k === 'splat') { hiss('lowpass', 1400, 280, 0.08, 0.28 * v); tone('sine', 180, 90, 0.05, 0.08 * v); }
@@ -1954,7 +1976,7 @@ document.querySelectorAll('#menu [data-go]').forEach(b => b.addEventListener('cl
 function setPlayingHud(on) {
   ['#score', '#hp', '#cross', '#stick', '#look', '#quit'].forEach(s => { $(s).toggleAttribute('hidden', !on); });
   if (!on) { lookId = null; lookIn.x = lookIn.y = 0; }
-  $('#sil').hidden = !(on && curW() === 'pistol');
+  $('#sil').hidden = !(on && SIL_SFX[curWpn().kind]);
 }
 
 // ---------- match flow
@@ -2134,8 +2156,8 @@ function flightEnd(o, v, g = G) {
   return simP;
 }
 // vitesse et gravité d'un projectile : la balle file droit, le carreau vole comme une flèche tirée à fond
-function shotSpeed(kind, draw) { return isBullet(kind) ? BULLET_V : kind === 'bolt' ? VMAX : kind === 'beer' ? 16 + 14 * draw : kind === 'grenade' ? GREN_V : kind === 'minigun' ? MINI_V : kind === 'psniper' ? PAINT_V * 2 : isPaint(kind) ? PAINT_V : VMIN + (VMAX - VMIN) * draw; }
-function shotSfx(kind, sil, v = 1) { sfx(kind === 'pistol' ? (sil ? 'psil' : 'pbang') : kind === 'revolver' ? 'rbang' : kind === 'deagle' ? 'dbang' : kind === 'vector' ? 'vbang' : kind === 'm4' ? 'mbang' : kind === 'barrett' ? 'fbang' : kind === 'shotgun' ? 'sbang' : kind === 'beer' ? 'whoosh' : kind === 'grenade' ? 'thoomp' : kind === 'minigun' ? 'mini' : kind === 'paintball' ? 'paint' : kind === 'psniper' ? 'psnip' : kind === 'bullet' ? 'bang' : 'twang', v); }
+function shotSpeed(kind, draw) { return isBullet(kind) ? BULLET_V : kind === 'bolt' ? VMAX : kind === 'beer' ? 32 + 28 * draw : kind === 'grenade' ? GREN_V : kind === 'minigun' ? MINI_V : kind === 'psniper' ? PAINT_V * 2 : isPaint(kind) ? PAINT_V : VMIN + (VMAX - VMIN) * draw; }
+function shotSfx(kind, sil, v = 1) { sfx(sil && SIL_SFX[kind] ? SIL_SFX[kind] : kind === 'pistol' ? 'pbang' : kind === 'revolver' ? 'rbang' : kind === 'deagle' ? 'dbang' : kind === 'vector' ? 'vbang' : kind === 'm4' ? 'mbang' : kind === 'barrett' ? 'fbang' : kind === 'shotgun' ? 'sbang' : kind === 'beer' ? 'whoosh' : kind === 'grenade' ? 'thoomp' : kind === 'minigun' ? 'mini' : kind === 'paintball' ? 'paint' : kind === 'psniper' ? 'psnip' : kind === 'bullet' ? 'bang' : 'twang', v); }
 function fire() {
   const kind = curWpn().kind, g = shotG(kind);
   const speed = shotSpeed(kind, me.draw);
@@ -2155,7 +2177,7 @@ function fire() {
   }
   const id = ++shotSeq;
   // le tir part avant d'être résolu : une balle touche dans la foulée, les autres doivent recevoir le tir avant la touche
-  if (mode === 'online' && nroom) nroom.emit('shot', { g: net.started, id, k: KIND_CODE[kind], s: kind === 'pistol' && silencer ? 1 : 0, o: [r3(o.x), r3(o.y), r3(o.z)], v: [r3(v.x), r3(v.y), r3(v.z)] }).catch(() => {});
+  if (mode === 'online' && nroom) nroom.emit('shot', { g: net.started, id, k: KIND_CODE[kind], s: SIL_SFX[kind] && silencer ? 1 : 0, o: [r3(o.x), r3(o.y), r3(o.z)], v: [r3(v.x), r3(v.y), r3(v.z)] }).catch(() => {});
   spawnShot('me', o, v, id, kind);
   me.reload = curWpn().rate || RELOAD; shotSfx(kind, silencer);
   // tir continu : cadence exacte, sans dériver avec la durée des images
@@ -2889,8 +2911,8 @@ function onShot(msg) {
   const kind = CODE_KIND[msg.data.k] || 'arrow';
   spawnShot(f.key, op, vv, num(msg.data.id, 0), kind);
   shotSfx(kind, msg.data.s === 1, isBullet(kind) ? 0.5 : 0.35);
-  if (kind === 'pistol') { f.A.setSilencer(msg.data.s === 1); f.A.recoil(); }
-  if (kicks(kind) && kind !== 'pistol') f.A.recoil();
+  if (SIL_SFX[kind]) f.A.setSilencer(msg.data.s === 1);
+  if (kicks(kind)) f.A.recoil();
 }
 function onHit(msg) {
   if (!fromOpp(msg)) return;
@@ -3096,6 +3118,7 @@ function tourRoles() {
   specIdx = 0;
   $('#spec').hidden = !spec;
   ['#hp', '#cross', '#stick', '#look'].forEach(sel => $(sel).toggleAttribute('hidden', spec));
+  $('#sil').hidden = spec || !SIL_SFX[curWpn().kind];
   $('#score .side.me').hidden = spec;
   $('#score .side.them').hidden = TOUR.n === 3 && FOES.opp.slot === 2;
   $('#side2').hidden = !(TOUR.n === 3 && FOES.opp2.slot !== 2);
@@ -3112,7 +3135,7 @@ function updateSpecTxt() { const F = watchable(); if (F.length) $('#specTxt').te
 let wasDeadSpec = false;
 function updateDeadSpec() {
   const on = deadSpec();
-  if (on !== wasDeadSpec) { wasDeadSpec = on; specIdx = 0; $('#spec').hidden = !on; ['#cross', '#stick', '#look'].forEach(sel => $(sel).toggleAttribute('hidden', on)); }
+  if (on !== wasDeadSpec) { wasDeadSpec = on; specIdx = 0; $('#spec').hidden = !on; if (on) ['#cross', '#stick', '#look', '#sil'].forEach(sel => $(sel).toggleAttribute('hidden', true)); } // la prochaine manche remet le tout (setPlayingHud)
   if (on) updateSpecTxt();
 }
 // fin d'un duel : le gagnant reste, le perdant regarde ; deux duels gagnés de suite (ou deux manches à 2) = « … a gagné ! »
@@ -3206,7 +3229,7 @@ $('#nameIn').addEventListener('input', () => {
   try { localStorage.setItem('duelarc-name', myName); } catch (e) {}
   pres({ nm: myName }); renderLobby();
 });
-// visser / dévisser le silencieux du pistolet
+// visser / dévisser le silencieux de l'arme à feu
 $('#sil').addEventListener('click', () => {
   silencer = !silencer; $('#sil').setAttribute('aria-pressed', String(silencer)); meA.setSilencer(silencer);
   sfx('tick', 0.6);
