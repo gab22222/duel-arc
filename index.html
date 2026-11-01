@@ -87,6 +87,7 @@ body{position:fixed;inset:0;touch-action:none;-webkit-user-select:none;user-sele
 #scope::before,#scope::after{content:"";position:absolute;left:50%;top:50%;background:rgba(10,10,12,.85)}
 #scope::before{width:min(100vw,100vh);height:1.5px;transform:translate(-50%,-50%)}
 #scope::after{width:1.5px;height:min(100vw,100vh);transform:translate(-50%,-50%)}
+#scope.ir::before,#scope.ir::after{background:rgba(255,255,255,.75)}
 #scope i{position:absolute;left:50%;top:50%;width:5px;height:5px;margin:-2.5px 0 0 -2.5px;border-radius:50%;background:#ef5a45;box-shadow:0 0 6px #ef5a45;z-index:1}
 #big{left:0;right:0;top:26%;text-align:center;font-family:var(--display);font-weight:800;font-size:clamp(44px,10vw,92px);line-height:1;text-shadow:0 4px 24px rgba(0,0,0,.65);opacity:0;transform:scale(.9);transition:opacity .18s,transform .18s}
 #big.show{opacity:1;transform:scale(1)}
@@ -274,6 +275,10 @@ p{margin:0}
         <button data-wpn="minigun" aria-pressed="false">Minigun</button>
         <button data-wpn="paintball" aria-pressed="false">Paintball</button>
         <button data-wpn="psniper" aria-pressed="false">Sniper paint</button>
+        <button data-wpn="crossbowIR" aria-pressed="false">Arbalète IR</button>
+        <button data-wpn="rifleIR" aria-pressed="false">Carabine IR</button>
+        <button data-wpn="barrettIR" aria-pressed="false">Barrett IR</button>
+        <button data-wpn="psniperIR" aria-pressed="false">Sniper paint IR</button>
       </div>
       </div>
       <button class="btn primary" id="btnBot">Lancer la partie</button>
@@ -300,6 +305,10 @@ p{margin:0}
         <button data-wpn="minigun" aria-pressed="false">Minigun</button>
         <button data-wpn="paintball" aria-pressed="false">Paintball</button>
         <button data-wpn="psniper" aria-pressed="false">Sniper paint</button>
+        <button data-wpn="crossbowIR" aria-pressed="false">Arbalète IR</button>
+        <button data-wpn="rifleIR" aria-pressed="false">Carabine IR</button>
+        <button data-wpn="barrettIR" aria-pressed="false">Barrett IR</button>
+        <button data-wpn="psniperIR" aria-pressed="false">Sniper paint IR</button>
       </div>
       </div>
       <button class="btn primary" id="btnPractice">Commencer</button>
@@ -342,6 +351,10 @@ p{margin:0}
         <button data-wpn="minigun" aria-pressed="false">Minigun</button>
         <button data-wpn="paintball" aria-pressed="false">Paintball</button>
         <button data-wpn="psniper" aria-pressed="false">Sniper paint</button>
+        <button data-wpn="crossbowIR" aria-pressed="false">Arbalète IR</button>
+        <button data-wpn="rifleIR" aria-pressed="false">Carabine IR</button>
+        <button data-wpn="barrettIR" aria-pressed="false">Barrett IR</button>
+        <button data-wpn="psniperIR" aria-pressed="false">Sniper paint IR</button>
       </div>
     </div>
     <div class="roster" aria-live="polite">
@@ -384,6 +397,10 @@ p{margin:0}
         <button data-wpn="minigun" aria-pressed="false">Minigun</button>
         <button data-wpn="paintball" aria-pressed="false">Paintball</button>
         <button data-wpn="psniper" aria-pressed="false">Sniper paint</button>
+        <button data-wpn="crossbowIR" aria-pressed="false">Arbalète IR</button>
+        <button data-wpn="rifleIR" aria-pressed="false">Carabine IR</button>
+        <button data-wpn="barrettIR" aria-pressed="false">Barrett IR</button>
+        <button data-wpn="psniperIR" aria-pressed="false">Sniper paint IR</button>
       </div>
     </div>
     <p class="sub" id="overStatus"></p>
@@ -456,6 +473,8 @@ const WPN = {
   psniper: { kind: 'psniper', aimT: 0.3, zoomX: 4, rate: 1 },                        // sniper paintball : lunette x4, une bille par seconde (2 fois plus rapide qu'une flèche, sans chute), tête = mort, corps = 75 HP
 };
 // paintball : billes de peinture à la vitesse d'une flèche d'arc tirée à fond, en ligne droite (sans chute), couleurs fluo
+// versions infrarouges des armes à lunette : mêmes réglages, boîtier thermique sur l'arme et vision thermique dans la lunette
+for (const k of ['crossbow', 'rifle', 'barrett', 'psniper']) WPN[k + 'IR'] = { ...WPN[k], ir: true };
 const isPaint = k => k === 'paintball' || k === 'psniper'; // billes de peinture (paintball et sniper paintball)
 const PAINT_BALL = { paintball: 3, psniper: 6 }, PAINT_BLOT = 3; // taille des billes tirées et des taches qu'elles laissent (par rapport à une vraie bille de 17 mm grossie)
 const PAINT_V = VMAX, PAINT_COLS = [0xffe81a, 0xff2f9a, 0x2fd8ff, 0x7dff36, 0xff7a1a];
@@ -1794,7 +1813,18 @@ function makeArcher(cloth, hoodCol, owner) {
   const shL = new T.Vector3(-0.2, 0.18, 0), shR = new T.Vector3(0.2, 0.18, 0);
   armL.set(shL, grip);
   const headPos = new T.Vector3();
-  function setWeapon(w) {
+  // boîtier thermique des versions infrarouges : par-dessus la lunette, gros objectif sombre à l'avant, petit voyant rouge
+  const irBody = std(0x202329, { roughness: .6 }), irLens = std(0x3a0f2e, { metalness: .7, roughness: .15 }), irLed = new T.MeshBasicMaterial({ color: 0xff2a1a }), irSights = [];
+  for (const [g, y, z, l, k] of [[rifle, 0.082, -0.22, 0.26, 1], [xbow, 0.07, -0.2, 0.2, 0.85], [bwG, 0.145, -0.12, 0.42, 1.2], [psG, 0.094, -0.3, 0.22, 0.9]]) {
+    const G = new T.Group(); G.position.set(0, y, z); G.visible = false; g.add(G); irSights.push(G);
+    G.add(new T.Mesh(new T.BoxGeometry(0.058 * k, 0.068 * k, l), irBody));
+    const lens = new T.Mesh(new T.CylinderGeometry(0.032 * k, 0.03 * k, 0.03, 16), irBody); lens.rotation.x = Math.PI / 2; lens.position.z = -l / 2 - 0.012; G.add(lens);
+    const glass = new T.Mesh(new T.CircleGeometry(0.026 * k, 16), irLens); glass.rotation.y = Math.PI; glass.position.z = -l / 2 - 0.028; G.add(glass);
+    const led = new T.Mesh(new T.SphereGeometry(0.005, 8, 6), irLed); led.position.set(0, 0.034 * k + 0.004, l / 2 - 0.03); G.add(led);
+  }
+  function setWeapon(w0) {
+    const ir = w0.endsWith('IR'), w = ir ? w0.slice(0, -2) : w0;
+    irSights.forEach(G => { G.visible = ir; });
     wpn = w; const bowOn = w === 'bow';
     bow.visible = quiver.visible = bowOn; quiverArrows.forEach(f => { f.visible = bowOn; });
     rifle.visible = w === 'rifle'; xbow.visible = w === 'crossbow'; batSwing.visible = w === 'bat'; pistolG.visible = w === 'pistol'; revG.visible = w === 'revolver'; dgG.visible = w === 'deagle'; vecG.visible = w === 'vector'; m4G.visible = w === 'm4'; bwG.visible = w === 'barrett'; sgG.visible = w === 'shotgun'; bottle.visible = w === 'beer'; glG.visible = w === 'grenade'; mgG.visible = w === 'minigun'; pbG.visible = w === 'paintball'; psG.visible = w === 'psniper'; if (!hasLaser(w)) laser(null);
@@ -1867,6 +1897,9 @@ function makeArcher(cloth, hoodCol, owner) {
   // centre de la zone « tête » (tête + capuche), suit l'inclinaison du buste
   // hitbox : les formes exactes du personnage, qui suivent sa pose (pas l'arme qu'il tient) ; la tête d'abord, chapeau compris
   const hitParts = [[head, true], [hood, true], ...[chest, torso, belt, cape, quiver, ...legs, armL.m, armR.m].map(m => [m, false])].map(([m, isHead]) => ({ m, isHead, planes: convexPlanes(m.geometry), inv: new T.Matrix4() }));
+  // températures vues par la lunette infrarouge : le visage nu est le plus chaud, la cape la plus froide
+  const heatParts = [[head, 1], [hood, 0.7], [chest, 0.62], [torso, 0.62], [belt, 0.5], [cape, 0.42], [legs[0], 0.5], [legs[1], 0.5], [armL.m, 0.72], [armR.m, 0.72]];
+  for (const [m] of heatParts) m.layers.enable(1);
   function zoneAt(p) { // 2 : tête, 1 : corps, 0 : rien
     for (const h of hitParts) {
       if (!h.m.visible) continue;
@@ -1899,7 +1932,7 @@ function makeArcher(cloth, hoodCol, owner) {
   }
   scene.add(root);
   function setColors(c, h) { clothM.color.setHex(c); hoodM.color.setHex(h); }
-  return { root, upper, setPose, setWeapon, swing, setSilencer, recoil, bowWorld, updateHead, zoneAt, headPos, laser, laserFrom, setColors, get wpn() { return wpn; } };
+  return { root, upper, setPose, setWeapon, swing, setSilencer, recoil, bowWorld, updateHead, zoneAt, heatParts, headPos, laser, laserFrom, setColors, get wpn() { return wpn; } };
 }
 const meA = makeArcher(0x2f8f83, 0x1f5f58, 'me');
 const oppA = makeArcher(0xa8342a, 0x6e1f1a, 'opp');
@@ -2689,7 +2722,7 @@ function hitArcher(a, tgt, head) {
 function registerTaken(e, n, head, byKey) {
   n = Math.min(WIN, Math.round(n * 100) / 100); // au HP près : plombs du fusil à pompe, 25 HP au vector, 50 HP au pistolet
   if (!(phase === 'fight' || phase === 'ending') || !(n > e.s.taken)) return;
-  const wasHead = head || ((curW() === 'bow' || curW() === 'rifle' || curW() === 'm4' || bigGun(curW())) && n === WIN && n - e.s.taken >= 2);
+  const wk = curWpn().kind, wasHead = head || ((wk === 'arrow' || wk === 'bullet' || wk === 'm4' || bigGun(wk)) && n === WIN && n - e.s.taken >= 2);
   e.s.taken = n;
   if (e === ME) {
     if (wasHead && n >= WIN) headshot = true; // « tir à la tête » sur l'écran de fin seulement si la tête a achevé
@@ -2816,6 +2849,7 @@ function updateCamera(dt) {
 }
 const ringEl = $('#ring'), knobEl = $('#knob');
 const scopeEl = $('#scope'), crossEl = $('#cross');
+let thermalOn = false; // je regarde dans une lunette infrarouge
 // radar du 1v1v1 : orienté vers où je regarde, je suis au centre ; la position des deux autres est relevée toutes les 5 s
 const radarEl = $('#radar'), radarG = radarEl.getContext('2d'), RADAR_EVERY = 5;
 let radarSnap = [], radarAt = -99;
@@ -2853,6 +2887,7 @@ function drawRadar() {
 function drawHud() {
   updateDeadSpec(); drawRadar();
   const scoped = !!mode && phase !== 'idle' && !!curWpn().zoomX && me.drawing && me.draw > 0.6;
+  thermalOn = scoped && !!curWpn().ir; scopeEl.classList.toggle('ir', thermalOn);
   scopeEl.hidden = !scoped; crossEl.style.visibility = scoped ? 'hidden' : '';
   if (!mode || phase === 'idle') return;
   // fusil à pompe : viseur en cercle, de la taille exacte de la gerbe de plombs (suit le zoom)
@@ -3418,6 +3453,55 @@ $('#quit').addEventListener('click', () => {
 setWeapon(weapon);
 applyMap(mapKey);
 let last = performance.now(), t = 0;
+// ---------- vision thermique : le décor, froid, passe en bleus selon sa luminosité ; les corps et le feu, chauds, en rouge → jaune → blanc.
+// Une image normale sans ciel, puis les corps et le feu par-dessus avec leur température (dans le rouge, alpha 0 pour les reconnaître) ; les arbres cachent bien les joueurs
+const thermalRT = new T.WebGLRenderTarget(4, 4), thermalSize = new T.Vector2(), thermalClear = new T.Color(), heatMats = {}, HEAT_LAYER = 1;
+const thermalScene = new T.Scene(), thermalCam = new T.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+const thermalMat = new T.ShaderMaterial({
+  uniforms: { tex: { value: thermalRT.texture }, uTime: { value: 0 } }, depthTest: false, depthWrite: false,
+  vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }`,
+  fragmentShader: `
+    uniform sampler2D tex; uniform float uTime; varying vec2 vUv;
+    vec3 cold(float l) { return l < 0.5 ? mix(vec3(0.01, 0.03, 0.16), vec3(0.04, 0.25, 0.75), l * 2.0) : mix(vec3(0.04, 0.25, 0.75), vec3(0.45, 0.85, 1.0), l * 2.0 - 1.0); }
+    vec3 hot(float t) { return t < 0.45 ? mix(vec3(0.7, 0.02, 0.02), vec3(1.0, 0.25, 0.02), t / 0.45) : t < 0.8 ? mix(vec3(1.0, 0.25, 0.02), vec3(1.0, 0.85, 0.2), (t - 0.45) / 0.35) : mix(vec3(1.0, 0.85, 0.2), vec3(1.0, 1.0, 0.92), (t - 0.8) / 0.2); }
+    void main() {
+      vec4 s = texture2D(tex, vUv);
+      vec3 c = s.a < 0.5 ? hot(s.r) : cold(clamp(dot(s.rgb, vec3(0.3, 0.59, 0.11)) * 1.3, 0.0, 1.0));
+      float n = fract(sin(dot(vUv + uTime, vec2(12.9898, 78.233))) * 43758.5453); // léger grain de capteur
+      gl_FragColor = vec4(c * (0.96 + n * 0.08), 1.0);
+    }`,
+});
+thermalScene.add(new T.Mesh(new T.PlaneGeometry(2, 2), thermalMat));
+function heatMat(h) {
+  return heatMats[h] || (heatMats[h] = new T.ShaderMaterial({
+    uniforms: { uH: { value: h } }, blending: T.NoBlending, side: T.DoubleSide, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1,
+    vertexShader: `varying vec3 vN; varying vec3 vV; void main() { vec4 mv = modelViewMatrix * vec4(position, 1.0); vN = normalMatrix * normal; vV = -mv.xyz; gl_Position = projectionMatrix * mv; }`,
+    fragmentShader: `uniform float uH; varying vec3 vN; varying vec3 vV; void main() { float f = abs(dot(normalize(vN), normalize(vV))); gl_FragColor = vec4(uH * (0.72 + 0.28 * f), 0.0, 0.0, 0.0); }`, // plus chaud de face, comme une vraie caméra
+  }));
+}
+const fireHeat = new T.ShaderMaterial({
+  blending: T.NoBlending, depthWrite: false,
+  vertexShader: `varying vec2 vU; void main() { vU = uv; vec4 mv = modelViewMatrix * vec4(0.0, 0.0, 0.0, 1.0); mv.xy += position.xy * length(modelMatrix[0].xyz); gl_Position = projectionMatrix * mv; }`,
+  fragmentShader: `varying vec2 vU; void main() { float d = length(vU - 0.5) * 2.0; if (d > 1.0) discard; gl_FragColor = vec4(1.0 - d * d * 0.6, 0.0, 0.0, 0.0); }`,
+});
+for (const b of blasts) b.f.layers.enable(HEAT_LAYER);
+function renderThermal() {
+  renderer.getDrawingBufferSize(thermalSize);
+  if (thermalRT.width !== thermalSize.x || thermalRT.height !== thermalSize.y) thermalRT.setSize(thermalSize.x, thermalSize.y);
+  renderer.getClearColor(thermalClear); const clearA = renderer.getClearAlpha();
+  sky.visible = false; renderer.setClearColor(0x0a1428, 1);
+  renderer.setRenderTarget(thermalRT); renderer.clear(); renderer.render(scene, camera);
+  // les corps et le feu, par-dessus : mêmes profondeurs, donc cachés par ce qui est devant eux
+  const swapped = [];
+  const swap = (m, mat) => { swapped.push(m, m.material); m.material = mat; };
+  for (const A of archers) for (const [m, h] of A.heatParts) swap(m, heatMat(h));
+  for (const b of blasts) swap(b.f, fireHeat);
+  camera.layers.set(HEAT_LAYER); renderer.autoClear = false; renderer.render(scene, camera);
+  camera.layers.set(0); renderer.autoClear = true;
+  for (let i = 0; i < swapped.length; i += 2) swapped[i].material = swapped[i + 1];
+  sky.visible = true; renderer.setClearColor(thermalClear, clearA);
+  renderer.setRenderTarget(null); thermalMat.uniforms.uTime.value = t % 10; renderer.render(thermalScene, thermalCam);
+}
 function frame(now) {
   const dt = Math.min(0.05, Math.max(0, (now - last) / 1000)); last = now; t += dt;
   targetG.visible = mode === 'practice'; oppA.root.visible = mode !== 'practice';
@@ -3430,7 +3514,7 @@ function frame(now) {
   netTick(now);
   drawHud();
   updateSmoke();
-  renderer.render(scene, camera);
+  if (thermalOn) renderThermal(); else renderer.render(scene, camera);
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
