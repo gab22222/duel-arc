@@ -495,19 +495,19 @@ const WPN = {
   boomerang: { kind: 'boomerang', aimT: 0.2, zoomX: null, rate: 0.25 },               // boomerang : part tout droit, repart du premier obstacle ou du bout de la carte, revient dans la main ; tue d'un coup au passage
   blowgun: { kind: 'dart', aimT: 0.25, zoomX: null, rate: 1.2 },                     // sarbacane : fléchette silencieuse à 130 m/s, sans chute, tête = mort, corps = 100 HP
   shuriken: { kind: 'shuriken', aimT: 0.15, zoomX: null, rate: 1 },                   // shuriken : un par seconde, 180 m/s, sans chute, tête = mort, corps = 100 HP
-  psniper: { kind: 'psniper', aimT: 0.3, zoomX: 4, rate: 1 },                        // sniper paintball : lunette x4, une bille par seconde (2 fois plus rapide qu'une flèche, sans chute), tête = mort, corps = 75 HP
+  psniper: { kind: 'psniper', aimT: 0.3, zoomX: 4, rate: 1 },                        // sniper paintball : lunette x4, une bille par seconde (4 fois plus rapide qu'une flèche, sans chute), tête = mort, corps = 75 HP
 };
 // paintball : billes de peinture à la vitesse d'une flèche d'arc tirée à fond, en ligne droite (sans chute), couleurs fluo
 // versions infrarouges des armes à lunette : mêmes réglages, boîtier thermique sur l'arme et vision thermique dans la lunette
 for (const k of ['crossbow', 'rifle', 'barrett', 'psniper']) WPN[k + 'IR'] = { ...WPN[k], ir: true };
 const isPaint = k => k === 'paintball' || k === 'psniper'; // billes de peinture (paintball et sniper paintball)
 const PAINT_BALL = { paintball: 3, psniper: 6 }; // taille des billes tirées (par rapport à une vraie bille de 17 mm grossie)
-const PAINT_V = VMAX, PAINT_COLS = [0xffe81a, 0xff2f9a, 0x2fd8ff, 0x7dff36, 0xff7a1a];
+const PAINT_V = VMAX, PSNIPER_V = VMAX * 4, PAINT_COLS = [0xffe81a, 0xff2f9a, 0x2fd8ff, 0x7dff36, 0xff7a1a];
 // minigun : balles traçantes à 110 m/s qui tombent un peu (gravité x0,35) ; 20 HP au corps, 60 HP à la tête
 const MINI_V = 110, MINI_G = G * 0.35;
 const BOOM_V = 95; // boomerang : très rapide
 const DART_V = 130, DART_LEN = 0.2, DART_TRAIL = 0.3; // fléchette : vitesse, longueur, durée de sa traînée (s)
-const STAR_ROLL = 0.9, SHUR_V = 180; // shuriken : presque pas de temps de vol (plafonné par le contrôle des tirs reçus en ligne, BULLET_V x 1,1)
+const STAR_ROLL = 0.9, SHUR_V = 180; // shuriken : presque pas de temps de vol
 const thrown = k => k === 'boomerang' || k === 'shuriken'; // armes lancées à la main
 const shotG = k => isBullet(k) ? 0 : k === 'minigun' ? MINI_G : isPaint(k) || k === 'beer' || k === 'dart' || thrown(k) ? 0 : G; // billes de peinture, bière, fléchette et armes lancées : en ligne droite, sans chute
 // grenade : 32 m/s, tombe comme une flèche ; à l'explosion, 300 HP jusqu'à 0,6 m du corps, puis de moins en moins jusqu'à 0 à 5 m
@@ -2483,7 +2483,7 @@ function flightEnd(o, v, g = G) {
   return simP;
 }
 // vitesse et gravité d'un projectile : la balle file droit, le carreau vole comme une flèche tirée à fond
-function shotSpeed(kind, draw) { return isBullet(kind) ? BULLET_V : kind === 'bolt' ? VMAX : kind === 'beer' ? 32 + 28 * draw : kind === 'grenade' ? GREN_V : kind === 'dart' ? DART_V : kind === 'shuriken' ? SHUR_V : kind === 'boomerang' ? BOOM_V : kind === 'minigun' ? MINI_V : kind === 'psniper' ? PAINT_V * 2 : isPaint(kind) ? PAINT_V : VMIN + (VMAX - VMIN) * draw; }
+function shotSpeed(kind, draw) { return isBullet(kind) ? BULLET_V : kind === 'bolt' ? VMAX : kind === 'beer' ? 32 + 28 * draw : kind === 'grenade' ? GREN_V : kind === 'dart' ? DART_V : kind === 'shuriken' ? SHUR_V : kind === 'boomerang' ? BOOM_V : kind === 'minigun' ? MINI_V : kind === 'psniper' ? PSNIPER_V : isPaint(kind) ? PAINT_V : VMIN + (VMAX - VMIN) * draw; }
 function shotSfx(kind, sil, v = 1) { sfx(sil && SIL_SFX[kind] ? SIL_SFX[kind] : kind === 'pistol' ? 'pbang' : kind === 'revolver' ? 'rbang' : kind === 'deagle' ? 'dbang' : kind === 'vector' ? 'vbang' : kind === 'm4' ? 'mbang' : kind === 'barrett' ? 'fbang' : kind === 'shotgun' ? 'sbang' : kind === 'beer' ? 'whoosh' : kind === 'grenade' ? 'thoomp' : kind === 'minigun' ? 'mini' : kind === 'paintball' ? 'paint' : kind === 'psniper' ? 'psnip' : kind === 'bullet' ? 'bang' : kind === 'dart' ? 'dart' : kind === 'shuriken' ? 'shur' : kind === 'boomerang' ? 'boomt' : 'twang', v); }
 function fire() {
   const kind = curWpn().kind, g = shotG(kind);
@@ -3152,8 +3152,9 @@ async function joinRoom(code) {
     if (isObj(m.s)) Object.assign(p.presence, m.s);
     if (isObj(m.m)) Object.assign(p.presence, m.m);
     if (!known) { stateDue = true; schedule(); } // on répond tout de suite pour que l'autre nous voie
-    if (m.s || m.m) notify();
+    // les tirs et les touches d'abord : le score du même message rattrape seulement une touche perdue
     if (Array.isArray(m.e)) for (const ev of m.e) if (ev && typeof ev.t === 'string') (handlers[ev.t] || []).forEach(fn => fn({ peer: m.f, sameTab: false, isMe: false, kind: 'viewer', topic: ev.t, data: ev.d }));
+    if (m.s || m.m) notify();
   });
   client.on('connect', () => { stateDue = true; schedule(); }); // reconnexion
   const beat = setInterval(() => {
@@ -3309,7 +3310,7 @@ function onShot(msg) {
   const f = foeByPeer(msg.peer), k = trio() ? 1 : -1;
   const op = new T.Vector3(k * num(o[0], 0), num(o[1], 1.4), k * num(o[2], 0));
   const vv = new T.Vector3(k * num(v[0], 0), num(v[1], 0), k * num(v[2], 0));
-  if (isDead(f) || vv.length() > BULLET_V * 1.1 || Math.hypot(op.x - f.s.x, op.z - f.s.z) > 5) return;
+  if (isDead(f) || vv.length() > PSNIPER_V * 1.1 || Math.hypot(op.x - f.s.x, op.z - f.s.z) > 5) return;
   const kind = CODE_KIND[msg.data.k] || 'arrow';
   spawnShot(f.key, op, vv, num(msg.data.id, 0), kind);
   shotSfx(kind, msg.data.s === 1, isBullet(kind) ? 0.5 : 0.35);
