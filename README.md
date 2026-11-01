@@ -2,7 +2,7 @@
 
 Duel à l'arc en 3D pour deux téléphones. Les flèches ont un temps de vol et retombent avec la gravité. Chaque joueur a 300 HP : une flèche dans le corps enlève 100 HP, une flèche dans la tête enlève les 300 d'un coup. Le premier qui touche 3 flèches (ou 1 dans la tête) gagne.
 
-Commandes en partie : à gauche, le joystick pour se déplacer (hors canyon, on avance 25 % plus vite et on se décale 25 % moins vite) ; à droite, on maintient pour bander ou épauler, on vise en glissant et on relâche pour tirer. Un **petit joystick caméra** dans le coin en bas à droite tourne la vue sans bander ni tirer (vitesse selon l'écart au centre, douce près du centre).
+Commandes en partie : à gauche, le joystick pour se déplacer (hors canyon, on avance 25 % plus vite et on se décale 25 % moins vite) ; à droite, on maintient pour bander ou épauler, on vise en glissant et on relâche pour tirer. Le **bas de la zone de droite** (environ 20 % de la hauteur de l'écran, sous le petit trait gris collé au bord droit) tourne la vue exactement comme la zone de tir, mais sans bander ni tirer.
 
 À l'ouverture, le jeu ne propose que trois gros boutons : **Jouer avec des amis** (créer une partie, ou taper un chiffre et « Rejoindre une partie » ; carte et arme se choisissent ensuite dans le salon), **Jouer contre un bot** (choix de la carte et de l'arme, puis Lancer la partie) et **Tir libre** (choix de l'arme, cible en forêt). Chaque écran a un bouton Retour.
 
