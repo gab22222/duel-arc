@@ -2662,6 +2662,8 @@ function spawnArrow(owner, p, v, id = 0, kind = 'arrow', noSmoke = false) {
   const a = { owner, id, kind, g: shotG(kind), tail: bullet || kind === 'grenade' || kind === 'minigun' || isPaint(kind) ? 0.05 : kind === 'bolt' ? 0.9 * BOLT_LEN : 0.9, kill: kind === 'bolt' || kind === 'barrett' || kind === 'beer', sid: ++arrowSerial, p, v, m, flying: true, pending: 0, life: 0, botSeen: false, o0: p.clone(), noSmoke: noSmoke || kind === 'beer' || kind === 'minigun' || isPaint(kind), maxD: kind === 'shotgun' ? SG_RANGE : 0 };
   orient(a); arrows.push(a);
   if (isPaint(kind)) { a.col = PAINT_COLS[id ? id % PAINT_COLS.length : Math.floor(Math.random() * PAINT_COLS.length)]; m.material.color.setHex(a.col); }
+  // sniper paintball : la bille brille légèrement de sa couleur, avec un petit halo, pour mieux la voir en l'air
+  if (kind === 'psniper') { m.material.emissive.setHex(a.col); m.material.emissiveIntensity = 0.6; a.glow = new T.Sprite(glowMat(a.col)); a.glow.scale.setScalar(0.075); m.add(a.glow); }
   if (owner !== 'me' && !bullet && !isPaint(kind)) sfx('whoosh', 0.7);
   if (bullet) flyNow(a);
   const stuck = arrows.filter(x => !x.flying);
@@ -2679,8 +2681,11 @@ function spawnShot(owner, p, v, id = 0, kind = 'arrow') {
     spawnArrow(owner, p.clone(), sgV.clone(), id ? id * 16 + i : 0, kind, i > 0);
   }
 }
+const glowMats = {};
+function glowMat(col) { return glowMats[col] || (glowMats[col] = new T.SpriteMaterial({ map: mistTex, color: col, blending: T.AdditiveBlending, depthWrite: false, opacity: 0.7 })); }
 function stopArrow(a) {
   a.flying = false;
+  if (a.glow) { a.glow.visible = false; a.m.material.emissiveIntensity = 0; } // la tache posée ne brille plus
   const s = a.m.getObjectByName('streak'); if (s) s.visible = false;
 }
 // 0 = raté, 1 = corps (pieds compris), 2 = tête
