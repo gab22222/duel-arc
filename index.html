@@ -436,7 +436,8 @@ const SCOPE_X = 3;             // grossissement de la lunette
 const ARROW_STEP = 0.05;       // pas de collision des flèches (m) : assez fin pour ne pas sauter le bord d'un tronc
 const WIN = 3;                 // flèches pour gagner (une dans la tête suffit)
 const HP_MAX = 300;            // barre de vie : chaque flèche enlève HP_MAX / WIN
-const BODY_R = 0.27, BODY_TOP = 1.52;  // corps : gabarit pour le souffle des grenades et la profondeur des flèches (les touches se font sur le vrai modèle, voir hitZone)
+const BODY_W = 1.2;                    // personnage 20 % plus large (largeur et profondeur, tête et chapeau compris ; même taille)
+const BODY_R = 0.27 * BODY_W, BODY_TOP = 1.52;  // corps : gabarit pour le souffle des grenades et la profondeur des flèches (les touches se font sur le vrai modèle, voir hitZone)
 const HEAD_R = 0.21;                   // tête : même gabarit
 const HIT_REACH = 1.2;                 // au-delà de cette distance de l'axe d'un joueur (bras tendus compris), inutile de tester son modèle
 const PLAYER_R = 0.35;                 // rayon de collision pour les déplacements
@@ -1524,17 +1525,17 @@ function makeArcher(cloth, hoodCol, owner) {
   const clothM = std(cloth, { roughness: .9 }), hoodM = std(hoodCol, { roughness: .9 });
   const dark = std(0x2b2228), skin = std(0xd8a47c), wood = std(0x6e3f1f);
   const legs = [];
-  for (const sx of [-0.11, 0.11]) { const l = new T.Mesh(new T.BoxGeometry(0.15, 0.86, 0.17), dark); l.position.set(sx, 0.43, 0); root.add(l); legs.push(l); }
-  const torso = new T.Mesh(new T.CylinderGeometry(0.21, 0.29, 0.66, 7), clothM); torso.position.y = 1.08; root.add(torso);
-  const belt = new T.Mesh(new T.CylinderGeometry(0.235, 0.24, 0.07, 7), dark); belt.position.y = 0.98; root.add(belt);
+  for (const sx of [-0.11, 0.11]) { const l = new T.Mesh(new T.BoxGeometry(0.15 * BODY_W, 0.86, 0.17 * BODY_W), dark); l.position.set(sx * BODY_W, 0.43, 0); root.add(l); legs.push(l); }
+  const torso = new T.Mesh(new T.CylinderGeometry(0.21, 0.29, 0.66, 7), clothM); torso.position.y = 1.08; torso.scale.set(BODY_W, 1, BODY_W); root.add(torso);
+  const belt = new T.Mesh(new T.CylinderGeometry(0.235, 0.24, 0.07, 7), dark); belt.position.y = 0.98; belt.scale.set(BODY_W, 1, BODY_W); root.add(belt);
   const upper = new T.Group(); upper.position.y = 1.32; root.add(upper);
-  const chest = new T.Mesh(new T.CylinderGeometry(0.24, 0.21, 0.34, 7), clothM); chest.position.y = 0.06; upper.add(chest);
-  const head = new T.Mesh(new T.IcosahedronGeometry(0.15, 0), skin); head.position.y = 0.37; upper.add(head);
-  const hood = new T.Mesh(new T.ConeGeometry(0.2, 0.42, 7), hoodM); hood.position.set(0, 0.49, 0.05); hood.rotation.x = -0.28; upper.add(hood);
-  const cape = new T.Mesh(new T.ConeGeometry(0.3, 0.9, 7, 1, true), hoodM); cape.position.set(0, -0.12, 0.08); cape.rotation.x = 0.12; upper.add(cape);
-  const quiver = new T.Mesh(new T.CylinderGeometry(0.075, 0.06, 0.55, 6), wood); quiver.position.set(0.13, 0.12, 0.24); quiver.rotation.z = -0.35; upper.add(quiver);
+  const chest = new T.Mesh(new T.CylinderGeometry(0.24, 0.21, 0.34, 7), clothM); chest.position.y = 0.06; chest.scale.set(BODY_W, 1, BODY_W); upper.add(chest);
+  const head = new T.Mesh(new T.IcosahedronGeometry(0.15, 0), skin); head.position.y = 0.37; head.scale.set(BODY_W, 1, BODY_W); upper.add(head);
+  const hood = new T.Mesh(new T.ConeGeometry(0.2, 0.42, 7), hoodM); hood.position.set(0, 0.49, 0.05 * BODY_W); hood.rotation.x = -0.28; hood.scale.set(BODY_W, 1, BODY_W); upper.add(hood);
+  const cape = new T.Mesh(new T.ConeGeometry(0.3, 0.9, 7, 1, true), hoodM); cape.position.set(0, -0.12, 0.08 * BODY_W); cape.rotation.x = 0.12; cape.scale.set(BODY_W, 1, BODY_W); upper.add(cape);
+  const quiver = new T.Mesh(new T.CylinderGeometry(0.075, 0.06, 0.55, 6), wood); quiver.position.set(0.13 * BODY_W, 0.12, 0.24 * BODY_W); quiver.rotation.z = -0.35; upper.add(quiver);
   const quiverArrows = [];
-  for (let i = 0; i < 3; i++) { const f = new T.Mesh(fl1, fletchMat[owner]); f.position.set(0.22 + i * 0.03, 0.42, 0.24 + i * 0.02 - 0.9); f.rotation.z = -0.35; upper.add(f); quiverArrows.push(f); }
+  for (let i = 0; i < 3; i++) { const f = new T.Mesh(fl1, fletchMat[owner]); f.position.set((0.22 + i * 0.03) * BODY_W, 0.42, (0.24 + i * 0.02) * BODY_W - 0.9); f.rotation.z = -0.35; upper.add(f); quiverArrows.push(f); }
   // carabine de chasse en bois avec lunette, tenue dans l'axe du corps (le long de -Z)
   const rifle = new T.Group(); rifle.position.set(0, 0.16, -0.3); rifle.visible = false; upper.add(rifle);
   const stockM = std(0x8a5a2e, { roughness: .7 }), steel = std(0x2a2a2f, { metalness: .5, roughness: .45 });
@@ -1808,9 +1809,9 @@ function makeArcher(cloth, hoodCol, owner) {
   const strGeo = new T.BufferGeometry().setFromPoints([new T.Vector3(0, 0.66, 0.07), new T.Vector3(0, 0, 0.07), new T.Vector3(0, -0.66, 0.07)]);
   bow.add(new T.Line(strGeo, new T.LineBasicMaterial({ color: 0xf2eadc })));
   const nocked = makeArrow(owner, false); bow.add(nocked);
-  const armL = limb(clothM, 0.09), armR = limb(clothM, 0.09);
+  const armL = limb(clothM, 0.09 * BODY_W), armR = limb(clothM, 0.09 * BODY_W);
   upper.add(armL.m, armR.m);
-  const shL = new T.Vector3(-0.2, 0.18, 0), shR = new T.Vector3(0.2, 0.18, 0);
+  const shL = new T.Vector3(-0.2 * BODY_W, 0.18, 0), shR = new T.Vector3(0.2 * BODY_W, 0.18, 0);
   armL.set(shL, grip);
   const headPos = new T.Vector3();
   // boîtier thermique des versions infrarouges : par-dessus la lunette, gros objectif sombre à l'avant, petit voyant rouge
@@ -2671,7 +2672,7 @@ function hitStep(a, tg) {
 // la flèche traverse : la pointe et un bout de tige ressortent de l'autre côté (visible même de dos), l'empennage reste devant
 function pierceDepth(p, dir, model, head, len = 0.9) {
   let cx, cy, cz, r, flat;
-  if (head) { cx = model.headPos.x; cy = model.headPos.y; cz = model.headPos.z; r = HEAD_R * 0.8; flat = false; }
+  if (head) { cx = model.headPos.x; cy = model.headPos.y; cz = model.headPos.z; r = HEAD_R * 0.8 * BODY_W; flat = false; }
   else { cx = model.root.position.x; cy = 0; cz = model.root.position.z; r = BODY_R; flat = true; }
   const ox = p.x - cx, oy = flat ? 0 : p.y - cy, oz = p.z - cz, dy = flat ? 0 : dir.y;
   const A = dir.x * dir.x + dy * dy + dir.z * dir.z, B = ox * dir.x + oy * dy + oz * dir.z, C = ox * ox + oy * oy + oz * oz - r * r;
