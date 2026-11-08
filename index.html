@@ -161,6 +161,10 @@ p{margin:0}
 .opt .seg button{padding:6px 10px;text-align:center}
 .opt .wpnsel{grid-template-columns:repeat(3,1fr)}
 .opt .wpnsel button{padding:6px 2px;font-size:13px}
+.wpnsel button[hidden]{display:none}
+.opt .wpnvar{grid-template-columns:repeat(3,1fr)}
+.opt .wpnvar button{padding:6px 2px;font-size:13px;text-align:center}
+.wgrid .back{grid-column:1/-1}
 .howto{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;font-size:14px;color:var(--mute);line-height:1.35;border-top:1px solid var(--line);padding-top:12px}
 .howto b{color:var(--bone);font-weight:700}
 .note{font-size:14px;color:var(--ember);line-height:1.4;min-height:0}
@@ -253,6 +257,12 @@ p{margin:0}
       <button class="btn primary choice" data-go="friends">Jouer avec des amis <span>en ligne, à 2 ou 3</span></button>
       <button class="btn primary choice" data-go="bot">Jouer contre un bot <span>hors ligne</span></button>
       <button class="btn primary choice" data-go="practice">Tir libre <span>cible en forêt, sans score</span></button>
+      <div class="opt"><span>Bruitages</span>
+        <div class="seg funsel" role="group" aria-label="Bruitages">
+          <button data-fun="0" aria-pressed="true">Désactivés</button>
+          <button data-fun="1" aria-pressed="false">Activés</button>
+        </div>
+      </div>
     </div>
     <div class="step" data-step="friends" hidden>
       <button class="back" data-go="home">← Retour</button>
@@ -544,6 +554,10 @@ const WPN = {
 // paintball : billes de peinture à la vitesse d'une flèche d'arc tirée à fond, en ligne droite (sans chute), couleurs fluo
 // versions infrarouges des armes à lunette : mêmes réglages, boîtier thermique sur l'arme et vision thermique dans la lunette
 for (const k of ['crossbow', 'rifle', 'barrett', 'psniper']) WPN[k + 'IR'] = { ...WPN[k], ir: true };
+// on choisit l'arme, puis sa variante (la première de chaque liste est celle par défaut)
+const FAMILY = { bow: ['bow', 'bowx'], crossbow: ['crossbow', 'crossbowIR'], rifle: ['rifle', 'rifleIR', 'carbine'], m4: ['m4', 'm4acog', 'm4rd'], barrett: ['barrett', 'barrettIR'], psniper: ['psniper', 'psniperIR'] };
+const VAR_NAME = { bow: 'Normal', bowx: 'Explosif', crossbow: 'Normale', crossbowIR: 'Infrarouge', rifle: 'Lunette', rifleIR: 'Infrarouge', carbine: 'À mire', m4: 'Laser', m4acog: 'ACOG', m4rd: 'Point rouge', barrett: 'Normal', barrettIR: 'Infrarouge', psniper: 'Normal', psniperIR: 'Infrarouge' };
+const familyOf = w => Object.keys(FAMILY).find(f => FAMILY[f].includes(w)) || w;
 const isPaint = k => k === 'paintball' || k === 'psniper'; // billes de peinture (paintball et sniper paintball)
 const PAINT_BALL = { paintball: 3, psniper: 6 }; // taille des billes tirées (par rapport à une vraie bille de 17 mm grossie)
 const PAINT_V = 150, PSNIPER_V = VMAX * 4, PAINT_COLS = [0xffe81a, 0xff2f9a, 0x2fd8ff, 0x7dff36, 0xff7a1a];
@@ -1215,6 +1229,7 @@ function applyMap(k) {
   const shown = k === 'forestXL' ? 'forestV2' : k; // la forêt géante (1v1v1) apparaît comme « Forêt 1 » dans les menus
   document.querySelectorAll('.mapsel button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.map === shown)));
   document.querySelectorAll('.wpnrow').forEach(r => { r.hidden = (map.lateral && !r.classList.contains('always')) || (gameMode !== 'classic' && !!r.closest('#lobby')); }); // le tir libre est toujours en forêt
+  refreshVariants();
   dressArchers();
 }
 const curW = () => map.lateral ? 'bow' : weapon;
@@ -1222,7 +1237,8 @@ const curWpn = () => WPN[curW()];
 function setWeapon(w) {
   weapon = wpnKey(w);
   try { localStorage.setItem('duelarc-wpn', weapon); } catch (e) {}
-  document.querySelectorAll('.wpnsel button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.wpn === weapon)));
+  document.querySelectorAll('.wpnsel button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.wpn === familyOf(weapon))));
+  refreshVariants();
   dressArchers();
 }
 const archers = []; // remplis à la création des deux archers
@@ -2282,7 +2298,11 @@ function loadFhaa() {
     .then(b => new Promise((ok, ko) => { const p = actx.decodeAudioData(b, ok, ko); if (p && p.catch) p.catch(ko); }))
     .then(buf => { fhaaBuf = buf; }).catch(() => {});
 }
+// bruitages (désactivés par défaut) : pour l'instant, seulement le « fhaaa » du tir à la tête
+let funSfx = false;
+try { funSfx = localStorage.getItem('duelarc-bruit') === '1'; } catch (e) {}
 function fhaa(v = 1) {
+  if (!funSfx) return;
   if (fhaaBuf) {
     const s = actx.createBufferSource(), g = actx.createGain();
     s.buffer = fhaaBuf; g.gain.value = 2 * v; s.connect(g).connect(actx.destination); s.start();
@@ -3443,6 +3463,7 @@ function setGameMode(g) {
   $('#lobby [data-map=forestV3] small').textContent = duels ? 'troncs égaux' : 'troncs égaux, à 2';
   if (duels && mapKey !== 'forestV2' && mapKey !== 'forestV3') applyMap('forestV2');
   document.querySelectorAll('#lobby .wpnrow').forEach(r => { r.hidden = gameMode !== 'classic' || map.lateral; });
+  refreshVariants();
 }
 function chooseGameMode(g) {
   if (mode !== 'online' || !(phase === 'idle' || phase === 'over')) return;
@@ -3598,6 +3619,19 @@ function chooseMap(k) {
     applyMap(k); pres({ mapK: k, wpn: weapon, mapV });
   } else applyMap(k);
 }
+// rangée « Variante » sous chaque choix d'arme : visible seulement pour une arme qui a des variantes
+function refreshVariants() {
+  const f = familyOf(weapon), fam = FAMILY[f];
+  document.querySelectorAll('.wpnvarrow').forEach(v => {
+    v.hidden = !fam || v.previousElementSibling.hidden; if (!fam) return;
+    const g = v.querySelector('.wpnvar');
+    if (g.dataset.fam !== f) {
+      g.dataset.fam = f; g.innerHTML = fam.map(w => `<button data-var="${w}">${VAR_NAME[w]}</button>`).join('');
+      g.querySelectorAll('button').forEach(b => b.addEventListener('click', () => chooseWeapon(b.dataset.var)));
+    }
+    g.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.var === weapon)));
+  });
+}
 function chooseWeapon(w) {
   if (mode === 'online') {
     if (!(phase === 'idle' || phase === 'over')) return;
@@ -3698,8 +3732,16 @@ function showWeaponPick(match, R) {
   $('#pMatch').textContent = `Manche ${TOUR.round + 1} · ${match}`;
   $('#pWho').textContent = mine ? 'À toi de choisir l’arme' : `${tourName(who)} choisit l’arme…`;
   $('#pSpec').textContent = R.s ? `Spectateur : ${tourName(R.s)}` : (TOUR.n === 2 ? 'BO3 : deux manches gagnantes' : '');
-  $('#pGrid').innerHTML = WPN_KEYS.map(k => `<button data-w="${k}"${mine ? '' : ' disabled'}>${wpnLabel(k)}</button>`).join('');
-  if (mine) $('#pGrid').querySelectorAll('button').forEach(b => b.addEventListener('click', () => pickWeapon(rid, b.dataset.w)));
+  const bases = () => {
+    $('#pGrid').innerHTML = WPN_KEYS.filter(k => familyOf(k) === k).map(k => `<button data-w="${k}"${mine ? '' : ' disabled'}>${wpnLabel(k)}</button>`).join('');
+    if (mine) $('#pGrid').querySelectorAll('button').forEach(b => b.addEventListener('click', () => FAMILY[b.dataset.w] ? variants(b.dataset.w) : pickWeapon(rid, b.dataset.w)));
+  };
+  const variants = f => { // l'arme a des variantes : on choisit laquelle
+    $('#pGrid').innerHTML = FAMILY[f].map(k => `<button data-w="${k}">${wpnLabel(k)}</button>`).join('') + '<button class="back">← Autres armes</button>';
+    $('#pGrid').querySelectorAll('button[data-w]').forEach(b => b.addEventListener('click', () => pickWeapon(rid, b.dataset.w)));
+    $('#pGrid').querySelector('.back').addEventListener('click', bases);
+  };
+  bases();
   $('#wpick').hidden = false; TOUR.waitPick = true; sfx('tick');
   if (mine) { clearTimeout(TOUR.pickT); TOUR.pickT = setTimeout(() => { if (TOUR.waitPick && net.started === rid) pickWeapon(rid, WPN_KEYS[Math.floor(Math.random() * WPN_KEYS.length)]); }, 25000); }
   checkPick();
@@ -3719,7 +3761,7 @@ function weaponChosen(w) {
   if (!TOUR.waitPick) return;
   TOUR.waitPick = false; clearTimeout(TOUR.pickT);
   const rid = net.started;
-  $('#pGrid').querySelectorAll('button').forEach(b => { b.disabled = true; b.classList.toggle('chosen', b.dataset.w === w); });
+  $('#pGrid').querySelectorAll('button').forEach(b => { b.disabled = true; b.classList.toggle('chosen', b.dataset.w === w || (b.dataset.w === familyOf(w) && !$('#pGrid').querySelector(`[data-w="${w}"]`))); });
   $('#pWho').textContent = `${chooserOf() === myId ? 'Tu as choisi' : tourName(chooserOf()) + ' a choisi'} : ${wpnLabel(w)}`; sfx('ding');
   TOUR.cur.w = w;
   setTimeout(() => {
@@ -3873,7 +3915,17 @@ function renderOverStatus() {
 
 // ---------- buttons
 document.querySelectorAll('.mapsel button').forEach(b => b.addEventListener('click', () => chooseMap(b.dataset.map)));
-document.querySelectorAll('.wpnsel button').forEach(b => b.addEventListener('click', () => chooseWeapon(b.dataset.wpn)));
+// chaque liste d'armes ne montre que les armes ; les variantes vont dans la rangée en dessous
+document.querySelectorAll('.wpnsel').forEach(sel => {
+  sel.querySelectorAll('button').forEach(b => { if (familyOf(b.dataset.wpn) !== b.dataset.wpn) b.hidden = true; });
+  const v = document.createElement('div'); v.className = 'opt wpnvarrow'; v.hidden = true;
+  v.innerHTML = '<span>Variante</span><div class="seg wpnvar" role="group" aria-label="Variante de l’arme"></div>'; sel.closest('.opt').after(v);
+});
+document.querySelectorAll('.wpnsel button').forEach(b => b.addEventListener('click', () => chooseWeapon(familyOf(weapon) === b.dataset.wpn ? weapon : b.dataset.wpn))); // même arme : on garde sa variante
+refreshVariants();
+const funBtns = () => document.querySelectorAll('.funsel button').forEach(b => b.setAttribute('aria-pressed', String((b.dataset.fun === '1') === funSfx)));
+document.querySelectorAll('.funsel button').forEach(b => b.addEventListener('click', () => { funSfx = b.dataset.fun === '1'; funBtns(); audioInit(); sfx('tick', 0.6); try { localStorage.setItem('duelarc-bruit', funSfx ? '1' : '0'); } catch (e) {} }));
+funBtns();
 $('#btnCreate').addEventListener('click', () => enterRoom(null, true));
 $('#btnJoin').addEventListener('click', () => {
   const c = Number($('#code').value.replace(/[^0-9]/g, '') || 0);
