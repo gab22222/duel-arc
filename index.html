@@ -227,6 +227,7 @@ p{margin:0}
   <div class="side them6" id="side6" hidden><div class="pips" id="pipsThem6"><i class="pip"></i><i class="pip"></i><i class="pip"></i></div> <span id="them6Name">Orange</span></div>
   <div class="side them7" id="side7" hidden><div class="pips" id="pipsThem7"><i class="pip"></i><i class="pip"></i><i class="pip"></i></div> <span id="them7Name">Noir</span></div>
   <div class="side them8" id="side8" hidden><div class="pips" id="pipsThem8"><i class="pip"></i><i class="pip"></i><i class="pip"></i></div> <span id="them8Name">Vert clair</span></div>
+  <div class="side them9" id="side9" hidden><div class="pips" id="pipsThem9"><i class="pip"></i><i class="pip"></i><i class="pip"></i></div> <span id="them9Name">Marron</span></div>
 </div>
 <div class="hud" id="hp" hidden><div class="hpbar"><i id="hpFill"></i></div><span id="hpTxt">300 HP</span></div>
 <svg class="hud" id="cross" viewBox="0 0 72 72" hidden>
@@ -384,7 +385,7 @@ p{margin:0}
   <div class="sheet">
     <div class="eyebrow">Chiffre de la partie</div>
     <div class="codebig" id="lobbyCode">-</div>
-    <p class="sub">Tes amis ouvrent la même page, tapent ce chiffre et appuient sur Rejoindre une partie (jusqu'à 9 joueurs).</p>
+    <p class="sub">Tes amis ouvrent la même page, tapent ce chiffre et appuient sur Rejoindre une partie (jusqu'à 10 joueurs).</p>
     <div class="seg modesel" role="group" aria-label="Mode de jeu">
       <button data-gm="tour" aria-pressed="true">Tournante<small>l'arme choisie à tour de rôle</small></button>
       <button data-gm="roul" aria-pressed="false">Tournante roulette<small>l'arme tirée à la roue</small></button>
@@ -398,11 +399,13 @@ p{margin:0}
       <button data-tm="2v2v2v2" aria-pressed="false">2 contre 2 contre 2 contre 2<small>1-2, 3-4, 5-6, 7-8</small></button>
       <button data-tm="4v4" aria-pressed="false">4 contre 4<small>joueurs 1 à 4 contre 5 à 8</small></button>
       <button data-tm="3v3v3" aria-pressed="false">3 contre 3 contre 3<small>1 à 3, 4 à 6, 7 à 9</small></button>
+      <button data-tm="2v2v2v2v2" aria-pressed="false">5 équipes de 2<small>1-2, 3-4, 5-6, 7-8, 9-10</small></button>
+      <button data-tm="5v5" aria-pressed="false">5 contre 5<small>joueurs 1 à 5 contre 6 à 10</small></button>
     </div>
     <div class="seg mapsel" role="group" aria-label="Carte">
       <button data-map="canyon" aria-pressed="true">Canyon<small>face à face</small></button>
-      <button data-map="forestV2" aria-pressed="false">Forêt 1<small>symétrique, de 2 à 9</small></button>
-      <button data-map="forestV3" aria-pressed="false">Forêt 2<small>troncs égaux, de 2 à 9</small></button>
+      <button data-map="forestV2" aria-pressed="false">Forêt 1<small>symétrique, de 2 à 10</small></button>
+      <button data-map="forestV3" aria-pressed="false">Forêt 2<small>troncs égaux, de 2 à 10</small></button>
       <button data-map="japan" aria-pressed="false" disabled>Japon<small>temples, à 3</small></button>
       <button data-map="forestXL" aria-pressed="false" disabled>Forêt géante<small>124 m, à 3</small></button>
     </div>
@@ -441,7 +444,7 @@ p{margin:0}
       </div>
     </div>
     <div class="roster" aria-live="polite">
-      <div class="rcount"><b id="rosterN">1</b> / 9 joueurs dans le salon</div>
+      <div class="rcount"><b id="rosterN">1</b> / 10 joueurs dans le salon</div>
       <div class="rslots" id="rslots"></div>
       <div class="youare"><span id="youAre">Tu es Joueur 1</span><input id="nameIn" maxlength="12" placeholder="Joueur 1" autocomplete="off" spellcheck="false" aria-label="Ton pseudo (facultatif)"></div>
     </div>
@@ -464,11 +467,13 @@ p{margin:0}
       <button data-tm="2v2v2v2" aria-pressed="false">2 contre 2 contre 2 contre 2<small>1-2, 3-4, 5-6, 7-8</small></button>
       <button data-tm="4v4" aria-pressed="false">4 contre 4<small>joueurs 1 à 4 contre 5 à 8</small></button>
       <button data-tm="3v3v3" aria-pressed="false">3 contre 3 contre 3<small>1 à 3, 4 à 6, 7 à 9</small></button>
+      <button data-tm="2v2v2v2v2" aria-pressed="false">5 équipes de 2<small>1-2, 3-4, 5-6, 7-8, 9-10</small></button>
+      <button data-tm="5v5" aria-pressed="false">5 contre 5<small>joueurs 1 à 5 contre 6 à 10</small></button>
     </div>
     <div class="seg mapsel" role="group" aria-label="Carte">
       <button data-map="canyon" aria-pressed="true">Canyon<small>face à face</small></button>
-      <button data-map="forestV2" aria-pressed="false">Forêt 1<small>symétrique, de 2 à 9</small></button>
-      <button data-map="forestV3" aria-pressed="false">Forêt 2<small>troncs égaux, de 2 à 9</small></button>
+      <button data-map="forestV2" aria-pressed="false">Forêt 1<small>symétrique, de 2 à 10</small></button>
+      <button data-map="forestV3" aria-pressed="false">Forêt 2<small>troncs égaux, de 2 à 10</small></button>
       <button data-map="japan" aria-pressed="false" disabled>Japon<small>temples, à 3</small></button>
       <button data-map="forestXL" aria-pressed="false" disabled>Forêt géante<small>124 m, à 3</small></button>
     </div>
@@ -660,11 +665,14 @@ MAPS.forestO1s = { ...MAPS.forestO1, key: 'forestO1s', snow: true }; MAPS.forest
 // à 9 : les forêts 1 et 2 en version à 9, symétriques par rotation de 360°/9 ; même zone de 42 m, apparitions à 25,5 m du centre
 MAPS.forestN1 = { ...MAPS.forestQ1, key: 'forestN1' }; MAPS.forestN2 = { ...MAPS.forestQ1, key: 'forestN2' };
 MAPS.forestN1s = { ...MAPS.forestN1, key: 'forestN1s', snow: true }; MAPS.forestN2s = { ...MAPS.forestN2, key: 'forestN2s', snow: true };
+// à 10 : les forêts 1 et 2 en version à 10, symétriques par rotation de 360°/10 ; même zone de 42 m, apparitions à 25,5 m du centre
+MAPS.forestD1 = { ...MAPS.forestQ1, key: 'forestD1' }; MAPS.forestD2 = { ...MAPS.forestQ1, key: 'forestD2' };
+MAPS.forestD1s = { ...MAPS.forestD1, key: 'forestD1s', snow: true }; MAPS.forestD2s = { ...MAPS.forestD2, key: 'forestD2s', snow: true };
 const MAP_FAMILY = { forestV2: ['forestV2', 'forestV2s'], forestV3: ['forestV3', 'forestV3s'] }; // on choisit la forêt, puis sa version
-const TRIO = { forestV2: 'forestT1', forestV2s: 'forestT1s', forestV3: 'forestT2', forestV3s: 'forestT2s' }, QUAD = { forestV2: 'forestQ1', forestV2s: 'forestQ1s', forestV3: 'forestQ2', forestV3s: 'forestQ2s' }, PENTA = { forestV2: 'forestP1', forestV2s: 'forestP1s', forestV3: 'forestP2', forestV3s: 'forestP2s' }, HEXA = { forestV2: 'forestH1', forestV2s: 'forestH1s', forestV3: 'forestH2', forestV3s: 'forestH2s' }, HEPTA = { forestV2: 'forestS1', forestV2s: 'forestS1s', forestV3: 'forestS2', forestV3s: 'forestS2s' }, OCTA = { forestV2: 'forestO1', forestV2s: 'forestO1s', forestV3: 'forestO2', forestV3s: 'forestO2s' }, FAM9 = { forestV2: 'forestN1', forestV2s: 'forestN1s', forestV3: 'forestN2', forestV3s: 'forestN2s' };
-const DUO = Object.fromEntries([...Object.entries(TRIO), ...Object.entries(QUAD), ...Object.entries(PENTA), ...Object.entries(HEXA), ...Object.entries(HEPTA), ...Object.entries(OCTA), ...Object.entries(FAM9)].map(([a, b]) => [b, a])); // forêt à 3 ou 4 -> la même à 2
+const TRIO = { forestV2: 'forestT1', forestV2s: 'forestT1s', forestV3: 'forestT2', forestV3s: 'forestT2s' }, QUAD = { forestV2: 'forestQ1', forestV2s: 'forestQ1s', forestV3: 'forestQ2', forestV3s: 'forestQ2s' }, PENTA = { forestV2: 'forestP1', forestV2s: 'forestP1s', forestV3: 'forestP2', forestV3s: 'forestP2s' }, HEXA = { forestV2: 'forestH1', forestV2s: 'forestH1s', forestV3: 'forestH2', forestV3s: 'forestH2s' }, HEPTA = { forestV2: 'forestS1', forestV2s: 'forestS1s', forestV3: 'forestS2', forestV3s: 'forestS2s' }, OCTA = { forestV2: 'forestO1', forestV2s: 'forestO1s', forestV3: 'forestO2', forestV3s: 'forestO2s' }, FAM9 = { forestV2: 'forestN1', forestV2s: 'forestN1s', forestV3: 'forestN2', forestV3s: 'forestN2s' }, FAM10 = { forestV2: 'forestD1', forestV2s: 'forestD1s', forestV3: 'forestD2', forestV3s: 'forestD2s' };
+const DUO = Object.fromEntries([...Object.entries(TRIO), ...Object.entries(QUAD), ...Object.entries(PENTA), ...Object.entries(HEXA), ...Object.entries(HEPTA), ...Object.entries(OCTA), ...Object.entries(FAM9), ...Object.entries(FAM10)].map(([a, b]) => [b, a])); // forêt à 3 ou 4 -> la même à 2
 const menuMap = k => DUO[k] || k; // dans les menus, la version à 3 s'affiche comme sa forêt
-const baseMap = k => ({ forestV2s: 'forestV2', forestV3s: 'forestV3', forestT1s: 'forestT1', forestT2s: 'forestT2', forestQ1s: 'forestQ1', forestQ2s: 'forestQ2', forestP1s: 'forestP1', forestP2s: 'forestP2', forestH1s: 'forestH1', forestH2s: 'forestH2', forestS1s: 'forestS1', forestS2s: 'forestS2', forestO1s: 'forestO1', forestO2s: 'forestO2', forestN1s: 'forestN1', forestN2s: 'forestN2' })[k] || k, isSnow = k => !!(MAPS[k] && MAPS[k].snow);
+const baseMap = k => ({ forestV2s: 'forestV2', forestV3s: 'forestV3', forestT1s: 'forestT1', forestT2s: 'forestT2', forestQ1s: 'forestQ1', forestQ2s: 'forestQ2', forestP1s: 'forestP1', forestP2s: 'forestP2', forestH1s: 'forestH1', forestH2s: 'forestH2', forestS1s: 'forestS1', forestS2s: 'forestS2', forestO1s: 'forestO1', forestO2s: 'forestO2', forestN1s: 'forestN1', forestN2s: 'forestN2', forestD1s: 'forestD1', forestD2s: 'forestD2' })[k] || k, isSnow = k => !!(MAPS[k] && MAPS[k].snow);
 try { const k = localStorage.getItem('duelarc-map2') || localStorage.getItem('duelarc-map'); if (k === 'forest') mapKey = 'forestV2'; else if (MAPS[k]) mapKey = k; } catch (e) {}
 
 // ---------- renderer
@@ -704,6 +712,7 @@ const SKY = {
   get forestS1() { return this.forestV2; }, get forestS2() { return this.forestV2; }, get forestS1s() { return this.forestV2s; }, get forestS2s() { return this.forestV2s; },
   get forestO1() { return this.forestV2; }, get forestO2() { return this.forestV2; }, get forestO1s() { return this.forestV2s; }, get forestO2s() { return this.forestV2s; },
   get forestN1() { return this.forestV2; }, get forestN2() { return this.forestV2; }, get forestN1s() { return this.forestV2s; }, get forestN2s() { return this.forestV2s; },
+  get forestD1() { return this.forestV2; }, get forestD2() { return this.forestV2; }, get forestD1s() { return this.forestV2s; }, get forestD2s() { return this.forestV2s; },
   forestV2s: skyTex([[0, '#6f7f92'], [0.3, '#a7b4c3'], [0.46, '#dfe6ee'], [0.5, '#eef2f6'], [0.53, '#c9d3dd'], [1, '#8c96a0']]), // ciel de neige, gris clair
   japan: skyTex([[0, '#2b2b5a'], [0.28, '#6c5a8e'], [0.42, '#c98aa6'], [0.49, '#f4c7a1'], [0.51, '#f6d5b5'], [0.54, '#c9a7a8'], [1, '#3a2c33']]),
   forestV2: skyTex([[0, '#2c4a5e'], [0.3, '#5f8796'], [0.46, '#b9cbb6'], [0.5, '#d8dfc2'], [0.53, '#93a796'], [1, '#33402f']]),
@@ -771,7 +780,7 @@ function rough(geo, amt) {
   return geo;
 }
 const std = (color, extra) => new T.MeshStandardMaterial(Object.assign({ color, flatShading: true, roughness: 1, metalness: 0 }, extra || {}));
-const OBST = { canyon: [], forestV2: [], forestV3: [], forestT1: [], forestT2: [], forestQ1: [], forestQ2: [], forestP1: [], forestP2: [], forestH1: [], forestH2: [], forestS1: [], forestS2: [], forestO1: [], forestO2: [], forestN1: [], forestN2: [], forestXL: [], japan: [] };
+const OBST = { canyon: [], forestV2: [], forestV3: [], forestT1: [], forestT2: [], forestQ1: [], forestQ2: [], forestP1: [], forestP2: [], forestH1: [], forestH2: [], forestS1: [], forestS2: [], forestO1: [], forestO2: [], forestN1: [], forestN2: [], forestD1: [], forestD2: [], forestXL: [], japan: [] };
 const OB_CELL = 8, obNear = []; // grille des obstacles de la forêt géante (cases de 8 m)
 // forme réelle d'un tronc : les triangles de son flanc tels qu'ils sont dessinés (cylindre irrégulier qui s'affine)
 function trunkTris(geo, h, x, z) {
@@ -861,6 +870,8 @@ const forestO1G = new T.Group(); scene.add(forestO1G); forestO1G.visible = false
 const forestO2G = new T.Group(); scene.add(forestO2G); forestO2G.visible = false; // forêt 2 à 8
 const forestN1G = new T.Group(); scene.add(forestN1G); forestN1G.visible = false; // forêt 1 à 9
 const forestN2G = new T.Group(); scene.add(forestN2G); forestN2G.visible = false; // forêt 2 à 9
+const forestD1G = new T.Group(); scene.add(forestD1G); forestD1G.visible = false; // forêt 1 à 10
+const forestD2G = new T.Group(); scene.add(forestD2G); forestD2G.visible = false; // forêt 2 à 10
 const SYM_BUILD = {}; // construction à la demande des forêts à 3 joueurs et plus
 const SNOW = { set: () => {} }; // rempli avec la forêt : passe ses deux versions en neige ou non
 {
@@ -1015,7 +1026,7 @@ const SNOW = { set: () => {} }; // rempli avec la forêt : passe ses deux versio
   gridObstacles(OBST.forestV3);
   OBST.forestV2s = OBST.forestV2; OBST.forestV3s = OBST.forestV3;
 
-  // forêts 1 et 2 de 3 à 9 joueurs : la part de la forêt comprise entre -180°/n et +180°/n autour de l'apparition sud (0, 25,5),
+  // forêts 1 et 2 de 3 à 10 joueurs : la part de la forêt comprise entre -180°/n et +180°/n autour de l'apparition sud (0, 25,5),
   // recopiée n fois en tournant (120° à 3, 90° à 4). Chaque joueur a exactement la même forêt devant lui, au centimètre près.
   function symForest(N, G1, G2, O1, O2, TRI_R, seed) {
   const TW = 2 * Math.PI / N, ROTS = Array.from({ length: N }, (_, i) => i * TW);
@@ -1097,11 +1108,11 @@ const SNOW = { set: () => {} }; // rempli avec la forêt : passe ses deux versio
   }
   // chaque forêt à plusieurs n'est construite que la première fois qu'on la choisit : le jeu se charge aussi vite qu'avant
   [[3, forestT1G, forestT2G, 'T', 8112026], [4, forestQ1G, forestQ2G, 'Q', 9112026], [5, forestP1G, forestP2G, 'P', 10112026],
-   [6, forestH1G, forestH2G, 'H', 11112026], [7, forestS1G, forestS2G, 'S', 12112026], [8, forestO1G, forestO2G, 'O', 13112026], [9, forestN1G, forestN2G, 'N', 14112026]].forEach(([N, G1, G2, L, seed]) => {
+   [6, forestH1G, forestH2G, 'H', 11112026], [7, forestS1G, forestS2G, 'S', 12112026], [8, forestO1G, forestO2G, 'O', 13112026], [9, forestN1G, forestN2G, 'N', 14112026], [10, forestD1G, forestD2G, 'D', 15112026]].forEach(([N, G1, G2, L, seed]) => {
     const build = () => { if (build.done) return; build.done = true; symForest(N, G1, G2, OBST['forest' + L + '1'], OBST['forest' + L + '2'], MAPS['forest' + L + '1'].rlim, seed); snowify([G1, G2]); };
     SYM_BUILD['forest' + L + '1'] = SYM_BUILD['forest' + L + '2'] = build;
   });
-  OBST.forestT1s = OBST.forestT1; OBST.forestT2s = OBST.forestT2; OBST.forestQ1s = OBST.forestQ1; OBST.forestQ2s = OBST.forestQ2; OBST.forestP1s = OBST.forestP1; OBST.forestP2s = OBST.forestP2; OBST.forestH1s = OBST.forestH1; OBST.forestH2s = OBST.forestH2; OBST.forestS1s = OBST.forestS1; OBST.forestS2s = OBST.forestS2; OBST.forestO1s = OBST.forestO1; OBST.forestO2s = OBST.forestO2; OBST.forestN1s = OBST.forestN1; OBST.forestN2s = OBST.forestN2;
+  OBST.forestT1s = OBST.forestT1; OBST.forestT2s = OBST.forestT2; OBST.forestQ1s = OBST.forestQ1; OBST.forestQ2s = OBST.forestQ2; OBST.forestP1s = OBST.forestP1; OBST.forestP2s = OBST.forestP2; OBST.forestH1s = OBST.forestH1; OBST.forestH2s = OBST.forestH2; OBST.forestS1s = OBST.forestS1; OBST.forestS2s = OBST.forestS2; OBST.forestO1s = OBST.forestO1; OBST.forestO2s = OBST.forestO2; OBST.forestN1s = OBST.forestN1; OBST.forestN2s = OBST.forestN2; OBST.forestD1s = OBST.forestD1; OBST.forestD2s = OBST.forestD2;
 
   // neige : sol blanc, chemin et herbes cachés, mousse des rochers enneigée, et une couche blanche sur le haut de chaque feuillage
   const snowGround = std(0xedf1f6, { roughness: 1 }), snowCapM = std(0xf5f8fc, { roughness: .9 }), mossGreen = mossM.color.getHex(), caps = [], swaps = [], hides = [];
@@ -1467,6 +1478,7 @@ const MAPLOOK = {
   get forestS1() { return this.forestV2; }, get forestS2() { return this.forestV2; }, get forestS1s() { return this.forestV2s; }, get forestS2s() { return this.forestV2s; },
   get forestO1() { return this.forestV2; }, get forestO2() { return this.forestV2; }, get forestO1s() { return this.forestV2s; }, get forestO2s() { return this.forestV2s; },
   get forestN1() { return this.forestV2; }, get forestN2() { return this.forestV2; }, get forestN1s() { return this.forestV2s; }, get forestN2s() { return this.forestV2s; },
+  get forestD1() { return this.forestV2; }, get forestD2() { return this.forestV2; }, get forestD1s() { return this.forestV2s; }, get forestD2s() { return this.forestV2s; },
   forestV2s: { fog: 0xd9e0e8, near: 8, far: 66, hs: 0xf2f6ff, hg: 0x8d98a6, sun: 0xfff4e6, sunI: 0.72 },
   canyon: { fog: 0xb4685a, near: 40, far: 200, hs: 0xffd8b8, hg: 0x3b2a44, sun: 0xffb27a, sunI: 0.95 },
   forestV2: { fog: 0x9fb2a3, near: 10, far: 72, hs: 0xe4f0d6, hg: 0x3a4630, sun: 0xfff0c8, sunI: 0.8 },
@@ -1477,7 +1489,7 @@ const MAPLOOK = {
 function applyMap(k) {
   if (SYM_BUILD[baseMap(k)]) SYM_BUILD[baseMap(k)]();
   mapKey = k; map = MAPS[k]; obstacles = OBST[k];
-  canyonG.visible = k === 'canyon'; forestV2G.visible = baseMap(k) === 'forestV2'; forestV3G.visible = baseMap(k) === 'forestV3'; forestT1G.visible = baseMap(k) === 'forestT1'; forestT2G.visible = baseMap(k) === 'forestT2'; forestQ1G.visible = baseMap(k) === 'forestQ1'; forestQ2G.visible = baseMap(k) === 'forestQ2'; forestP1G.visible = baseMap(k) === 'forestP1'; forestP2G.visible = baseMap(k) === 'forestP2'; forestH1G.visible = baseMap(k) === 'forestH1'; forestH2G.visible = baseMap(k) === 'forestH2'; forestS1G.visible = baseMap(k) === 'forestS1'; forestS2G.visible = baseMap(k) === 'forestS2'; forestO1G.visible = baseMap(k) === 'forestO1'; forestO2G.visible = baseMap(k) === 'forestO2'; forestN1G.visible = baseMap(k) === 'forestN1'; forestN2G.visible = baseMap(k) === 'forestN2'; SNOW.set(isSnow(k)); snowFx.visible = isSnow(k); clearFeet(); bigForestG.visible = k === 'forestXL'; japanG.visible = k === 'japan';
+  canyonG.visible = k === 'canyon'; forestV2G.visible = baseMap(k) === 'forestV2'; forestV3G.visible = baseMap(k) === 'forestV3'; forestT1G.visible = baseMap(k) === 'forestT1'; forestT2G.visible = baseMap(k) === 'forestT2'; forestQ1G.visible = baseMap(k) === 'forestQ1'; forestQ2G.visible = baseMap(k) === 'forestQ2'; forestP1G.visible = baseMap(k) === 'forestP1'; forestP2G.visible = baseMap(k) === 'forestP2'; forestH1G.visible = baseMap(k) === 'forestH1'; forestH2G.visible = baseMap(k) === 'forestH2'; forestS1G.visible = baseMap(k) === 'forestS1'; forestS2G.visible = baseMap(k) === 'forestS2'; forestO1G.visible = baseMap(k) === 'forestO1'; forestO2G.visible = baseMap(k) === 'forestO2'; forestN1G.visible = baseMap(k) === 'forestN1'; forestN2G.visible = baseMap(k) === 'forestN2'; forestD1G.visible = baseMap(k) === 'forestD1'; forestD2G.visible = baseMap(k) === 'forestD2'; SNOW.set(isSnow(k)); snowFx.visible = isSnow(k); clearFeet(); bigForestG.visible = k === 'forestXL'; japanG.visible = k === 'japan';
   skyMat.map = SKY[k]; skyMat.needsUpdate = true;
   const L = MAPLOOK[k];
   scene.fog.color.setHex(L.fog); scene.fog.near = L.near; scene.fog.far = L.far;
@@ -1570,7 +1582,7 @@ const fl2 = fl1.clone(); fl2.rotateZ(Math.PI / 2);
 const streakGeo = new T.CylinderGeometry(0.03, 0.006, 2.2, 5, 1, true); streakGeo.rotateX(Math.PI / 2); streakGeo.translate(0, 0, 2.1);
 const ironMat = std(0xd8d2c8, { metalness: .3, roughness: .5 });
 const shaftMat = std(0xc89a5e);
-const fletchMat = { me: new T.MeshBasicMaterial({ color: 0x6ff0de, side: T.DoubleSide }), opp: new T.MeshBasicMaterial({ color: 0xff6a50, side: T.DoubleSide }), opp2: new T.MeshBasicMaterial({ color: 0xffd24a, side: T.DoubleSide }), opp3: new T.MeshBasicMaterial({ color: 0xd08aff, side: T.DoubleSide }), opp4: new T.MeshBasicMaterial({ color: 0x7ab0ff, side: T.DoubleSide }), opp5: new T.MeshBasicMaterial({ color: 0xff8ac0, side: T.DoubleSide }), opp6: new T.MeshBasicMaterial({ color: 0xffa050, side: T.DoubleSide }), opp7: new T.MeshBasicMaterial({ color: 0xe8e8f0, side: T.DoubleSide }), opp8: new T.MeshBasicMaterial({ color: 0xd0ff60, side: T.DoubleSide }) };
+const fletchMat = { me: new T.MeshBasicMaterial({ color: 0x6ff0de, side: T.DoubleSide }), opp: new T.MeshBasicMaterial({ color: 0xff6a50, side: T.DoubleSide }), opp2: new T.MeshBasicMaterial({ color: 0xffd24a, side: T.DoubleSide }), opp3: new T.MeshBasicMaterial({ color: 0xd08aff, side: T.DoubleSide }), opp4: new T.MeshBasicMaterial({ color: 0x7ab0ff, side: T.DoubleSide }), opp5: new T.MeshBasicMaterial({ color: 0xff8ac0, side: T.DoubleSide }), opp6: new T.MeshBasicMaterial({ color: 0xffa050, side: T.DoubleSide }), opp7: new T.MeshBasicMaterial({ color: 0xe8e8f0, side: T.DoubleSide }), opp8: new T.MeshBasicMaterial({ color: 0xd0ff60, side: T.DoubleSide }), opp9: new T.MeshBasicMaterial({ color: 0xd8a070, side: T.DoubleSide }) };
 const streakMat = {
   me: new T.MeshBasicMaterial({ color: 0x8ff5e6, transparent: true, opacity: .32, blending: T.AdditiveBlending, depthWrite: false }),
   opp: new T.MeshBasicMaterial({ color: 0xffa070, transparent: true, opacity: .38, blending: T.AdditiveBlending, depthWrite: false }),
@@ -1581,6 +1593,7 @@ const streakMat = {
   opp6: new T.MeshBasicMaterial({ color: 0xffc08a, transparent: true, opacity: .38, blending: T.AdditiveBlending, depthWrite: false }),
   opp7: new T.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: .38, blending: T.AdditiveBlending, depthWrite: false }),
   opp8: new T.MeshBasicMaterial({ color: 0xe0ff9a, transparent: true, opacity: .38, blending: T.AdditiveBlending, depthWrite: false }),
+  opp9: new T.MeshBasicMaterial({ color: 0xe8c49a, transparent: true, opacity: .38, blending: T.AdditiveBlending, depthWrite: false }),
 };
 // balle de carabine (pointe à l'origine, vers -Z) : petit plomb sombre + traceur ; reste comme un impact dans le bois
 const bulletGeo = new T.SphereGeometry(0.022, 6, 4); bulletGeo.scale(1, 1, 1.8);
@@ -1666,7 +1679,7 @@ smokeGeo.setAttribute('birth', new T.BufferAttribute(smokeBirth, 1));
 smokeGeo.setAttribute('tint', new T.BufferAttribute(smokeTint, 1));
 smokeGeo.setAttribute('life', new T.BufferAttribute(smokeLife, 1));
 const smokeMat = new T.ShaderMaterial({
-  uniforms: { uTime: { value: 0 }, uScale: { value: 400 }, uColor: { value: new T.Color(0xb4b4b4) }, uMe: { value: new T.Color(0x2fa6d0) }, uOpp: { value: new T.Color(0xe2402f) }, uOpp2: { value: new T.Color(0xf0c030) }, uOpp3: { value: new T.Color(0xb060f0) }, uOpp4: { value: new T.Color(0x4a80f0) }, uOpp5: { value: new T.Color(0xf060a8) }, uOpp6: { value: new T.Color(0xf08a30) }, uOpp8: { value: new T.Color(0xa8e040) }, uOpp7: { value: new T.Color(0x9a9aa8) }, uAlpha: { value: 0.14 } },
+  uniforms: { uTime: { value: 0 }, uScale: { value: 400 }, uColor: { value: new T.Color(0xb4b4b4) }, uMe: { value: new T.Color(0x2fa6d0) }, uOpp: { value: new T.Color(0xe2402f) }, uOpp2: { value: new T.Color(0xf0c030) }, uOpp3: { value: new T.Color(0xb060f0) }, uOpp4: { value: new T.Color(0x4a80f0) }, uOpp5: { value: new T.Color(0xf060a8) }, uOpp6: { value: new T.Color(0xf08a30) }, uOpp9: { value: new T.Color(0xb07a48) }, uOpp8: { value: new T.Color(0xa8e040) }, uOpp7: { value: new T.Color(0x9a9aa8) }, uAlpha: { value: 0.14 } },
   vertexShader: `
     attribute float birth; attribute float tint; attribute float life; uniform float uTime; uniform float uScale; varying float vA; varying float vT;
     void main() {
@@ -1679,11 +1692,11 @@ const smokeMat = new T.ShaderMaterial({
       gl_Position = projectionMatrix * mv;
     }`,
   fragmentShader: `
-    uniform vec3 uColor; uniform vec3 uMe; uniform vec3 uOpp; uniform vec3 uOpp2; uniform vec3 uOpp3; uniform vec3 uOpp4; uniform vec3 uOpp5; uniform vec3 uOpp6; uniform vec3 uOpp7; uniform vec3 uOpp8; uniform float uAlpha; varying float vA; varying float vT;
+    uniform vec3 uColor; uniform vec3 uMe; uniform vec3 uOpp; uniform vec3 uOpp2; uniform vec3 uOpp3; uniform vec3 uOpp4; uniform vec3 uOpp5; uniform vec3 uOpp6; uniform vec3 uOpp7; uniform vec3 uOpp8; uniform vec3 uOpp9; uniform float uAlpha; varying float vA; varying float vT;
     void main() {
       vec2 c = gl_PointCoord - 0.5; float d = dot(c, c);
       if (d > 0.25 || vA <= 0.0) discard;
-      vec3 col = vT > 8.5 ? uOpp8 : vT > 7.5 ? uOpp7 : vT > 6.5 ? uOpp6 : vT > 5.5 ? uOpp5 : vT > 4.5 ? uOpp4 : vT > 3.5 ? uOpp3 : vT > 2.5 ? uOpp2 : (vT > 1.5 ? uOpp : (vT > 0.5 ? uMe : uColor));
+      vec3 col = vT > 9.5 ? uOpp9 : vT > 8.5 ? uOpp8 : vT > 7.5 ? uOpp7 : vT > 6.5 ? uOpp6 : vT > 5.5 ? uOpp5 : vT > 4.5 ? uOpp4 : vT > 3.5 ? uOpp3 : vT > 2.5 ? uOpp2 : (vT > 1.5 ? uOpp : (vT > 0.5 ? uMe : uColor));
       float a = vT > 0.5 ? uAlpha * 2.4 : uAlpha;
       gl_FragColor = vec4(col, vA * a * (1.0 - d * 4.0));
     }`,
@@ -1701,7 +1714,7 @@ function emitSmoke(a, back = 0) {
 // colore toute la traînée encore visible d'une flèche qui vient de toucher un joueur
 function tintSmoke(a) {
   if (!a.sid) return;
-  const v = a.owner === 'me' ? 1 : a.owner === 'opp' ? 2 : a.owner === 'opp2' ? 3 : a.owner === 'opp3' ? 4 : a.owner === 'opp4' ? 5 : a.owner === 'opp5' ? 6 : a.owner === 'opp6' ? 7 : a.owner === 'opp7' ? 8 : 9;
+  const v = a.owner === 'me' ? 1 : a.owner === 'opp' ? 2 : a.owner === 'opp2' ? 3 : a.owner === 'opp3' ? 4 : a.owner === 'opp4' ? 5 : a.owner === 'opp5' ? 6 : a.owner === 'opp6' ? 7 : a.owner === 'opp7' ? 8 : a.owner === 'opp8' ? 9 : 10;
   for (let i = 0; i < SMOKE_N; i++) if (smokeArrow[i] === a.sid && t - smokeBirth[i] < SMOKE_LIFE) smokeTint[i] = v;
   smokeTintDirty = true;
 }
@@ -2495,6 +2508,7 @@ const opp5A = makeArcher(0xc0457f, 0x7a2450, 'opp5'); opp5A.root.visible = false
 const opp6A = makeArcher(0xd0702a, 0x8a4214, 'opp6'); opp6A.root.visible = false;
 const opp7A = makeArcher(0x26262c, 0x121216, 'opp7'); opp7A.root.visible = false;
 const opp8A = makeArcher(0x8fb82a, 0x5a7a14, 'opp8'); opp8A.root.visible = false;
+const opp9A = makeArcher(0x7a4a24, 0x4a2a12, 'opp9'); opp9A.root.visible = false;
 // ---------- vue à la première personne : la caméra dans les yeux du joueur (son corps disparaît pour lui), et par-dessus l'image,
 // ses bras et son arme dans une petite scène à part (ils ne traversent jamais les arbres), qui balancent, reculent et suivent le regard
 const fpScene = new T.Scene(), fpCam = new T.PerspectiveCamera(62, 1, 0.02, 12), fpPivot = new T.Group();
@@ -2504,7 +2518,7 @@ fpSun.position.set(-1, 2, 1.6); fpBack.position.set(1.5, 0.4, -1); fpScene.add(f
 const fpA = makeArcher(0x2f8f83, 0x1f5f58, 'me', true); fpPivot.add(fpA.root);
 const fpFlash = new T.Sprite(new T.SpriteMaterial({ map: (() => { const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d'), gr = g.createRadialGradient(64, 64, 0, 64, 64, 64); gr.addColorStop(0, 'rgba(255,255,235,1)'); gr.addColorStop(.22, 'rgba(255,214,120,.95)'); gr.addColorStop(.55, 'rgba(255,120,30,.4)'); gr.addColorStop(1, 'rgba(255,80,0,0)'); g.fillStyle = gr; g.fillRect(0, 0, 128, 128); g.globalCompositeOperation = 'lighter'; g.fillStyle = 'rgba(255,230,170,.9)'; g.translate(64, 64); for (let i = 0; i < 5; i++) { g.rotate(Math.PI * 2 / 5); g.beginPath(); g.moveTo(-7, 0); g.lineTo(0, -62); g.lineTo(7, 0); g.fill(); } return new T.CanvasTexture(c); })(), blending: T.AdditiveBlending, depthTest: false, depthWrite: false, transparent: true }));
 fpFlash.visible = false; fpScene.add(fpFlash);
-archers.push(meA, oppA, opp2A, opp3A, opp4A, opp5A, opp6A, opp7A, opp8A); dressArchers();
+archers.push(meA, oppA, opp2A, opp3A, opp4A, opp5A, opp6A, opp7A, opp8A, opp9A); dressArchers();
 // couleurs des joueurs : en ligne, chacun garde la couleur de son numéro de salon (1 vert d'eau, 2 rouge, 3 jaune) chez tout le monde
 const PALETTE = [
   { cloth: 0x2f8f83, hood: 0x1f5f58, fletch: 0x6ff0de, streak: 0x8ff5e6, smoke: 0x2fa6d0, css: '#5cc8ba', label: 'vert' },
@@ -2516,16 +2530,17 @@ const PALETTE = [
   { cloth: 0xd0702a, hood: 0x8a4214, fletch: 0xffa050, streak: 0xffc08a, smoke: 0xf08a30, css: '#f5944a', label: 'orange' },
   { cloth: 0x26262c, hood: 0x121216, fletch: 0xe8e8f0, streak: 0xffffff, smoke: 0x9a9aa8, css: '#c4c4d0', label: 'noir' },
   { cloth: 0x8fb82a, hood: 0x5a7a14, fletch: 0xd0ff60, streak: 0xe0ff9a, smoke: 0xa8e040, css: '#b8e05a', label: 'vert clair' },
+  { cloth: 0x7a4a24, hood: 0x4a2a12, fletch: 0xd8a070, streak: 0xe8c49a, smoke: 0xb07a48, css: '#c8905a', label: 'marron' },
 ];
-const colorOf = { me: 0, opp: 1, opp2: 2, opp3: 3, opp4: 4, opp5: 5, opp6: 6, opp7: 7, opp8: 8 };
+const colorOf = { me: 0, opp: 1, opp2: 2, opp3: 3, opp4: 4, opp5: 5, opp6: 6, opp7: 7, opp8: 8, opp9: 9 };
 function applyColors(map) {
-  Object.assign(colorOf, map || { me: 0, opp: 1, opp2: 2, opp3: 3, opp4: 4, opp5: 5, opp6: 6, opp7: 7, opp8: 8 });
-  const A = { me: meA, opp: oppA, opp2: opp2A, opp3: opp3A, opp4: opp4A, opp5: opp5A, opp6: opp6A, opp7: opp7A, opp8: opp8A }, U = { me: 'uMe', opp: 'uOpp', opp2: 'uOpp2', opp3: 'uOpp3', opp4: 'uOpp4', opp5: 'uOpp5', opp6: 'uOpp6', opp7: 'uOpp7', opp8: 'uOpp8' };
+  Object.assign(colorOf, map || { me: 0, opp: 1, opp2: 2, opp3: 3, opp4: 4, opp5: 5, opp6: 6, opp7: 7, opp8: 8, opp9: 9 });
+  const A = { me: meA, opp: oppA, opp2: opp2A, opp3: opp3A, opp4: opp4A, opp5: opp5A, opp6: opp6A, opp7: opp7A, opp8: opp8A, opp9: opp9A }, U = { me: 'uMe', opp: 'uOpp', opp2: 'uOpp2', opp3: 'uOpp3', opp4: 'uOpp4', opp5: 'uOpp5', opp6: 'uOpp6', opp7: 'uOpp7', opp8: 'uOpp8', opp9: 'uOpp9' };
   for (const k in A) {
     const P = PALETTE[colorOf[k]];
     A[k].setColors(P.cloth, P.hood); if (k === 'me') fpA.setColors(P.cloth, P.hood); fletchMat[k].color.setHex(P.fletch); streakMat[k].color.setHex(P.streak); smokeMat.uniforms[U[k]].value.setHex(P.smoke);
   }
-  $('#score .side.me').style.color = PALETTE[colorOf.me].css; $('#score .side.them').style.color = PALETTE[colorOf.opp].css; $('#score .side.them2').style.color = PALETTE[colorOf.opp2].css; $('#score .side.them3').style.color = PALETTE[colorOf.opp3].css; $('#score .side.them4').style.color = PALETTE[colorOf.opp4].css; $('#score .side.them5').style.color = PALETTE[colorOf.opp5].css; $('#score .side.them6').style.color = PALETTE[colorOf.opp6].css; $('#score .side.them7').style.color = PALETTE[colorOf.opp7].css; $('#score .side.them8').style.color = PALETTE[colorOf.opp8].css;
+  $('#score .side.me').style.color = PALETTE[colorOf.me].css; $('#score .side.them').style.color = PALETTE[colorOf.opp].css; $('#score .side.them2').style.color = PALETTE[colorOf.opp2].css; $('#score .side.them3').style.color = PALETTE[colorOf.opp3].css; $('#score .side.them4').style.color = PALETTE[colorOf.opp4].css; $('#score .side.them5').style.color = PALETTE[colorOf.opp5].css; $('#score .side.them6').style.color = PALETTE[colorOf.opp6].css; $('#score .side.them7').style.color = PALETTE[colorOf.opp7].css; $('#score .side.them8').style.color = PALETTE[colorOf.opp8].css; $('#score .side.them9').style.color = PALETTE[colorOf.opp9].css;
 }
 // pseudos au-dessus des têtes (en ligne, pour les adversaires : pas le mien, il gênerait la visée) ; cachés derrière les arbres
 function makeTag() {
@@ -2541,7 +2556,7 @@ function setTag(sp, text, css) {
   g.lineWidth = 7; g.strokeStyle = 'rgba(10,8,14,.85)'; g.strokeText(text, 128, 34); g.fillStyle = css; g.fillText(text, 128, 34);
   sp.material.map.needsUpdate = true;
 }
-const tags = { opp: makeTag(), opp2: makeTag(), opp3: makeTag(), opp4: makeTag(), opp5: makeTag(), opp6: makeTag(), opp7: makeTag(), opp8: makeTag() }; opp8A.root.add(tags.opp8); opp7A.root.add(tags.opp7); opp4A.root.add(tags.opp4); opp5A.root.add(tags.opp5); opp6A.root.add(tags.opp6); oppA.root.add(tags.opp); opp2A.root.add(tags.opp2); opp3A.root.add(tags.opp3);
+const tags = { opp: makeTag(), opp2: makeTag(), opp3: makeTag(), opp4: makeTag(), opp5: makeTag(), opp6: makeTag(), opp7: makeTag(), opp8: makeTag(), opp9: makeTag() }; opp9A.root.add(tags.opp9); opp8A.root.add(tags.opp8); opp7A.root.add(tags.opp7); opp4A.root.add(tags.opp4); opp5A.root.add(tags.opp5); opp6A.root.add(tags.opp6); oppA.root.add(tags.opp); opp2A.root.add(tags.opp2); opp3A.root.add(tags.opp3);
 
 // ---------- sound (synth, starts after first tap)
 let actx = null, noise = null;
@@ -2681,6 +2696,7 @@ function sfx(k, v = 1) {
 const me = { x: 0, z: 12, vx: 0, vz: 0, yaw: 0, pitch: 0.04, draw: 0, drawing: false, reload: 0, taken: 0, nextShot: -Infinity };
 const opp = { x: 0, z: -12, tx: 0, tz: -12, vx: 0, vz: 0, yaw: 0, tyaw: 0, pitch: 0.04, tpitch: 0.04, draw: 0, nock: true, taken: 0 };
 const opp2 = { x: 0, z: 0, tx: 0, tz: 0, vx: 0, vz: 0, yaw: 0, tyaw: 0, pitch: 0.04, tpitch: 0.04, draw: 0, nock: true, taken: 0 };
+const opp9 = { x: 0, z: 0, tx: 0, tz: 0, vx: 0, vz: 0, yaw: 0, tyaw: 0, pitch: 0.04, tpitch: 0.04, draw: 0, nock: true, taken: 0 };
 const opp8 = { x: 0, z: 0, tx: 0, tz: 0, vx: 0, vz: 0, yaw: 0, tyaw: 0, pitch: 0.04, tpitch: 0.04, draw: 0, nock: true, taken: 0 };
 const opp7 = { x: 0, z: 0, tx: 0, tz: 0, vx: 0, vz: 0, yaw: 0, tyaw: 0, pitch: 0.04, tpitch: 0.04, draw: 0, nock: true, taken: 0 };
 const opp6 = { x: 0, z: 0, tx: 0, tz: 0, vx: 0, vz: 0, yaw: 0, tyaw: 0, pitch: 0.04, tpitch: 0.04, draw: 0, nock: true, taken: 0 };
@@ -2689,7 +2705,7 @@ const opp4 = { x: 0, z: 0, tx: 0, tz: 0, vx: 0, vz: 0, yaw: 0, tyaw: 0, pitch: 0
 const opp3 = { x: 0, z: 0, tx: 0, tz: 0, vx: 0, vz: 0, yaw: 0, tyaw: 0, pitch: 0.04, tpitch: 0.04, draw: 0, nock: true, taken: 0 };
 // joueurs : moi + adversaires (un en duel contre le bot ou en ligne, deux en 1v1v1 en ligne)
 const ME = { key: 'me', s: me, A: meA, name: 'Toi' };
-const FOES = { opp: { key: 'opp', s: opp, A: oppA, peer: null, slot: 1, name: 'Rouge' }, opp2: { key: 'opp2', s: opp2, A: opp2A, peer: null, slot: 2, name: 'Jaune' }, opp3: { key: 'opp3', s: opp3, A: opp3A, peer: null, slot: 3, name: 'Violet' }, opp4: { key: 'opp4', s: opp4, A: opp4A, peer: null, slot: 4, name: 'Bleu' }, opp5: { key: 'opp5', s: opp5, A: opp5A, peer: null, slot: 5, name: 'Rose' }, opp6: { key: 'opp6', s: opp6, A: opp6A, peer: null, slot: 6, name: 'Orange' }, opp7: { key: 'opp7', s: opp7, A: opp7A, peer: null, slot: 7, name: 'Noir' }, opp8: { key: 'opp8', s: opp8, A: opp8A, peer: null, slot: 8, name: 'Vert clair' } };
+const FOES = { opp: { key: 'opp', s: opp, A: oppA, peer: null, slot: 1, name: 'Rouge' }, opp2: { key: 'opp2', s: opp2, A: opp2A, peer: null, slot: 2, name: 'Jaune' }, opp3: { key: 'opp3', s: opp3, A: opp3A, peer: null, slot: 3, name: 'Violet' }, opp4: { key: 'opp4', s: opp4, A: opp4A, peer: null, slot: 4, name: 'Bleu' }, opp5: { key: 'opp5', s: opp5, A: opp5A, peer: null, slot: 5, name: 'Rose' }, opp6: { key: 'opp6', s: opp6, A: opp6A, peer: null, slot: 6, name: 'Orange' }, opp7: { key: 'opp7', s: opp7, A: opp7A, peer: null, slot: 7, name: 'Noir' }, opp8: { key: 'opp8', s: opp8, A: opp8A, peer: null, slot: 8, name: 'Vert clair' }, opp9: { key: 'opp9', s: opp9, A: opp9A, peer: null, slot: 9, name: 'Marron' } };
 let foes = [FOES.opp];
 let nPlayers = 2, mySlot = 0;
 // tournante (mode entre amis par défaut) : à 3, deux joueurs tirés au sort s'affrontent dans la petite forêt, le troisième
@@ -2703,7 +2719,7 @@ try { specThird = localStorage.getItem('duelarc-spec3') === '1'; } catch (e) {}
 const trio = () => nPlayers >= 3; // partie à 3 ou 4 : pas de miroir, chacun pour soi ou en équipes
 // 2v2 : les deux premiers du salon contre les deux suivants ; on ne blesse pas son coéquipier
 let teamMode = 'ffa', teams = null; // teams : équipe (0, 1, 2) de chaque joueur de la partie, null en chacun pour soi
-const TEAM = { '2v2': [4, 2, '2 contre 2'], '3v3': [6, 3, '3 contre 3'], '2v2v2': [6, 2, '2 contre 2 contre 2'], '2v2v2v2': [8, 2, '2 contre 2 contre 2 contre 2'], '4v4': [8, 4, '4 contre 4'], '3v3v3': [9, 3, '3 contre 3 contre 3'] }; // nombre de joueurs, taille d'une équipe, nom
+const TEAM = { '2v2': [4, 2, '2 contre 2'], '3v3': [6, 3, '3 contre 3'], '2v2v2': [6, 2, '2 contre 2 contre 2'], '2v2v2v2': [8, 2, '2 contre 2 contre 2 contre 2'], '4v4': [8, 4, '4 contre 4'], '3v3v3': [9, 3, '3 contre 3 contre 3'], '2v2v2v2v2': [10, 2, '2 contre 2 contre 2 contre 2 contre 2'], '5v5': [10, 5, '5 contre 5'] }; // nombre de joueurs, taille d'une équipe, nom
 let teamGame = ''; // mode d'équipe de la partie en cours
 const andJoin = a => a.length > 1 ? a.slice(0, -1).join(', ') + ' et ' + a[a.length - 1] : a.join('');
 const mates = (k1, k2) => !!teams && k1 !== k2 && teams[k1] === teams[k2];
@@ -2743,7 +2759,7 @@ let hpShown = HP_MAX;
 function renderScore() {
   // en duel : mes touches / les siennes ; à 3 : les touches reçues par chacun
   const pip = (sel, n) => [...$(sel).children].forEach((p, i) => { p.classList.toggle('on', i < Math.floor(n)); p.classList.toggle('half', i === Math.floor(n) && n % 1 >= 0.5); });
-  if (trio()) { pip('#pipsMe', me.taken); pip('#pipsThem', opp.taken); pip('#pipsThem2', opp2.taken); pip('#pipsThem3', opp3.taken); pip('#pipsThem4', opp4.taken); pip('#pipsThem5', opp5.taken); pip('#pipsThem6', opp6.taken); pip('#pipsThem7', opp7.taken); pip('#pipsThem8', opp8.taken); }
+  if (trio()) { pip('#pipsMe', me.taken); pip('#pipsThem', opp.taken); pip('#pipsThem2', opp2.taken); pip('#pipsThem3', opp3.taken); pip('#pipsThem4', opp4.taken); pip('#pipsThem5', opp5.taken); pip('#pipsThem6', opp6.taken); pip('#pipsThem7', opp7.taken); pip('#pipsThem8', opp8.taken); pip('#pipsThem9', opp9.taken); }
   else { pip('#pipsMe', opp.taken); pip('#pipsThem', me.taken); }
   const hp = Math.max(0, HP_MAX - me.taken * HP_MAX / WIN), el = $('#hp');
   $('#hpFill').style.width = (hp / HP_MAX * 100) + '%';
@@ -2775,14 +2791,14 @@ function resetMatch(k) {
   clearArrows();
   Object.assign(me, { x: 0, z: map.spawnZ, vx: 0, vz: 0, yaw: 0, pitch: 0.04, draw: 0, drawing: false, reload: 0, taken: 0 });
   Object.assign(opp, { x: 0, z: -map.spawnZ, tx: 0, tz: -map.spawnZ, vx: 0, vz: 0, yaw: 0, tyaw: 0, pitch: 0.04, tpitch: 0.04, draw: 0, nock: true, taken: 0 });
-  Object.assign(opp2, { vx: 0, vz: 0, pitch: 0.04, tpitch: 0.04, draw: 0, nock: true, taken: 0 }); Object.assign(opp3, { vx: 0, vz: 0, pitch: 0.04, tpitch: 0.04, draw: 0, nock: true, taken: 0 }); Object.assign(opp4, { vx: 0, vz: 0, pitch: 0.04, tpitch: 0.04, draw: 0, nock: true, taken: 0 }); Object.assign(opp5, { vx: 0, vz: 0, pitch: 0.04, tpitch: 0.04, draw: 0, nock: true, taken: 0 }); Object.assign(opp6, { vx: 0, vz: 0, pitch: 0.04, tpitch: 0.04, draw: 0, nock: true, taken: 0 }); Object.assign(opp7, { vx: 0, vz: 0, pitch: 0.04, tpitch: 0.04, draw: 0, nock: true, taken: 0 }); Object.assign(opp8, { vx: 0, vz: 0, pitch: 0.04, tpitch: 0.04, draw: 0, nock: true, taken: 0 });
+  Object.assign(opp2, { vx: 0, vz: 0, pitch: 0.04, tpitch: 0.04, draw: 0, nock: true, taken: 0 }); Object.assign(opp3, { vx: 0, vz: 0, pitch: 0.04, tpitch: 0.04, draw: 0, nock: true, taken: 0 }); Object.assign(opp4, { vx: 0, vz: 0, pitch: 0.04, tpitch: 0.04, draw: 0, nock: true, taken: 0 }); Object.assign(opp5, { vx: 0, vz: 0, pitch: 0.04, tpitch: 0.04, draw: 0, nock: true, taken: 0 }); Object.assign(opp6, { vx: 0, vz: 0, pitch: 0.04, tpitch: 0.04, draw: 0, nock: true, taken: 0 }); Object.assign(opp7, { vx: 0, vz: 0, pitch: 0.04, tpitch: 0.04, draw: 0, nock: true, taken: 0 }); Object.assign(opp8, { vx: 0, vz: 0, pitch: 0.04, tpitch: 0.04, draw: 0, nock: true, taken: 0 }); Object.assign(opp9, { vx: 0, vz: 0, pitch: 0.04, tpitch: 0.04, draw: 0, nock: true, taken: 0 });
   if (mode !== 'online') { nPlayers = 2; foes = [FOES.opp]; FOES.opp.peer = null; teams = null; }
   if (trio()) {
     const sp = spawnOf(mySlot); Object.assign(me, { x: sp.x, z: sp.z, yaw: sp.yaw }); resolveMove(me);
     for (const f of foes) { const q = spawnOf(f.slot); Object.assign(f.s, { x: q.x, z: q.z, tx: q.x, tz: q.z, yaw: q.yaw, tyaw: q.yaw }); }
   }
   for (const A of archers) { A.root.rotation.z = 0; A.root.position.y = 0; }
-  $('#side2').hidden = !trio(); $('#side3').hidden = nPlayers < 4; $('#side4').hidden = nPlayers < 5; $('#side5').hidden = nPlayers < 6; $('#side6').hidden = nPlayers < 7; $('#side7').hidden = nPlayers < 8; $('#side8').hidden = nPlayers < 9; $('#score').classList.toggle('many', nPlayers >= 5); $('#score').classList.toggle('lots', nPlayers >= 8); $('.vs').hidden = trio(); opp2A.root.visible = trio(); opp3A.root.visible = nPlayers >= 4; opp4A.root.visible = nPlayers >= 5; opp5A.root.visible = nPlayers >= 6; opp6A.root.visible = nPlayers >= 7; opp7A.root.visible = nPlayers >= 8; opp8A.root.visible = nPlayers >= 9;
+  $('#side2').hidden = !trio(); $('#side3').hidden = nPlayers < 4; $('#side4').hidden = nPlayers < 5; $('#side5').hidden = nPlayers < 6; $('#side6').hidden = nPlayers < 7; $('#side7').hidden = nPlayers < 8; $('#side8').hidden = nPlayers < 9; $('#side9').hidden = nPlayers < 10; $('#score').classList.toggle('many', nPlayers >= 5); $('#score').classList.toggle('lots', nPlayers >= 8); $('.vs').hidden = trio(); opp2A.root.visible = trio(); opp3A.root.visible = nPlayers >= 4; opp4A.root.visible = nPlayers >= 5; opp5A.root.visible = nPlayers >= 6; opp6A.root.visible = nPlayers >= 7; opp7A.root.visible = nPlayers >= 8; opp8A.root.visible = nPlayers >= 9; opp9A.root.visible = nPlayers >= 10;
   $('#score .side.me').hidden = false; $('#score .side.them').hidden = false; $('#spec').hidden = true; specIdx = 0; wasDeadSpec = false;
   Object.assign(bot, { tx: 0, tz: -map.spawnZ, moveT: 0, shootT: hardBot() ? rand(0.6, 1) : rand(1.4, 2.2), drawing: false, reload: 0, hold: 0, stuck: 0, swingHit: 0 });
   me.swingHit = 0;
@@ -2793,14 +2809,14 @@ function resetMatch(k) {
   // couleurs et noms : en ligne, ceux du salon (numéro et pseudo de chacun) ; sinon les couleurs d'origine
   if (mode === 'online') {
     const L = lobbyPlayers(), nOf = id => L.findIndex(x => x.id === id);
-    const map = { me: Math.max(0, nOf(myId)) % 9 };
-    for (const f of foes) { const i = nOf(f.peer); map[f.key] = (i < 0 ? f.slot : i) % 9; f.name = i < 0 ? f.name : L[i].name; }
-    for (const k of ['opp', 'opp2', 'opp3', 'opp4', 'opp5', 'opp6', 'opp7', 'opp8']) if (!(k in map)) map[k] = [0, 1, 2, 3, 4, 5, 6, 7, 8].find(i => !Object.values(map).includes(i));
-    if (teams) for (const k in teams) map[k] = teams[k]; // en équipes : même couleur pour tous les coéquipiers (vert d'eau, rouge, jaune, violet)
+    const map = { me: Math.max(0, nOf(myId)) % 10 };
+    for (const f of foes) { const i = nOf(f.peer); map[f.key] = (i < 0 ? f.slot : i) % 10; f.name = i < 0 ? f.name : L[i].name; }
+    for (const k of ['opp', 'opp2', 'opp3', 'opp4', 'opp5', 'opp6', 'opp7', 'opp8', 'opp9']) if (!(k in map)) map[k] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].find(i => !Object.values(map).includes(i));
+    if (teams) for (const k in teams) map[k] = teams[k]; // en équipes : même couleur pour tous les coéquipiers (vert d'eau, rouge, jaune, violet, bleu)
     applyColors(map);
-  } else { applyColors(null); FOES.opp.name = 'Rouge'; FOES.opp2.name = 'Jaune'; FOES.opp3.name = 'Violet'; FOES.opp4.name = 'Bleu'; FOES.opp5.name = 'Rose'; FOES.opp6.name = 'Orange'; FOES.opp8.name = 'Vert clair'; FOES.opp7.name = 'Noir'; }
+  } else { applyColors(null); FOES.opp.name = 'Rouge'; FOES.opp2.name = 'Jaune'; FOES.opp3.name = 'Violet'; FOES.opp4.name = 'Bleu'; FOES.opp5.name = 'Rose'; FOES.opp6.name = 'Orange'; FOES.opp9.name = 'Marron'; FOES.opp8.name = 'Vert clair'; FOES.opp7.name = 'Noir'; }
   $('#themName').textContent = mode === 'bot' ? 'Bot' : mode === 'online' ? FOES.opp.name : 'Rival';
-  $('#them2Name').textContent = FOES.opp2.name; $('#them3Name').textContent = FOES.opp3.name; $('#them4Name').textContent = FOES.opp4.name; $('#them5Name').textContent = FOES.opp5.name; $('#them6Name').textContent = FOES.opp6.name; $('#them7Name').textContent = FOES.opp7.name; $('#them8Name').textContent = FOES.opp8.name;
+  $('#them2Name').textContent = FOES.opp2.name; $('#them3Name').textContent = FOES.opp3.name; $('#them4Name').textContent = FOES.opp4.name; $('#them5Name').textContent = FOES.opp5.name; $('#them6Name').textContent = FOES.opp6.name; $('#them7Name').textContent = FOES.opp7.name; $('#them8Name').textContent = FOES.opp8.name; $('#them9Name').textContent = FOES.opp9.name;
   for (const k in tags) { const f = FOES[k]; tags[k].visible = mode === 'online' && foes.includes(f); setTag(tags[k], f.name, PALETTE[colorOf[k]].css); }
   if (mode === 'practice') {
     phase = 'fight'; cd = 0; big('Entraînement', 1.0, 'var(--ember)');
@@ -3556,7 +3572,7 @@ function updateCamera(dt) {
     const bob = Math.sin(orbitT * 20) * 0.04;
     placeIdle();
     meA.setPose(0.05 + bob, 0, true); oppA.setPose(0.05 - bob, 0, true);
-    meA.laser(null); oppA.laser(null); opp2A.laser(null); opp3A.laser(null); opp4A.laser(null); opp5A.laser(null); opp6A.laser(null); opp7A.laser(null); opp8A.laser(null);
+    meA.laser(null); oppA.laser(null); opp2A.laser(null); opp3A.laser(null); opp4A.laser(null); opp5A.laser(null); opp6A.laser(null); opp7A.laser(null); opp8A.laser(null); opp9A.laser(null);
   }
   if (Math.abs(camera.fov - fov) > 0.01) { camera.fov = fov; camera.updateProjectionMatrix(); }
   sky.position.copy(camera.position);
@@ -3751,8 +3767,8 @@ function setGameMode(g) {
   // les tournantes se jouent en duel, en forêt 1 ou 2 : ni canyon, ni Japon, et la forêt 2 reste possible à 3
   const duels = gameMode !== 'classic';
   document.querySelectorAll('#lobby .mapsel [data-map=canyon], #lobby .mapsel [data-map=japan], #lobby .mapsel [data-map=forestXL]').forEach(b => { b.hidden = duels; });
-  $('#lobby [data-map=forestV2] small').textContent = duels ? 'symétrique' : 'symétrique, de 2 à 9';
-  $('#lobby [data-map=forestV3] small').textContent = duels ? 'troncs égaux' : 'troncs égaux, de 2 à 9';
+  $('#lobby [data-map=forestV2] small').textContent = duels ? 'symétrique' : 'symétrique, de 2 à 10';
+  $('#lobby [data-map=forestV3] small').textContent = duels ? 'troncs égaux' : 'troncs égaux, de 2 à 10';
   if (duels && !MAP_FAMILY[baseMap(mapKey)]) applyMap(DUO[mapKey] || 'forestV2');
   document.querySelectorAll('#lobby .wpnrow').forEach(r => { r.hidden = gameMode !== 'classic' || map.lateral; });
   refreshVariants();
@@ -3777,7 +3793,7 @@ function lobbyPlayers() {
   const L = [{ id: myId, j: myJoin, nm: myName, me: true, rdy: net.rp }]
     .concat(peersNow.map(x => ({ id: x.peer, j: num(x.presence.j, 9e15), nm: cleanName(x.presence.nm), me: false, rdy: x.presence.rdy === true })));
   L.sort((a, b) => a.j - b.j || (a.id < b.id ? -1 : 1));
-  L.forEach((x, i) => { x.n = i + 1; const ts = TEAM[teamMode] && TEAM[teamMode][0] === L.length ? TEAM[teamMode][1] : 0; x.col = ts ? Math.floor(i / ts) : i % 9; x.team = ts ? Math.floor(i / ts) + 1 : 0; x.name = x.nm || 'Joueur ' + (i + 1); });
+  L.forEach((x, i) => { x.n = i + 1; const ts = TEAM[teamMode] && TEAM[teamMode][0] === L.length ? TEAM[teamMode][1] : 0; x.col = ts ? Math.floor(i / ts) : i % 10; x.team = ts ? Math.floor(i / ts) + 1 : 0; x.name = x.nm || 'Joueur ' + (i + 1); });
   return L;
 }
 async function enterRoom(code, creator) {
@@ -3788,7 +3804,7 @@ async function enterRoom(code, creator) {
   catch (e) { nroom = null; joining = false; menuNote(e.message === 'full' ? 'Serveurs pleins, revenez plus tard' : "Connexion impossible pour l'instant. Vérifie ta connexion internet et réessaie."); return; }
   joining = false; code = nroom.code;
   menuNote('');
-  mode = 'online'; roomCode = code; peersNow = []; FOES.opp.peer = FOES.opp2.peer = FOES.opp3.peer = FOES.opp4.peer = FOES.opp5.peer = FOES.opp6.peer = FOES.opp7.peer = FOES.opp8.peer = null; foes = [FOES.opp]; nPlayers = 2;
+  mode = 'online'; roomCode = code; peersNow = []; FOES.opp.peer = FOES.opp2.peer = FOES.opp3.peer = FOES.opp4.peer = FOES.opp5.peer = FOES.opp6.peer = FOES.opp7.peer = FOES.opp8.peer = FOES.opp9.peer = null; foes = [FOES.opp]; nPlayers = 2;
   net = { rp: false, tok: '', started: '' }; lastSent = '';
   mapV = creator ? 1 : 0; // la carte choisie par le créateur l'emporte au départ
   subs = [
@@ -3808,7 +3824,7 @@ function leaveRoom() {
   tourStop();
   subs.forEach(u => { try { u(); } catch (e) {} }); subs = [];
   if (nroom) nroom.leave().catch(() => {});
-  nroom = null; peersNow = []; FOES.opp.peer = FOES.opp2.peer = FOES.opp3.peer = FOES.opp4.peer = FOES.opp5.peer = FOES.opp6.peer = FOES.opp7.peer = FOES.opp8.peer = null; foes = [FOES.opp]; nPlayers = 2; mode = null; phase = 'idle';
+  nroom = null; peersNow = []; FOES.opp.peer = FOES.opp2.peer = FOES.opp3.peer = FOES.opp4.peer = FOES.opp5.peer = FOES.opp6.peer = FOES.opp7.peer = FOES.opp8.peer = FOES.opp9.peer = null; foes = [FOES.opp]; nPlayers = 2; mode = null; phase = 'idle';
   clearArrows(); setPlayingHud(false); showPanel('#menu');
 }
 const inGame = () => mode === 'online' && phase !== 'idle';
@@ -3817,7 +3833,7 @@ function onPeers(peers) {
   if (TOUR.on && phase === 'idle' && !TOUR.ids.every(id => id === myId || peers.some(p => p.peer === id))) {
     tourStop(); clearArrows(); setPlayingHud(false); net.rp = false; pres({ rdy: false }); showPanel('#lobby'); toast('Un joueur est parti', 2);
   }
-  peersNow = peers.filter(p => !p.sameTab && p.kind === 'viewer').sort((a, b) => a.peer < b.peer ? -1 : 1).slice(0, 8)
+  peersNow = peers.filter(p => !p.sameTab && p.kind === 'viewer').sort((a, b) => a.peer < b.peer ? -1 : 1).slice(0, 9)
     .map(p => ({ peer: p.peer, presence: p.presence || {} }));
   if (mode === 'online' && myPres.np !== peersNow.length) pres({ np: peersNow.length }); // combien de joueurs je vois : on ne lance que si tout le monde voit le même nombre
   if (inGame()) {
@@ -3966,7 +3982,7 @@ function evaluateReady() {
     const lead = toks[0] === net.tok ? { mapK: mapKey, wpn: weapon, gm: gameMode, tm: teamMode } : ps.find(p => p.tok === toks[0]);
     if (lead.gm !== 'classic' && toks.length < 4) return startTour(toks.join('|'), lead.gm === 'roul' ? 'roul' : 'tour', lead.mapK); // à 4 : pas de tournante
     const m = menuMap(lead.mapK);
-    const k = toks.length === 9 ? FAM9[m] || 'forestN1' : toks.length === 8 ? OCTA[m] || 'forestO1' : toks.length === 7 ? HEPTA[m] || 'forestS1' : toks.length === 6 ? HEXA[m] || 'forestH1' : toks.length === 5 ? PENTA[m] || 'forestP1' : toks.length === 4 ? QUAD[m] || 'forestQ1' : toks.length === 3 ? (m === 'japan' || m === 'forestXL' ? m : TRIO[m] || 'forestT1') : MAPS[m] && ['canyon', 'forestV2', 'forestV3'].includes(baseMap(m)) ? m : 'forestV2'; // à 3 : la forêt choisie en version à 3, la géante ou le Japon ; à 2 : forêt 1 sauf choix contraire
+    const k = toks.length === 10 ? FAM10[m] || 'forestD1' : toks.length === 9 ? FAM9[m] || 'forestN1' : toks.length === 8 ? OCTA[m] || 'forestO1' : toks.length === 7 ? HEPTA[m] || 'forestS1' : toks.length === 6 ? HEXA[m] || 'forestH1' : toks.length === 5 ? PENTA[m] || 'forestP1' : toks.length === 4 ? QUAD[m] || 'forestQ1' : toks.length === 3 ? (m === 'japan' || m === 'forestXL' ? m : TRIO[m] || 'forestT1') : MAPS[m] && ['canyon', 'forestV2', 'forestV3'].includes(baseMap(m)) ? m : 'forestV2'; // à 3 : la forêt choisie en version à 3, la géante ou le Japon ; à 2 : forêt 1 sauf choix contraire
     startOnline(toks.join('|') + (TEAM[lead.tm] && TEAM[lead.tm][0] === toks.length ? '|' + lead.tm : ''), k, wpnKey(lead.wpn));
   }
 }
@@ -3976,8 +3992,8 @@ function startOnline(id, k, w) {
   const toks = id.split('|').filter(x => !TEAM[x]), tmode = id.split('|').find(x => TEAM[x]) || '';
   const parts = peersNow.filter(x => toks.includes(x.presence.tok)).sort((a, b) => toks.indexOf(a.presence.tok) - toks.indexOf(b.presence.tok));
   if (!parts.length && peersNow.length) parts.push(peersNow[0]);
-  nPlayers = clamp(parts.length + 1, 2, 9); mySlot = Math.max(0, toks.indexOf(net.tok));
-  foes = [FOES.opp, FOES.opp2, FOES.opp3, FOES.opp4, FOES.opp5, FOES.opp6, FOES.opp7, FOES.opp8].slice(0, nPlayers - 1);
+  nPlayers = clamp(parts.length + 1, 2, 10); mySlot = Math.max(0, toks.indexOf(net.tok));
+  foes = [FOES.opp, FOES.opp2, FOES.opp3, FOES.opp4, FOES.opp5, FOES.opp6, FOES.opp7, FOES.opp8, FOES.opp9].slice(0, nPlayers - 1);
   foes.forEach((f, i) => { f.peer = parts[i] ? parts[i].peer : null; f.slot = parts[i] ? Math.max(0, toks.indexOf(parts[i].presence.tok)) : i + 1; });
   teams = null; teamGame = '';
   if (nPlayers >= 4) { // places dans l'ordre du salon (même ordre partout) ; en 2v2, les joueurs 1 et 2 partent côte à côte, face aux joueurs 3 et 4
@@ -4217,15 +4233,15 @@ function renderLobby() {
   const L = lobbyPlayers(), mine = L.find(x => x.me), esc = v => v.replace(/&/g, '&amp;').replace(/</g, '&lt;');
   const slot = (x, i) => x ? `<div class="rslot on${x.rdy ? ' rdy' : ''}${x.me ? ' mine' : ''}" style="--pc:${PALETTE[x.col].css}"><i></i><b>${esc(x.name)}</b><small>${x.me ? 'Toi · ' : ''}${x.team ? 'Équipe ' + x.team + ' · ' : ''}${x.rdy ? 'Prêt ✓' : 'Connecté'}</small></div>`
     : `<div class="rslot"><i></i><b>Joueur ${i + 1}</b><small>En attente…</small></div>`;
-  $('#rslots').innerHTML = [0, 1, 2, 3, 4, 5, 6, 7, 8].map(i => slot(L[i], i)).join('');
+  $('#rslots').innerHTML = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map(i => slot(L[i], i)).join('');
   $('#youAre').innerHTML = `Tu es <b style="color:${PALETTE[mine.col].css}">${esc(mine.name)}</b> (${PALETTE[mine.col].label})`;
   $('#nameIn').placeholder = 'Joueur ' + mine.n;
-  $('#rosterN').textContent = n + 1; $('#rosterN').classList.toggle('full', n === 8);
-  let s = !ok ? 'Seul pour l’instant : donne le numéro aux autres.' : gameMode !== 'classic' ? (gameMode === 'roul' ? 'Roulette : arme tirée à la roue à chaque manche. ' : 'Chaque manche, un des deux joueurs du duel choisit l’arme, à tour de rôle. ') + (n === 1 ? 'À 2 : manches en BO3 (deux manches gagnantes).' : 'À 3 : deux s’affrontent, le troisième regarde ; le gagnant reste. Deux duels gagnés de suite = victoire.') : n === 1 ? 'À 2 : la partie part dès que vous êtes prêts tous les deux. Pour jouer à plus de 2, attends tout le monde avant d’appuyer sur Prêt.' : n === 8 ? (teamMode === '3v3v3' ? `3 contre 3 contre 3 : ${[0, 3, 6].map(i => andJoin(L.slice(i, i + 3).map(x => x.name))).join(' ; ')}` : 'Chacun pour soi à 9') + `, dans la forêt ${baseMap(menuMap(mapKey)) === 'forestV3' ? 2 : 1}${isSnow(mapKey) ? ' enneigée' : ''}, la même pour les neuf, avec un radar.` : n === 7 ? (teamMode === '4v4' ? `4 contre 4 : ${andJoin(L.slice(0, 4).map(x => x.name))} contre ${andJoin(L.slice(4).map(x => x.name))}` : teamMode === '2v2v2v2' ? `2 contre 2 contre 2 contre 2 : ${[0, 2, 4, 6].map(i => L[i].name + ' et ' + L[i + 1].name).join(', ')}` : 'Chacun pour soi à 8') + `, dans la forêt ${baseMap(menuMap(mapKey)) === 'forestV3' ? 2 : 1}${isSnow(mapKey) ? ' enneigée' : ''}, la même pour les huit, avec un radar.` : n === 6 ? `Chacun pour soi à 7, dans la forêt ${baseMap(menuMap(mapKey)) === 'forestV3' ? 2 : 1}${isSnow(mapKey) ? ' enneigée' : ''}, la même pour les sept, avec un radar.` : n === 5 ? (teamMode === '3v3' ? `3 contre 3 : ${andJoin(L.slice(0, 3).map(x => x.name))} contre ${andJoin(L.slice(3).map(x => x.name))}` : teamMode === '2v2v2' ? `2 contre 2 contre 2 : ${L[0].name} et ${L[1].name}, ${L[2].name} et ${L[3].name}, ${L[4].name} et ${L[5].name}` : 'Chacun pour soi à 6') + `, dans la forêt ${baseMap(menuMap(mapKey)) === 'forestV3' ? 2 : 1}${isSnow(mapKey) ? ' enneigée' : ''}, la même pour les six, avec un radar.` : n === 4 ? `Chacun pour soi à 5, dans la forêt ${baseMap(menuMap(mapKey)) === 'forestV3' ? 2 : 1}${isSnow(mapKey) ? ' enneigée' : ''}, la même pour les cinq, avec un radar.` : n === 3 ? (teamMode === '2v2' ? `2 contre 2 : ${L[0].name} et ${L[1].name} contre ${L[2].name} et ${L[3].name}` : 'Chacun pour soi à 4') + `, dans la forêt ${baseMap(menuMap(mapKey)) === 'forestV3' ? 2 : 1}${isSnow(mapKey) ? ' enneigée' : ''}, la même pour les quatre, avec un radar.` : `Classique à 3 : chacun pour soi, ${mapKey === 'japan' ? 'dans les jardins de temples' : mapKey === 'forestXL' ? 'dans la forêt géante' : `dans la forêt ${baseMap(menuMap(mapKey)) === 'forestV3' ? 2 : 1}${isSnow(mapKey) ? ' enneigée' : ''}, la même pour les trois`}, avec un radar.`;
+  $('#rosterN').textContent = n + 1; $('#rosterN').classList.toggle('full', n === 9);
+  let s = !ok ? 'Seul pour l’instant : donne le numéro aux autres.' : gameMode !== 'classic' ? (gameMode === 'roul' ? 'Roulette : arme tirée à la roue à chaque manche. ' : 'Chaque manche, un des deux joueurs du duel choisit l’arme, à tour de rôle. ') + (n === 1 ? 'À 2 : manches en BO3 (deux manches gagnantes).' : 'À 3 : deux s’affrontent, le troisième regarde ; le gagnant reste. Deux duels gagnés de suite = victoire.') : n === 1 ? 'À 2 : la partie part dès que vous êtes prêts tous les deux. Pour jouer à plus de 2, attends tout le monde avant d’appuyer sur Prêt.' : n === 9 ? (teamMode === '5v5' ? `5 contre 5 : ${andJoin(L.slice(0, 5).map(x => x.name))} contre ${andJoin(L.slice(5).map(x => x.name))}` : teamMode === '2v2v2v2v2' ? `5 équipes de 2 : ${[0, 2, 4, 6, 8].map(i => L[i].name + ' et ' + L[i + 1].name).join(', ')}` : 'Chacun pour soi à 10') + `, dans la forêt ${baseMap(menuMap(mapKey)) === 'forestV3' ? 2 : 1}${isSnow(mapKey) ? ' enneigée' : ''}, la même pour les dix, avec un radar.` : n === 8 ? (teamMode === '3v3v3' ? `3 contre 3 contre 3 : ${[0, 3, 6].map(i => andJoin(L.slice(i, i + 3).map(x => x.name))).join(' ; ')}` : 'Chacun pour soi à 9') + `, dans la forêt ${baseMap(menuMap(mapKey)) === 'forestV3' ? 2 : 1}${isSnow(mapKey) ? ' enneigée' : ''}, la même pour les neuf, avec un radar.` : n === 7 ? (teamMode === '4v4' ? `4 contre 4 : ${andJoin(L.slice(0, 4).map(x => x.name))} contre ${andJoin(L.slice(4).map(x => x.name))}` : teamMode === '2v2v2v2' ? `2 contre 2 contre 2 contre 2 : ${[0, 2, 4, 6].map(i => L[i].name + ' et ' + L[i + 1].name).join(', ')}` : 'Chacun pour soi à 8') + `, dans la forêt ${baseMap(menuMap(mapKey)) === 'forestV3' ? 2 : 1}${isSnow(mapKey) ? ' enneigée' : ''}, la même pour les huit, avec un radar.` : n === 6 ? `Chacun pour soi à 7, dans la forêt ${baseMap(menuMap(mapKey)) === 'forestV3' ? 2 : 1}${isSnow(mapKey) ? ' enneigée' : ''}, la même pour les sept, avec un radar.` : n === 5 ? (teamMode === '3v3' ? `3 contre 3 : ${andJoin(L.slice(0, 3).map(x => x.name))} contre ${andJoin(L.slice(3).map(x => x.name))}` : teamMode === '2v2v2' ? `2 contre 2 contre 2 : ${L[0].name} et ${L[1].name}, ${L[2].name} et ${L[3].name}, ${L[4].name} et ${L[5].name}` : 'Chacun pour soi à 6') + `, dans la forêt ${baseMap(menuMap(mapKey)) === 'forestV3' ? 2 : 1}${isSnow(mapKey) ? ' enneigée' : ''}, la même pour les six, avec un radar.` : n === 4 ? `Chacun pour soi à 5, dans la forêt ${baseMap(menuMap(mapKey)) === 'forestV3' ? 2 : 1}${isSnow(mapKey) ? ' enneigée' : ''}, la même pour les cinq, avec un radar.` : n === 3 ? (teamMode === '2v2' ? `2 contre 2 : ${L[0].name} et ${L[1].name} contre ${L[2].name} et ${L[3].name}` : 'Chacun pour soi à 4') + `, dans la forêt ${baseMap(menuMap(mapKey)) === 'forestV3' ? 2 : 1}${isSnow(mapKey) ? ' enneigée' : ''}, la même pour les quatre, avec un radar.` : `Classique à 3 : chacun pour soi, ${mapKey === 'japan' ? 'dans les jardins de temples' : mapKey === 'forestXL' ? 'dans la forêt géante' : `dans la forêt ${baseMap(menuMap(mapKey)) === 'forestV3' ? 2 : 1}${isSnow(mapKey) ? ' enneigée' : ''}, la même pour les trois`}, avec un radar.`;
   if (ok && rdy && !net.rp) s = n === 1 ? 'Ton adversaire est prêt : appuie sur Prêt pour lancer à 2.' : rdy === n ? `Les autres sont prêts : appuie sur Prêt pour lancer à ${n + 1}.` : rdy === 1 ? 'Un joueur est prêt.' : `${rdy} joueurs sont prêts.`;
   if (net.rp) s = ok ? `Prêt. On attend que ${n === 1 ? 'l’autre appuie' : 'les autres appuient'} aussi…` : 'Prêt. En attente d’un adversaire…';
   $('#lobbyStatus').textContent = s;
-  const b = $('#btnReady'); b.disabled = !ok || net.rp; b.textContent = net.rp ? 'En attente…' : n === 8 ? 'Prêt – lancer à 9' : n === 7 ? 'Prêt – lancer à 8' : n === 6 ? 'Prêt – lancer à 7' : n === 5 ? 'Prêt – lancer à 6' : n === 4 ? 'Prêt – lancer à 5' : n === 3 ? 'Prêt – lancer à 4' : n === 2 ? 'Prêt – lancer à 3' : n === 1 ? 'Prêt – lancer à 2' : 'Prêt';
+  const b = $('#btnReady'); b.disabled = !ok || net.rp; b.textContent = net.rp ? 'En attente…' : n === 9 ? 'Prêt – lancer à 10' : n === 8 ? 'Prêt – lancer à 9' : n === 7 ? 'Prêt – lancer à 8' : n === 6 ? 'Prêt – lancer à 7' : n === 5 ? 'Prêt – lancer à 6' : n === 4 ? 'Prêt – lancer à 5' : n === 3 ? 'Prêt – lancer à 4' : n === 2 ? 'Prêt – lancer à 3' : n === 1 ? 'Prêt – lancer à 2' : 'Prêt';
 }
 function renderOverStatus() {
   if (mode === 'bot') { $('#overStatus').textContent = ''; return; }
@@ -4358,7 +4374,7 @@ function renderThermal() {
 function frame(now) {
   const dt = Math.min(0.05, Math.max(0, (now - last) / 1000)); last = now; t += dt;
   targetG.visible = mode === 'practice'; oppA.root.visible = mode !== 'practice';
-  opp2A.root.visible = mode === 'online' && trio() && phase !== 'idle'; opp3A.root.visible = mode === 'online' && nPlayers >= 4 && phase !== 'idle'; opp4A.root.visible = mode === 'online' && nPlayers >= 5 && phase !== 'idle'; opp5A.root.visible = mode === 'online' && nPlayers >= 6 && phase !== 'idle'; opp6A.root.visible = mode === 'online' && nPlayers >= 7 && phase !== 'idle'; opp7A.root.visible = mode === 'online' && nPlayers >= 8 && phase !== 'idle'; opp8A.root.visible = mode === 'online' && nPlayers >= 9 && phase !== 'idle';
+  opp2A.root.visible = mode === 'online' && trio() && phase !== 'idle'; opp3A.root.visible = mode === 'online' && nPlayers >= 4 && phase !== 'idle'; opp4A.root.visible = mode === 'online' && nPlayers >= 5 && phase !== 'idle'; opp5A.root.visible = mode === 'online' && nPlayers >= 6 && phase !== 'idle'; opp6A.root.visible = mode === 'online' && nPlayers >= 7 && phase !== 'idle'; opp7A.root.visible = mode === 'online' && nPlayers >= 8 && phase !== 'idle'; opp8A.root.visible = mode === 'online' && nPlayers >= 9 && phase !== 'idle'; opp9A.root.visible = mode === 'online' && nPlayers >= 10 && phase !== 'idle';
   updatePhase(dt);
   if (mode && phase !== 'idle') { updateMe(dt); updateOpp(dt); }
   updateArrows(dt); updateSplash(dt); updatePaint(dt); updateBlasts(dt); updatePetals(dt);
