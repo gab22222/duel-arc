@@ -61,6 +61,8 @@ body{position:fixed;inset:0;touch-action:none;-webkit-user-select:none;user-sele
 #radar{top:calc(env(safe-area-inset-top,0px) + 54px);right:12px;width:120px;height:120px;border-radius:50%;pointer-events:none}
 #score{top:calc(env(safe-area-inset-top,0px) + 10px);left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:14px;padding:6px 16px;background:rgba(14,12,22,.55);border:1px solid var(--line);border-radius:999px;font-family:var(--display);font-weight:700;letter-spacing:.06em;font-size:15px;white-space:nowrap}
 .side{display:flex;align-items:center;gap:8px}
+#score.many{gap:9px;padding:5px 11px;font-size:12px}
+#score.many .side span{display:none}
 .pips{display:flex;gap:7px}
 .pip{width:11px;height:11px;transform:rotate(45deg);border:1.5px solid currentColor}
 .pip.on{background:currentColor;box-shadow:0 0 8px currentColor}
@@ -177,7 +179,8 @@ p{margin:0}
 .rcount{font-family:var(--display);font-size:15px;letter-spacing:.08em;text-transform:uppercase;color:var(--mute)}
 .rcount b{font-size:30px;color:var(--bone);letter-spacing:0;margin-right:2px}
 .rcount b.full{color:var(--teal)}
-.rslots{display:grid;grid-template-columns:repeat(5,1fr);gap:5px}
+.rslots{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
+.teamsel button[hidden]{display:none}
 .teamsel{grid-template-columns:repeat(2,1fr)}
 .teamsel[hidden]{display:none}
 .rslot{display:grid;justify-items:center;gap:3px;padding:8px 4px;border-radius:11px;border:1.5px dashed rgba(239,230,214,.22);color:var(--mute);font-size:13px;text-align:center}
@@ -219,6 +222,7 @@ p{margin:0}
   <div class="side them2" id="side2" hidden><div class="pips" id="pipsThem2"><i class="pip"></i><i class="pip"></i><i class="pip"></i></div> <span id="them2Name">Jaune</span></div>
   <div class="side them3" id="side3" hidden><div class="pips" id="pipsThem3"><i class="pip"></i><i class="pip"></i><i class="pip"></i></div> <span id="them3Name">Violet</span></div>
   <div class="side them4" id="side4" hidden><div class="pips" id="pipsThem4"><i class="pip"></i><i class="pip"></i><i class="pip"></i></div> <span id="them4Name">Bleu</span></div>
+  <div class="side them5" id="side5" hidden><div class="pips" id="pipsThem5"><i class="pip"></i><i class="pip"></i><i class="pip"></i></div> <span id="them5Name">Rose</span></div>
 </div>
 <div class="hud" id="hp" hidden><div class="hpbar"><i id="hpFill"></i></div><span id="hpTxt">300 HP</span></div>
 <svg class="hud" id="cross" viewBox="0 0 72 72" hidden>
@@ -376,7 +380,7 @@ p{margin:0}
   <div class="sheet">
     <div class="eyebrow">Chiffre de la partie</div>
     <div class="codebig" id="lobbyCode">-</div>
-    <p class="sub">Tes amis ouvrent la même page, tapent ce chiffre et appuient sur Rejoindre une partie (jusqu'à 5 joueurs).</p>
+    <p class="sub">Tes amis ouvrent la même page, tapent ce chiffre et appuient sur Rejoindre une partie (jusqu'à 6 joueurs).</p>
     <div class="seg modesel" role="group" aria-label="Mode de jeu">
       <button data-gm="tour" aria-pressed="true">Tournante<small>l'arme choisie à tour de rôle</small></button>
       <button data-gm="roul" aria-pressed="false">Tournante roulette<small>l'arme tirée à la roue</small></button>
@@ -385,11 +389,13 @@ p{margin:0}
     <div class="seg teamsel" role="group" aria-label="Mode à 4" hidden>
       <button data-tm="ffa" aria-pressed="true">Chacun pour soi<small>1v1v1v1</small></button>
       <button data-tm="2v2" aria-pressed="false">2 contre 2<small>joueurs 1 et 2 contre 3 et 4</small></button>
+      <button data-tm="3v3" aria-pressed="false">3 contre 3<small>joueurs 1, 2, 3 contre 4, 5, 6</small></button>
+      <button data-tm="2v2v2" aria-pressed="false">2 contre 2 contre 2<small>1 et 2, 3 et 4, 5 et 6</small></button>
     </div>
     <div class="seg mapsel" role="group" aria-label="Carte">
       <button data-map="canyon" aria-pressed="true">Canyon<small>face à face</small></button>
-      <button data-map="forestV2" aria-pressed="false">Forêt 1<small>symétrique, à 2, 3, 4 ou 5</small></button>
-      <button data-map="forestV3" aria-pressed="false">Forêt 2<small>troncs égaux, à 2, 3, 4 ou 5</small></button>
+      <button data-map="forestV2" aria-pressed="false">Forêt 1<small>symétrique, de 2 à 6</small></button>
+      <button data-map="forestV3" aria-pressed="false">Forêt 2<small>troncs égaux, de 2 à 6</small></button>
       <button data-map="japan" aria-pressed="false" disabled>Japon<small>temples, à 3</small></button>
       <button data-map="forestXL" aria-pressed="false" disabled>Forêt géante<small>124 m, à 3</small></button>
     </div>
@@ -428,7 +434,7 @@ p{margin:0}
       </div>
     </div>
     <div class="roster" aria-live="polite">
-      <div class="rcount"><b id="rosterN">1</b> / 5 joueurs dans le salon</div>
+      <div class="rcount"><b id="rosterN">1</b> / 6 joueurs dans le salon</div>
       <div class="rslots" id="rslots"></div>
       <div class="youare"><span id="youAre">Tu es Joueur 1</span><input id="nameIn" maxlength="12" placeholder="Joueur 1" autocomplete="off" spellcheck="false" aria-label="Ton pseudo (facultatif)"></div>
     </div>
@@ -446,11 +452,13 @@ p{margin:0}
     <div class="seg teamsel" role="group" aria-label="Mode à 4" hidden>
       <button data-tm="ffa" aria-pressed="true">Chacun pour soi<small>1v1v1v1</small></button>
       <button data-tm="2v2" aria-pressed="false">2 contre 2<small>joueurs 1 et 2 contre 3 et 4</small></button>
+      <button data-tm="3v3" aria-pressed="false">3 contre 3<small>joueurs 1, 2, 3 contre 4, 5, 6</small></button>
+      <button data-tm="2v2v2" aria-pressed="false">2 contre 2 contre 2<small>1 et 2, 3 et 4, 5 et 6</small></button>
     </div>
     <div class="seg mapsel" role="group" aria-label="Carte">
       <button data-map="canyon" aria-pressed="true">Canyon<small>face à face</small></button>
-      <button data-map="forestV2" aria-pressed="false">Forêt 1<small>symétrique, à 2, 3, 4 ou 5</small></button>
-      <button data-map="forestV3" aria-pressed="false">Forêt 2<small>troncs égaux, à 2, 3, 4 ou 5</small></button>
+      <button data-map="forestV2" aria-pressed="false">Forêt 1<small>symétrique, de 2 à 6</small></button>
+      <button data-map="forestV3" aria-pressed="false">Forêt 2<small>troncs égaux, de 2 à 6</small></button>
       <button data-map="japan" aria-pressed="false" disabled>Japon<small>temples, à 3</small></button>
       <button data-map="forestXL" aria-pressed="false" disabled>Forêt géante<small>124 m, à 3</small></button>
     </div>
@@ -630,11 +638,14 @@ MAPS.forestQ1s = { ...MAPS.forestQ1, key: 'forestQ1s', snow: true }; MAPS.forest
 // 1v1v1v1v1 : les forêts 1 et 2 en version à cinq, symétriques par rotation de 72° ; même zone ronde de 42 m et apparitions à 25,5 m du centre (30 m entre voisins)
 MAPS.forestP1 = { ...MAPS.forestQ1, key: 'forestP1' }; MAPS.forestP2 = { ...MAPS.forestQ1, key: 'forestP2' };
 MAPS.forestP1s = { ...MAPS.forestP1, key: 'forestP1s', snow: true }; MAPS.forestP2s = { ...MAPS.forestP2, key: 'forestP2s', snow: true };
+// à 6 (chacun pour soi, 3 contre 3, 2 contre 2 contre 2) : les forêts 1 et 2 en version à six, symétriques par rotation de 60° ; même zone de 42 m, apparitions à 25,5 m du centre (25,5 m entre voisins)
+MAPS.forestH1 = { ...MAPS.forestQ1, key: 'forestH1' }; MAPS.forestH2 = { ...MAPS.forestQ1, key: 'forestH2' };
+MAPS.forestH1s = { ...MAPS.forestH1, key: 'forestH1s', snow: true }; MAPS.forestH2s = { ...MAPS.forestH2, key: 'forestH2s', snow: true };
 const MAP_FAMILY = { forestV2: ['forestV2', 'forestV2s'], forestV3: ['forestV3', 'forestV3s'] }; // on choisit la forêt, puis sa version
-const TRIO = { forestV2: 'forestT1', forestV2s: 'forestT1s', forestV3: 'forestT2', forestV3s: 'forestT2s' }, QUAD = { forestV2: 'forestQ1', forestV2s: 'forestQ1s', forestV3: 'forestQ2', forestV3s: 'forestQ2s' }, PENTA = { forestV2: 'forestP1', forestV2s: 'forestP1s', forestV3: 'forestP2', forestV3s: 'forestP2s' };
-const DUO = Object.fromEntries([...Object.entries(TRIO), ...Object.entries(QUAD), ...Object.entries(PENTA)].map(([a, b]) => [b, a])); // forêt à 3 ou 4 -> la même à 2
+const TRIO = { forestV2: 'forestT1', forestV2s: 'forestT1s', forestV3: 'forestT2', forestV3s: 'forestT2s' }, QUAD = { forestV2: 'forestQ1', forestV2s: 'forestQ1s', forestV3: 'forestQ2', forestV3s: 'forestQ2s' }, PENTA = { forestV2: 'forestP1', forestV2s: 'forestP1s', forestV3: 'forestP2', forestV3s: 'forestP2s' }, HEXA = { forestV2: 'forestH1', forestV2s: 'forestH1s', forestV3: 'forestH2', forestV3s: 'forestH2s' };
+const DUO = Object.fromEntries([...Object.entries(TRIO), ...Object.entries(QUAD), ...Object.entries(PENTA), ...Object.entries(HEXA)].map(([a, b]) => [b, a])); // forêt à 3 ou 4 -> la même à 2
 const menuMap = k => DUO[k] || k; // dans les menus, la version à 3 s'affiche comme sa forêt
-const baseMap = k => ({ forestV2s: 'forestV2', forestV3s: 'forestV3', forestT1s: 'forestT1', forestT2s: 'forestT2', forestQ1s: 'forestQ1', forestQ2s: 'forestQ2', forestP1s: 'forestP1', forestP2s: 'forestP2' })[k] || k, isSnow = k => !!(MAPS[k] && MAPS[k].snow);
+const baseMap = k => ({ forestV2s: 'forestV2', forestV3s: 'forestV3', forestT1s: 'forestT1', forestT2s: 'forestT2', forestQ1s: 'forestQ1', forestQ2s: 'forestQ2', forestP1s: 'forestP1', forestP2s: 'forestP2', forestH1s: 'forestH1', forestH2s: 'forestH2' })[k] || k, isSnow = k => !!(MAPS[k] && MAPS[k].snow);
 try { const k = localStorage.getItem('duelarc-map2') || localStorage.getItem('duelarc-map'); if (k === 'forest') mapKey = 'forestV2'; else if (MAPS[k]) mapKey = k; } catch (e) {}
 
 // ---------- renderer
@@ -670,6 +681,7 @@ const SKY = {
   get forestT1() { return this.forestV2; }, get forestT2() { return this.forestV2; }, get forestT1s() { return this.forestV2s; }, get forestT2s() { return this.forestV2s; },
   get forestQ1() { return this.forestV2; }, get forestQ2() { return this.forestV2; }, get forestQ1s() { return this.forestV2s; }, get forestQ2s() { return this.forestV2s; },
   get forestP1() { return this.forestV2; }, get forestP2() { return this.forestV2; }, get forestP1s() { return this.forestV2s; }, get forestP2s() { return this.forestV2s; },
+  get forestH1() { return this.forestV2; }, get forestH2() { return this.forestV2; }, get forestH1s() { return this.forestV2s; }, get forestH2s() { return this.forestV2s; },
   forestV2s: skyTex([[0, '#6f7f92'], [0.3, '#a7b4c3'], [0.46, '#dfe6ee'], [0.5, '#eef2f6'], [0.53, '#c9d3dd'], [1, '#8c96a0']]), // ciel de neige, gris clair
   japan: skyTex([[0, '#2b2b5a'], [0.28, '#6c5a8e'], [0.42, '#c98aa6'], [0.49, '#f4c7a1'], [0.51, '#f6d5b5'], [0.54, '#c9a7a8'], [1, '#3a2c33']]),
   forestV2: skyTex([[0, '#2c4a5e'], [0.3, '#5f8796'], [0.46, '#b9cbb6'], [0.5, '#d8dfc2'], [0.53, '#93a796'], [1, '#33402f']]),
@@ -737,7 +749,7 @@ function rough(geo, amt) {
   return geo;
 }
 const std = (color, extra) => new T.MeshStandardMaterial(Object.assign({ color, flatShading: true, roughness: 1, metalness: 0 }, extra || {}));
-const OBST = { canyon: [], forestV2: [], forestV3: [], forestT1: [], forestT2: [], forestQ1: [], forestQ2: [], forestP1: [], forestP2: [], forestXL: [], japan: [] };
+const OBST = { canyon: [], forestV2: [], forestV3: [], forestT1: [], forestT2: [], forestQ1: [], forestQ2: [], forestP1: [], forestP2: [], forestH1: [], forestH2: [], forestXL: [], japan: [] };
 const OB_CELL = 8, obNear = []; // grille des obstacles de la forêt géante (cases de 8 m)
 // forme réelle d'un tronc : les triangles de son flanc tels qu'ils sont dessinés (cylindre irrégulier qui s'affine)
 function trunkTris(geo, h, x, z) {
@@ -819,6 +831,8 @@ const forestQ1G = new T.Group(); scene.add(forestQ1G); forestQ1G.visible = false
 const forestQ2G = new T.Group(); scene.add(forestQ2G); forestQ2G.visible = false; // forêt 2 à 4
 const forestP1G = new T.Group(); scene.add(forestP1G); forestP1G.visible = false; // forêt 1 à 5
 const forestP2G = new T.Group(); scene.add(forestP2G); forestP2G.visible = false; // forêt 2 à 5
+const forestH1G = new T.Group(); scene.add(forestH1G); forestH1G.visible = false; // forêt 1 à 6
+const forestH2G = new T.Group(); scene.add(forestH2G); forestH2G.visible = false; // forêt 2 à 6
 const SNOW = { set: () => {} }; // rempli avec la forêt : passe ses deux versions en neige ou non
 {
   // forêt de départ : elle n'est plus jouable, mais la forêt 1 en reprend la moitié sud ; tout est tiré dans le même ordre pour garder les mêmes arbres
@@ -972,7 +986,7 @@ const SNOW = { set: () => {} }; // rempli avec la forêt : passe ses deux versio
   gridObstacles(OBST.forestV3);
   OBST.forestV2s = OBST.forestV2; OBST.forestV3s = OBST.forestV3;
 
-  // forêts 1 et 2 à 3, 4 ou 5 joueurs : la part de la forêt comprise entre -180°/n et +180°/n autour de l'apparition sud (0, 25,5),
+  // forêts 1 et 2 à 3, 4, 5 ou 6 joueurs : la part de la forêt comprise entre -180°/n et +180°/n autour de l'apparition sud (0, 25,5),
   // recopiée n fois en tournant (120° à 3, 90° à 4). Chaque joueur a exactement la même forêt devant lui, au centimètre près.
   function symForest(N, G1, G2, O1, O2, TRI_R, seed) {
   const TW = 2 * Math.PI / N, ROTS = Array.from({ length: N }, (_, i) => i * TW);
@@ -1055,11 +1069,12 @@ const SNOW = { set: () => {} }; // rempli avec la forêt : passe ses deux versio
   symForest(3, forestT1G, forestT2G, OBST.forestT1, OBST.forestT2, MAPS.forestT1.rlim, 8112026);
   symForest(4, forestQ1G, forestQ2G, OBST.forestQ1, OBST.forestQ2, MAPS.forestQ1.rlim, 9112026);
   symForest(5, forestP1G, forestP2G, OBST.forestP1, OBST.forestP2, MAPS.forestP1.rlim, 10112026);
-  OBST.forestT1s = OBST.forestT1; OBST.forestT2s = OBST.forestT2; OBST.forestQ1s = OBST.forestQ1; OBST.forestQ2s = OBST.forestQ2; OBST.forestP1s = OBST.forestP1; OBST.forestP2s = OBST.forestP2;
+  symForest(6, forestH1G, forestH2G, OBST.forestH1, OBST.forestH2, MAPS.forestH1.rlim, 11112026);
+  OBST.forestT1s = OBST.forestT1; OBST.forestT2s = OBST.forestT2; OBST.forestQ1s = OBST.forestQ1; OBST.forestQ2s = OBST.forestQ2; OBST.forestP1s = OBST.forestP1; OBST.forestP2s = OBST.forestP2; OBST.forestH1s = OBST.forestH1; OBST.forestH2s = OBST.forestH2;
 
   // neige : sol blanc, chemin et herbes cachés, mousse des rochers enneigée, et une couche blanche sur le haut de chaque feuillage
   const snowGround = std(0xedf1f6, { roughness: 1 }), snowCapM = std(0xf5f8fc, { roughness: .9 }), mossGreen = mossM.color.getHex(), caps = [], swaps = [], hides = [], crowns = [];
-  for (const G of [forestV2G, forestV3G, forestT1G, forestT2G, forestQ1G, forestQ2G, forestP1G, forestP2G]) G.traverse(m => {
+  for (const G of [forestV2G, forestV3G, forestT1G, forestT2G, forestQ1G, forestQ2G, forestP1G, forestP2G, forestH1G, forestH2G]) G.traverse(m => {
     if (m.isInstancedMesh) { hides.push(m); return; }
     if (!m.isMesh) return;
     if (m.material === groundM) swaps.push(m);
@@ -1414,6 +1429,7 @@ const MAPLOOK = {
   get forestT1() { return this.forestV2; }, get forestT2() { return this.forestV2; }, get forestT1s() { return this.forestV2s; }, get forestT2s() { return this.forestV2s; },
   get forestQ1() { return this.forestV2; }, get forestQ2() { return this.forestV2; }, get forestQ1s() { return this.forestV2s; }, get forestQ2s() { return this.forestV2s; },
   get forestP1() { return this.forestV2; }, get forestP2() { return this.forestV2; }, get forestP1s() { return this.forestV2s; }, get forestP2s() { return this.forestV2s; },
+  get forestH1() { return this.forestV2; }, get forestH2() { return this.forestV2; }, get forestH1s() { return this.forestV2s; }, get forestH2s() { return this.forestV2s; },
   forestV2s: { fog: 0xd9e0e8, near: 8, far: 66, hs: 0xf2f6ff, hg: 0x8d98a6, sun: 0xfff4e6, sunI: 0.72 },
   canyon: { fog: 0xb4685a, near: 40, far: 200, hs: 0xffd8b8, hg: 0x3b2a44, sun: 0xffb27a, sunI: 0.95 },
   forestV2: { fog: 0x9fb2a3, near: 10, far: 72, hs: 0xe4f0d6, hg: 0x3a4630, sun: 0xfff0c8, sunI: 0.8 },
@@ -1423,7 +1439,7 @@ const MAPLOOK = {
 };
 function applyMap(k) {
   mapKey = k; map = MAPS[k]; obstacles = OBST[k];
-  canyonG.visible = k === 'canyon'; forestV2G.visible = baseMap(k) === 'forestV2'; forestV3G.visible = baseMap(k) === 'forestV3'; forestT1G.visible = baseMap(k) === 'forestT1'; forestT2G.visible = baseMap(k) === 'forestT2'; forestQ1G.visible = baseMap(k) === 'forestQ1'; forestQ2G.visible = baseMap(k) === 'forestQ2'; forestP1G.visible = baseMap(k) === 'forestP1'; forestP2G.visible = baseMap(k) === 'forestP2'; SNOW.set(isSnow(k)); snowFx.visible = isSnow(k); clearFeet(); bigForestG.visible = k === 'forestXL'; japanG.visible = k === 'japan';
+  canyonG.visible = k === 'canyon'; forestV2G.visible = baseMap(k) === 'forestV2'; forestV3G.visible = baseMap(k) === 'forestV3'; forestT1G.visible = baseMap(k) === 'forestT1'; forestT2G.visible = baseMap(k) === 'forestT2'; forestQ1G.visible = baseMap(k) === 'forestQ1'; forestQ2G.visible = baseMap(k) === 'forestQ2'; forestP1G.visible = baseMap(k) === 'forestP1'; forestP2G.visible = baseMap(k) === 'forestP2'; forestH1G.visible = baseMap(k) === 'forestH1'; forestH2G.visible = baseMap(k) === 'forestH2'; SNOW.set(isSnow(k)); snowFx.visible = isSnow(k); clearFeet(); bigForestG.visible = k === 'forestXL'; japanG.visible = k === 'japan';
   skyMat.map = SKY[k]; skyMat.needsUpdate = true;
   const L = MAPLOOK[k];
   scene.fog.color.setHex(L.fog); scene.fog.near = L.near; scene.fog.far = L.far;
@@ -1516,13 +1532,14 @@ const fl2 = fl1.clone(); fl2.rotateZ(Math.PI / 2);
 const streakGeo = new T.CylinderGeometry(0.03, 0.006, 2.2, 5, 1, true); streakGeo.rotateX(Math.PI / 2); streakGeo.translate(0, 0, 2.1);
 const ironMat = std(0xd8d2c8, { metalness: .3, roughness: .5 });
 const shaftMat = std(0xc89a5e);
-const fletchMat = { me: new T.MeshBasicMaterial({ color: 0x6ff0de, side: T.DoubleSide }), opp: new T.MeshBasicMaterial({ color: 0xff6a50, side: T.DoubleSide }), opp2: new T.MeshBasicMaterial({ color: 0xffd24a, side: T.DoubleSide }), opp3: new T.MeshBasicMaterial({ color: 0xd08aff, side: T.DoubleSide }), opp4: new T.MeshBasicMaterial({ color: 0x7ab0ff, side: T.DoubleSide }) };
+const fletchMat = { me: new T.MeshBasicMaterial({ color: 0x6ff0de, side: T.DoubleSide }), opp: new T.MeshBasicMaterial({ color: 0xff6a50, side: T.DoubleSide }), opp2: new T.MeshBasicMaterial({ color: 0xffd24a, side: T.DoubleSide }), opp3: new T.MeshBasicMaterial({ color: 0xd08aff, side: T.DoubleSide }), opp4: new T.MeshBasicMaterial({ color: 0x7ab0ff, side: T.DoubleSide }), opp5: new T.MeshBasicMaterial({ color: 0xff8ac0, side: T.DoubleSide }) };
 const streakMat = {
   me: new T.MeshBasicMaterial({ color: 0x8ff5e6, transparent: true, opacity: .32, blending: T.AdditiveBlending, depthWrite: false }),
   opp: new T.MeshBasicMaterial({ color: 0xffa070, transparent: true, opacity: .38, blending: T.AdditiveBlending, depthWrite: false }),
   opp2: new T.MeshBasicMaterial({ color: 0xffe08a, transparent: true, opacity: .38, blending: T.AdditiveBlending, depthWrite: false }),
   opp3: new T.MeshBasicMaterial({ color: 0xe0b0ff, transparent: true, opacity: .38, blending: T.AdditiveBlending, depthWrite: false }),
   opp4: new T.MeshBasicMaterial({ color: 0xa8c8ff, transparent: true, opacity: .38, blending: T.AdditiveBlending, depthWrite: false }),
+  opp5: new T.MeshBasicMaterial({ color: 0xffb0d4, transparent: true, opacity: .38, blending: T.AdditiveBlending, depthWrite: false }),
 };
 // balle de carabine (pointe à l'origine, vers -Z) : petit plomb sombre + traceur ; reste comme un impact dans le bois
 const bulletGeo = new T.SphereGeometry(0.022, 6, 4); bulletGeo.scale(1, 1, 1.8);
@@ -1608,7 +1625,7 @@ smokeGeo.setAttribute('birth', new T.BufferAttribute(smokeBirth, 1));
 smokeGeo.setAttribute('tint', new T.BufferAttribute(smokeTint, 1));
 smokeGeo.setAttribute('life', new T.BufferAttribute(smokeLife, 1));
 const smokeMat = new T.ShaderMaterial({
-  uniforms: { uTime: { value: 0 }, uScale: { value: 400 }, uColor: { value: new T.Color(0xb4b4b4) }, uMe: { value: new T.Color(0x2fa6d0) }, uOpp: { value: new T.Color(0xe2402f) }, uOpp2: { value: new T.Color(0xf0c030) }, uOpp3: { value: new T.Color(0xb060f0) }, uOpp4: { value: new T.Color(0x4a80f0) }, uAlpha: { value: 0.14 } },
+  uniforms: { uTime: { value: 0 }, uScale: { value: 400 }, uColor: { value: new T.Color(0xb4b4b4) }, uMe: { value: new T.Color(0x2fa6d0) }, uOpp: { value: new T.Color(0xe2402f) }, uOpp2: { value: new T.Color(0xf0c030) }, uOpp3: { value: new T.Color(0xb060f0) }, uOpp4: { value: new T.Color(0x4a80f0) }, uOpp5: { value: new T.Color(0xf060a8) }, uAlpha: { value: 0.14 } },
   vertexShader: `
     attribute float birth; attribute float tint; attribute float life; uniform float uTime; uniform float uScale; varying float vA; varying float vT;
     void main() {
@@ -1621,11 +1638,11 @@ const smokeMat = new T.ShaderMaterial({
       gl_Position = projectionMatrix * mv;
     }`,
   fragmentShader: `
-    uniform vec3 uColor; uniform vec3 uMe; uniform vec3 uOpp; uniform vec3 uOpp2; uniform vec3 uOpp3; uniform vec3 uOpp4; uniform float uAlpha; varying float vA; varying float vT;
+    uniform vec3 uColor; uniform vec3 uMe; uniform vec3 uOpp; uniform vec3 uOpp2; uniform vec3 uOpp3; uniform vec3 uOpp4; uniform vec3 uOpp5; uniform float uAlpha; varying float vA; varying float vT;
     void main() {
       vec2 c = gl_PointCoord - 0.5; float d = dot(c, c);
       if (d > 0.25 || vA <= 0.0) discard;
-      vec3 col = vT > 4.5 ? uOpp4 : vT > 3.5 ? uOpp3 : vT > 2.5 ? uOpp2 : (vT > 1.5 ? uOpp : (vT > 0.5 ? uMe : uColor));
+      vec3 col = vT > 5.5 ? uOpp5 : vT > 4.5 ? uOpp4 : vT > 3.5 ? uOpp3 : vT > 2.5 ? uOpp2 : (vT > 1.5 ? uOpp : (vT > 0.5 ? uMe : uColor));
       float a = vT > 0.5 ? uAlpha * 2.4 : uAlpha;
       gl_FragColor = vec4(col, vA * a * (1.0 - d * 4.0));
     }`,
@@ -1643,7 +1660,7 @@ function emitSmoke(a, back = 0) {
 // colore toute la traînée encore visible d'une flèche qui vient de toucher un joueur
 function tintSmoke(a) {
   if (!a.sid) return;
-  const v = a.owner === 'me' ? 1 : a.owner === 'opp' ? 2 : a.owner === 'opp2' ? 3 : a.owner === 'opp3' ? 4 : 5;
+  const v = a.owner === 'me' ? 1 : a.owner === 'opp' ? 2 : a.owner === 'opp2' ? 3 : a.owner === 'opp3' ? 4 : a.owner === 'opp4' ? 5 : 6;
   for (let i = 0; i < SMOKE_N; i++) if (smokeArrow[i] === a.sid && t - smokeBirth[i] < SMOKE_LIFE) smokeTint[i] = v;
   smokeTintDirty = true;
 }
@@ -2433,6 +2450,7 @@ const oppA = makeArcher(0xa8342a, 0x6e1f1a, 'opp');
 const opp2A = makeArcher(0xc99a2e, 0x7d5a14, 'opp2'); opp2A.root.visible = false;
 const opp3A = makeArcher(0x7a3fa8, 0x4c2470, 'opp3'); opp3A.root.visible = false;
 const opp4A = makeArcher(0x2f5fb0, 0x1d3b70, 'opp4'); opp4A.root.visible = false;
+const opp5A = makeArcher(0xc0457f, 0x7a2450, 'opp5'); opp5A.root.visible = false;
 // ---------- vue à la première personne : la caméra dans les yeux du joueur (son corps disparaît pour lui), et par-dessus l'image,
 // ses bras et son arme dans une petite scène à part (ils ne traversent jamais les arbres), qui balancent, reculent et suivent le regard
 const fpScene = new T.Scene(), fpCam = new T.PerspectiveCamera(62, 1, 0.02, 12), fpPivot = new T.Group();
@@ -2442,7 +2460,7 @@ fpSun.position.set(-1, 2, 1.6); fpBack.position.set(1.5, 0.4, -1); fpScene.add(f
 const fpA = makeArcher(0x2f8f83, 0x1f5f58, 'me', true); fpPivot.add(fpA.root);
 const fpFlash = new T.Sprite(new T.SpriteMaterial({ map: (() => { const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d'), gr = g.createRadialGradient(64, 64, 0, 64, 64, 64); gr.addColorStop(0, 'rgba(255,255,235,1)'); gr.addColorStop(.22, 'rgba(255,214,120,.95)'); gr.addColorStop(.55, 'rgba(255,120,30,.4)'); gr.addColorStop(1, 'rgba(255,80,0,0)'); g.fillStyle = gr; g.fillRect(0, 0, 128, 128); g.globalCompositeOperation = 'lighter'; g.fillStyle = 'rgba(255,230,170,.9)'; g.translate(64, 64); for (let i = 0; i < 5; i++) { g.rotate(Math.PI * 2 / 5); g.beginPath(); g.moveTo(-7, 0); g.lineTo(0, -62); g.lineTo(7, 0); g.fill(); } return new T.CanvasTexture(c); })(), blending: T.AdditiveBlending, depthTest: false, depthWrite: false, transparent: true }));
 fpFlash.visible = false; fpScene.add(fpFlash);
-archers.push(meA, oppA, opp2A, opp3A, opp4A); dressArchers();
+archers.push(meA, oppA, opp2A, opp3A, opp4A, opp5A); dressArchers();
 // couleurs des joueurs : en ligne, chacun garde la couleur de son numéro de salon (1 vert d'eau, 2 rouge, 3 jaune) chez tout le monde
 const PALETTE = [
   { cloth: 0x2f8f83, hood: 0x1f5f58, fletch: 0x6ff0de, streak: 0x8ff5e6, smoke: 0x2fa6d0, css: '#5cc8ba', label: 'vert' },
@@ -2450,16 +2468,17 @@ const PALETTE = [
   { cloth: 0xc99a2e, hood: 0x7d5a14, fletch: 0xffd24a, streak: 0xffe08a, smoke: 0xf0c030, css: '#e8b93a', label: 'jaune' },
   { cloth: 0x7a3fa8, hood: 0x4c2470, fletch: 0xd08aff, streak: 0xe0b0ff, smoke: 0xb060f0, css: '#c08af0', label: 'violet' },
   { cloth: 0x2f5fb0, hood: 0x1d3b70, fletch: 0x7ab0ff, streak: 0xa8c8ff, smoke: 0x4a80f0, css: '#6aa0ff', label: 'bleu' },
+  { cloth: 0xc0457f, hood: 0x7a2450, fletch: 0xff8ac0, streak: 0xffb0d4, smoke: 0xf060a8, css: '#f07ab4', label: 'rose' },
 ];
-const colorOf = { me: 0, opp: 1, opp2: 2, opp3: 3, opp4: 4 };
+const colorOf = { me: 0, opp: 1, opp2: 2, opp3: 3, opp4: 4, opp5: 5 };
 function applyColors(map) {
-  Object.assign(colorOf, map || { me: 0, opp: 1, opp2: 2, opp3: 3, opp4: 4 });
-  const A = { me: meA, opp: oppA, opp2: opp2A, opp3: opp3A, opp4: opp4A }, U = { me: 'uMe', opp: 'uOpp', opp2: 'uOpp2', opp3: 'uOpp3', opp4: 'uOpp4' };
+  Object.assign(colorOf, map || { me: 0, opp: 1, opp2: 2, opp3: 3, opp4: 4, opp5: 5 });
+  const A = { me: meA, opp: oppA, opp2: opp2A, opp3: opp3A, opp4: opp4A, opp5: opp5A }, U = { me: 'uMe', opp: 'uOpp', opp2: 'uOpp2', opp3: 'uOpp3', opp4: 'uOpp4', opp5: 'uOpp5' };
   for (const k in A) {
     const P = PALETTE[colorOf[k]];
     A[k].setColors(P.cloth, P.hood); if (k === 'me') fpA.setColors(P.cloth, P.hood); fletchMat[k].color.setHex(P.fletch); streakMat[k].color.setHex(P.streak); smokeMat.uniforms[U[k]].value.setHex(P.smoke);
   }
-  $('#score .side.me').style.color = PALETTE[colorOf.me].css; $('#score .side.them').style.color = PALETTE[colorOf.opp].css; $('#score .side.them2').style.color = PALETTE[colorOf.opp2].css; $('#score .side.them3').style.color = PALETTE[colorOf.opp3].css; $('#score .side.them4').style.color = PALETTE[colorOf.opp4].css;
+  $('#score .side.me').style.color = PALETTE[colorOf.me].css; $('#score .side.them').style.color = PALETTE[colorOf.opp].css; $('#score .side.them2').style.color = PALETTE[colorOf.opp2].css; $('#score .side.them3').style.color = PALETTE[colorOf.opp3].css; $('#score .side.them4').style.color = PALETTE[colorOf.opp4].css; $('#score .side.them5').style.color = PALETTE[colorOf.opp5].css;
 }
 // pseudos au-dessus des têtes (en ligne, pour les adversaires : pas le mien, il gênerait la visée) ; cachés derrière les arbres
 function makeTag() {
@@ -2475,7 +2494,7 @@ function setTag(sp, text, css) {
   g.lineWidth = 7; g.strokeStyle = 'rgba(10,8,14,.85)'; g.strokeText(text, 128, 34); g.fillStyle = css; g.fillText(text, 128, 34);
   sp.material.map.needsUpdate = true;
 }
-const tags = { opp: makeTag(), opp2: makeTag(), opp3: makeTag(), opp4: makeTag() }; opp4A.root.add(tags.opp4); oppA.root.add(tags.opp); opp2A.root.add(tags.opp2); opp3A.root.add(tags.opp3);
+const tags = { opp: makeTag(), opp2: makeTag(), opp3: makeTag(), opp4: makeTag(), opp5: makeTag() }; opp4A.root.add(tags.opp4); opp5A.root.add(tags.opp5); oppA.root.add(tags.opp); opp2A.root.add(tags.opp2); opp3A.root.add(tags.opp3);
 
 // ---------- sound (synth, starts after first tap)
 let actx = null, noise = null;
@@ -2615,11 +2634,12 @@ function sfx(k, v = 1) {
 const me = { x: 0, z: 12, vx: 0, vz: 0, yaw: 0, pitch: 0.04, draw: 0, drawing: false, reload: 0, taken: 0, nextShot: -Infinity };
 const opp = { x: 0, z: -12, tx: 0, tz: -12, vx: 0, vz: 0, yaw: 0, tyaw: 0, pitch: 0.04, tpitch: 0.04, draw: 0, nock: true, taken: 0 };
 const opp2 = { x: 0, z: 0, tx: 0, tz: 0, vx: 0, vz: 0, yaw: 0, tyaw: 0, pitch: 0.04, tpitch: 0.04, draw: 0, nock: true, taken: 0 };
+const opp5 = { x: 0, z: 0, tx: 0, tz: 0, vx: 0, vz: 0, yaw: 0, tyaw: 0, pitch: 0.04, tpitch: 0.04, draw: 0, nock: true, taken: 0 };
 const opp4 = { x: 0, z: 0, tx: 0, tz: 0, vx: 0, vz: 0, yaw: 0, tyaw: 0, pitch: 0.04, tpitch: 0.04, draw: 0, nock: true, taken: 0 };
 const opp3 = { x: 0, z: 0, tx: 0, tz: 0, vx: 0, vz: 0, yaw: 0, tyaw: 0, pitch: 0.04, tpitch: 0.04, draw: 0, nock: true, taken: 0 };
 // joueurs : moi + adversaires (un en duel contre le bot ou en ligne, deux en 1v1v1 en ligne)
 const ME = { key: 'me', s: me, A: meA, name: 'Toi' };
-const FOES = { opp: { key: 'opp', s: opp, A: oppA, peer: null, slot: 1, name: 'Rouge' }, opp2: { key: 'opp2', s: opp2, A: opp2A, peer: null, slot: 2, name: 'Jaune' }, opp3: { key: 'opp3', s: opp3, A: opp3A, peer: null, slot: 3, name: 'Violet' }, opp4: { key: 'opp4', s: opp4, A: opp4A, peer: null, slot: 4, name: 'Bleu' } };
+const FOES = { opp: { key: 'opp', s: opp, A: oppA, peer: null, slot: 1, name: 'Rouge' }, opp2: { key: 'opp2', s: opp2, A: opp2A, peer: null, slot: 2, name: 'Jaune' }, opp3: { key: 'opp3', s: opp3, A: opp3A, peer: null, slot: 3, name: 'Violet' }, opp4: { key: 'opp4', s: opp4, A: opp4A, peer: null, slot: 4, name: 'Bleu' }, opp5: { key: 'opp5', s: opp5, A: opp5A, peer: null, slot: 5, name: 'Rose' } };
 let foes = [FOES.opp];
 let nPlayers = 2, mySlot = 0;
 // tournante (mode entre amis par défaut) : à 3, deux joueurs tirés au sort s'affrontent dans la petite forêt, le troisième
@@ -2632,7 +2652,10 @@ let specIdx = 0, specThird = false; // joueur regardé ; vue de derrière lui pl
 try { specThird = localStorage.getItem('duelarc-spec3') === '1'; } catch (e) {}
 const trio = () => nPlayers >= 3; // partie à 3 ou 4 : pas de miroir, chacun pour soi ou en équipes
 // 2v2 : les deux premiers du salon contre les deux suivants ; on ne blesse pas son coéquipier
-let teamMode = 'ffa', teams = null; // teams : équipe (0 ou 1) de chaque joueur de la partie, null hors 2v2
+let teamMode = 'ffa', teams = null; // teams : équipe (0, 1, 2) de chaque joueur de la partie, null en chacun pour soi
+const TEAM = { '2v2': [4, 2, '2 contre 2'], '3v3': [6, 3, '3 contre 3'], '2v2v2': [6, 2, '2 contre 2 contre 2'] }; // nombre de joueurs, taille d'une équipe, nom
+let teamGame = ''; // mode d'équipe de la partie en cours
+const andJoin = a => a.length > 1 ? a.slice(0, -1).join(', ') + ' et ' + a[a.length - 1] : a.join('');
 const mates = (k1, k2) => !!teams && k1 !== k2 && teams[k1] === teams[k2];
 const foeByPeer = id => foes.find(f => f.peer === id);
 const entryByKey = k => k === 'me' ? ME : FOES[k];
@@ -2670,7 +2693,7 @@ let hpShown = HP_MAX;
 function renderScore() {
   // en duel : mes touches / les siennes ; à 3 : les touches reçues par chacun
   const pip = (sel, n) => [...$(sel).children].forEach((p, i) => { p.classList.toggle('on', i < Math.floor(n)); p.classList.toggle('half', i === Math.floor(n) && n % 1 >= 0.5); });
-  if (trio()) { pip('#pipsMe', me.taken); pip('#pipsThem', opp.taken); pip('#pipsThem2', opp2.taken); pip('#pipsThem3', opp3.taken); pip('#pipsThem4', opp4.taken); }
+  if (trio()) { pip('#pipsMe', me.taken); pip('#pipsThem', opp.taken); pip('#pipsThem2', opp2.taken); pip('#pipsThem3', opp3.taken); pip('#pipsThem4', opp4.taken); pip('#pipsThem5', opp5.taken); }
   else { pip('#pipsMe', opp.taken); pip('#pipsThem', me.taken); }
   const hp = Math.max(0, HP_MAX - me.taken * HP_MAX / WIN), el = $('#hp');
   $('#hpFill').style.width = (hp / HP_MAX * 100) + '%';
@@ -2702,14 +2725,14 @@ function resetMatch(k) {
   clearArrows();
   Object.assign(me, { x: 0, z: map.spawnZ, vx: 0, vz: 0, yaw: 0, pitch: 0.04, draw: 0, drawing: false, reload: 0, taken: 0 });
   Object.assign(opp, { x: 0, z: -map.spawnZ, tx: 0, tz: -map.spawnZ, vx: 0, vz: 0, yaw: 0, tyaw: 0, pitch: 0.04, tpitch: 0.04, draw: 0, nock: true, taken: 0 });
-  Object.assign(opp2, { vx: 0, vz: 0, pitch: 0.04, tpitch: 0.04, draw: 0, nock: true, taken: 0 }); Object.assign(opp3, { vx: 0, vz: 0, pitch: 0.04, tpitch: 0.04, draw: 0, nock: true, taken: 0 }); Object.assign(opp4, { vx: 0, vz: 0, pitch: 0.04, tpitch: 0.04, draw: 0, nock: true, taken: 0 });
+  Object.assign(opp2, { vx: 0, vz: 0, pitch: 0.04, tpitch: 0.04, draw: 0, nock: true, taken: 0 }); Object.assign(opp3, { vx: 0, vz: 0, pitch: 0.04, tpitch: 0.04, draw: 0, nock: true, taken: 0 }); Object.assign(opp4, { vx: 0, vz: 0, pitch: 0.04, tpitch: 0.04, draw: 0, nock: true, taken: 0 }); Object.assign(opp5, { vx: 0, vz: 0, pitch: 0.04, tpitch: 0.04, draw: 0, nock: true, taken: 0 });
   if (mode !== 'online') { nPlayers = 2; foes = [FOES.opp]; FOES.opp.peer = null; teams = null; }
   if (trio()) {
     const sp = spawnOf(mySlot); Object.assign(me, { x: sp.x, z: sp.z, yaw: sp.yaw }); resolveMove(me);
     for (const f of foes) { const q = spawnOf(f.slot); Object.assign(f.s, { x: q.x, z: q.z, tx: q.x, tz: q.z, yaw: q.yaw, tyaw: q.yaw }); }
   }
   for (const A of archers) { A.root.rotation.z = 0; A.root.position.y = 0; }
-  $('#side2').hidden = !trio(); $('#side3').hidden = nPlayers < 4; $('#side4').hidden = nPlayers < 5; $('.vs').hidden = trio(); opp2A.root.visible = trio(); opp3A.root.visible = nPlayers >= 4; opp4A.root.visible = nPlayers >= 5;
+  $('#side2').hidden = !trio(); $('#side3').hidden = nPlayers < 4; $('#side4').hidden = nPlayers < 5; $('#side5').hidden = nPlayers < 6; $('#score').classList.toggle('many', nPlayers >= 5); $('.vs').hidden = trio(); opp2A.root.visible = trio(); opp3A.root.visible = nPlayers >= 4; opp4A.root.visible = nPlayers >= 5; opp5A.root.visible = nPlayers >= 6;
   $('#score .side.me').hidden = false; $('#score .side.them').hidden = false; $('#spec').hidden = true; specIdx = 0; wasDeadSpec = false;
   Object.assign(bot, { tx: 0, tz: -map.spawnZ, moveT: 0, shootT: hardBot() ? rand(0.6, 1) : rand(1.4, 2.2), drawing: false, reload: 0, hold: 0, stuck: 0, swingHit: 0 });
   me.swingHit = 0;
@@ -2720,14 +2743,14 @@ function resetMatch(k) {
   // couleurs et noms : en ligne, ceux du salon (numéro et pseudo de chacun) ; sinon les couleurs d'origine
   if (mode === 'online') {
     const L = lobbyPlayers(), nOf = id => L.findIndex(x => x.id === id);
-    const map = { me: Math.max(0, nOf(myId)) % 5 };
-    for (const f of foes) { const i = nOf(f.peer); map[f.key] = (i < 0 ? f.slot : i) % 5; f.name = i < 0 ? f.name : L[i].name; }
-    for (const k of ['opp', 'opp2', 'opp3', 'opp4']) if (!(k in map)) map[k] = [0, 1, 2, 3, 4].find(i => !Object.values(map).includes(i));
-    if (teams) for (const k in teams) map[k] = teams[k]; // 2v2 : même couleur pour les deux coéquipiers (vert d'eau contre rouge)
+    const map = { me: Math.max(0, nOf(myId)) % 6 };
+    for (const f of foes) { const i = nOf(f.peer); map[f.key] = (i < 0 ? f.slot : i) % 6; f.name = i < 0 ? f.name : L[i].name; }
+    for (const k of ['opp', 'opp2', 'opp3', 'opp4', 'opp5']) if (!(k in map)) map[k] = [0, 1, 2, 3, 4, 5].find(i => !Object.values(map).includes(i));
+    if (teams) for (const k in teams) map[k] = teams[k]; // en équipes : même couleur pour tous les coéquipiers (vert d'eau, rouge, jaune)
     applyColors(map);
-  } else { applyColors(null); FOES.opp.name = 'Rouge'; FOES.opp2.name = 'Jaune'; FOES.opp3.name = 'Violet'; FOES.opp4.name = 'Bleu'; }
+  } else { applyColors(null); FOES.opp.name = 'Rouge'; FOES.opp2.name = 'Jaune'; FOES.opp3.name = 'Violet'; FOES.opp4.name = 'Bleu'; FOES.opp5.name = 'Rose'; }
   $('#themName').textContent = mode === 'bot' ? 'Bot' : mode === 'online' ? FOES.opp.name : 'Rival';
-  $('#them2Name').textContent = FOES.opp2.name; $('#them3Name').textContent = FOES.opp3.name; $('#them4Name').textContent = FOES.opp4.name;
+  $('#them2Name').textContent = FOES.opp2.name; $('#them3Name').textContent = FOES.opp3.name; $('#them4Name').textContent = FOES.opp4.name; $('#them5Name').textContent = FOES.opp5.name;
   for (const k in tags) { const f = FOES[k]; tags[k].visible = mode === 'online' && foes.includes(f); setTag(tags[k], f.name, PALETTE[colorOf[k]].css); }
   if (mode === 'practice') {
     phase = 'fight'; cd = 0; big('Entraînement', 1.0, 'var(--ember)');
@@ -2754,8 +2777,8 @@ function finish() {
   setTimeout(() => {
     if (phase !== 'over') return;
     $('#overTitle').textContent = title; $('#overTitle').style.color = color;
-    $('#overEyebrow').textContent = (teams ? 'Fin du 2 contre 2' : nPlayers >= 4 ? 'Fin du chacun pour soi' : 'Fin du duel') + (headshot ? ' · tir à la tête' : '');
-    $('#overScore').textContent = teams ? (standing.length ? `Équipe gagnante : ${[ME, ...foes].filter(e => teams[e.key] === teams[standing[0].key]).map(e => e.name).join(' et ')}` : 'Personne ne reste debout') : trio() ? (standing.length ? `Dernier debout : ${standing[0].name}` : 'Personne ne reste debout')
+    $('#overEyebrow').textContent = (teams ? 'Fin du ' + TEAM[teamGame][2] : nPlayers >= 4 ? 'Fin du chacun pour soi' : 'Fin du duel') + (headshot ? ' · tir à la tête' : '');
+    $('#overScore').textContent = teams ? (standing.length ? `Équipe gagnante : ${andJoin([ME, ...foes].filter(e => teams[e.key] === teams[standing[0].key]).map(e => e.name))}` : 'Personne ne reste debout') : trio() ? (standing.length ? `Dernier debout : ${standing[0].name}` : 'Personne ne reste debout')
       : `Toi ${String(opp.taken).replace('.', ',')} – ${String(me.taken).replace('.', ',')} ${mode === 'bot' ? 'Bot' : 'Rival'}`;
     $('#btnAgain').textContent = mode === 'bot' ? 'Rejouer' : 'Revanche';
     $('#btnAgain').disabled = false;
@@ -3483,7 +3506,7 @@ function updateCamera(dt) {
     const bob = Math.sin(orbitT * 20) * 0.04;
     placeIdle();
     meA.setPose(0.05 + bob, 0, true); oppA.setPose(0.05 - bob, 0, true);
-    meA.laser(null); oppA.laser(null); opp2A.laser(null); opp3A.laser(null); opp4A.laser(null);
+    meA.laser(null); oppA.laser(null); opp2A.laser(null); opp3A.laser(null); opp4A.laser(null); opp5A.laser(null);
   }
   if (Math.abs(camera.fov - fov) > 0.01) { camera.fov = fov; camera.updateProjectionMatrix(); }
   sky.position.copy(camera.position);
@@ -3678,13 +3701,13 @@ function setGameMode(g) {
   // les tournantes se jouent en duel, en forêt 1 ou 2 : ni canyon, ni Japon, et la forêt 2 reste possible à 3
   const duels = gameMode !== 'classic';
   document.querySelectorAll('#lobby .mapsel [data-map=canyon], #lobby .mapsel [data-map=japan], #lobby .mapsel [data-map=forestXL]').forEach(b => { b.hidden = duels; });
-  $('#lobby [data-map=forestV2] small').textContent = duels ? 'symétrique' : 'symétrique, à 2 à 5';
-  $('#lobby [data-map=forestV3] small').textContent = duels ? 'troncs égaux' : 'troncs égaux, à 2 à 5';
+  $('#lobby [data-map=forestV2] small').textContent = duels ? 'symétrique' : 'symétrique, de 2 à 6';
+  $('#lobby [data-map=forestV3] small').textContent = duels ? 'troncs égaux' : 'troncs égaux, de 2 à 6';
   if (duels && !MAP_FAMILY[baseMap(mapKey)]) applyMap(DUO[mapKey] || 'forestV2');
   document.querySelectorAll('#lobby .wpnrow').forEach(r => { r.hidden = gameMode !== 'classic' || map.lateral; });
   refreshVariants();
 }
-function setTeamMode(m) { teamMode = m === '2v2' ? '2v2' : 'ffa'; document.querySelectorAll('.teamsel button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.tm === teamMode))); }
+function setTeamMode(m) { teamMode = TEAM[m] ? m : 'ffa'; document.querySelectorAll('.teamsel button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.tm === teamMode))); }
 function chooseTeamMode(m) {
   if (mode !== 'online' || !(phase === 'idle' || phase === 'over')) return;
   mapV = Math.max(mapV, ...peersNow.map(x => num(x.presence.mapV, 0))) + 1;
@@ -3704,7 +3727,7 @@ function lobbyPlayers() {
   const L = [{ id: myId, j: myJoin, nm: myName, me: true, rdy: net.rp }]
     .concat(peersNow.map(x => ({ id: x.peer, j: num(x.presence.j, 9e15), nm: cleanName(x.presence.nm), me: false, rdy: x.presence.rdy === true })));
   L.sort((a, b) => a.j - b.j || (a.id < b.id ? -1 : 1));
-  L.forEach((x, i) => { x.n = i + 1; x.col = L.length === 4 && teamMode === '2v2' ? (i < 2 ? 0 : 1) : i % 5; x.team = i < 2 ? 1 : 2; x.name = x.nm || 'Joueur ' + (i + 1); });
+  L.forEach((x, i) => { x.n = i + 1; const ts = TEAM[teamMode] && TEAM[teamMode][0] === L.length ? TEAM[teamMode][1] : 0; x.col = ts ? Math.floor(i / ts) : i % 6; x.team = ts ? Math.floor(i / ts) + 1 : 0; x.name = x.nm || 'Joueur ' + (i + 1); });
   return L;
 }
 async function enterRoom(code, creator) {
@@ -3715,7 +3738,7 @@ async function enterRoom(code, creator) {
   catch (e) { nroom = null; joining = false; menuNote(e.message === 'full' ? 'Serveurs pleins, revenez plus tard' : "Connexion impossible pour l'instant. Vérifie ta connexion internet et réessaie."); return; }
   joining = false; code = nroom.code;
   menuNote('');
-  mode = 'online'; roomCode = code; peersNow = []; FOES.opp.peer = FOES.opp2.peer = FOES.opp3.peer = FOES.opp4.peer = null; foes = [FOES.opp]; nPlayers = 2;
+  mode = 'online'; roomCode = code; peersNow = []; FOES.opp.peer = FOES.opp2.peer = FOES.opp3.peer = FOES.opp4.peer = FOES.opp5.peer = null; foes = [FOES.opp]; nPlayers = 2;
   net = { rp: false, tok: '', started: '' }; lastSent = '';
   mapV = creator ? 1 : 0; // la carte choisie par le créateur l'emporte au départ
   subs = [
@@ -3735,7 +3758,7 @@ function leaveRoom() {
   tourStop();
   subs.forEach(u => { try { u(); } catch (e) {} }); subs = [];
   if (nroom) nroom.leave().catch(() => {});
-  nroom = null; peersNow = []; FOES.opp.peer = FOES.opp2.peer = FOES.opp3.peer = FOES.opp4.peer = null; foes = [FOES.opp]; nPlayers = 2; mode = null; phase = 'idle';
+  nroom = null; peersNow = []; FOES.opp.peer = FOES.opp2.peer = FOES.opp3.peer = FOES.opp4.peer = FOES.opp5.peer = null; foes = [FOES.opp]; nPlayers = 2; mode = null; phase = 'idle';
   clearArrows(); setPlayingHud(false); showPanel('#menu');
 }
 const inGame = () => mode === 'online' && phase !== 'idle';
@@ -3744,7 +3767,7 @@ function onPeers(peers) {
   if (TOUR.on && phase === 'idle' && !TOUR.ids.every(id => id === myId || peers.some(p => p.peer === id))) {
     tourStop(); clearArrows(); setPlayingHud(false); net.rp = false; pres({ rdy: false }); showPanel('#lobby'); toast('Un joueur est parti', 2);
   }
-  peersNow = peers.filter(p => !p.sameTab && p.kind === 'viewer').sort((a, b) => a.peer < b.peer ? -1 : 1).slice(0, 4)
+  peersNow = peers.filter(p => !p.sameTab && p.kind === 'viewer').sort((a, b) => a.peer < b.peer ? -1 : 1).slice(0, 5)
     .map(p => ({ peer: p.peer, presence: p.presence || {} }));
   if (inGame()) {
     // un joueur de la partie est parti : en duel on revient au salon, à 3 il est éliminé
@@ -3768,7 +3791,7 @@ function syncLobbyChoice() {
   for (const x of peersNow) {
     const p = x.presence; if (!MAPS[p.mapK]) continue;
     const v = num(p.mapV, 0), w = wpnKey(p.wpn);
-    const g = p.gm === 'classic' || p.gm === 'roul' ? p.gm : 'tour', tm = p.tm === '2v2' ? '2v2' : 'ffa';
+    const g = p.gm === 'classic' || p.gm === 'roul' ? p.gm : 'tour', tm = TEAM[p.tm] ? p.tm : 'ffa';
     if (v > mapV || (v === mapV && (p.mapK !== mapKey || w !== weapon || g !== gameMode || tm !== teamMode) && x.peer < myId)) { mapV = v; setWeapon(w); applyMap(p.mapK); setGameMode(g); setTeamMode(tm); }
   }
 }
@@ -3892,24 +3915,24 @@ function evaluateReady() {
     const lead = toks[0] === net.tok ? { mapK: mapKey, wpn: weapon, gm: gameMode, tm: teamMode } : ps.find(p => p.tok === toks[0]);
     if (lead.gm !== 'classic' && toks.length < 4) return startTour(toks.join('|'), lead.gm === 'roul' ? 'roul' : 'tour', lead.mapK); // à 4 : pas de tournante
     const m = menuMap(lead.mapK);
-    const k = toks.length === 5 ? PENTA[m] || 'forestP1' : toks.length === 4 ? QUAD[m] || 'forestQ1' : toks.length === 3 ? (m === 'japan' || m === 'forestXL' ? m : TRIO[m] || 'forestT1') : MAPS[m] && ['canyon', 'forestV2', 'forestV3'].includes(baseMap(m)) ? m : 'forestV2'; // à 3 : la forêt choisie en version à 3, la géante ou le Japon ; à 2 : forêt 1 sauf choix contraire
-    startOnline(toks.join('|') + (toks.length === 4 && lead.tm === '2v2' ? '|2v2' : ''), k, wpnKey(lead.wpn));
+    const k = toks.length === 6 ? HEXA[m] || 'forestH1' : toks.length === 5 ? PENTA[m] || 'forestP1' : toks.length === 4 ? QUAD[m] || 'forestQ1' : toks.length === 3 ? (m === 'japan' || m === 'forestXL' ? m : TRIO[m] || 'forestT1') : MAPS[m] && ['canyon', 'forestV2', 'forestV3'].includes(baseMap(m)) ? m : 'forestV2'; // à 3 : la forêt choisie en version à 3, la géante ou le Japon ; à 2 : forêt 1 sauf choix contraire
+    startOnline(toks.join('|') + (TEAM[lead.tm] && TEAM[lead.tm][0] === toks.length ? '|' + lead.tm : ''), k, wpnKey(lead.wpn));
   }
 }
 function startOnline(id, k, w) {
   net.rp = false; net.started = id;
   // participants : les joueurs présents dont le jeton fait partie de la partie ; la place de chacun suit l'ordre des jetons
-  const toks = id.split('|').filter(x => x !== '2v2'), duo = id.endsWith('|2v2');
+  const toks = id.split('|').filter(x => !TEAM[x]), tmode = id.split('|').find(x => TEAM[x]) || '';
   const parts = peersNow.filter(x => toks.includes(x.presence.tok)).sort((a, b) => toks.indexOf(a.presence.tok) - toks.indexOf(b.presence.tok));
   if (!parts.length && peersNow.length) parts.push(peersNow[0]);
-  nPlayers = clamp(parts.length + 1, 2, 5); mySlot = Math.max(0, toks.indexOf(net.tok));
-  foes = [FOES.opp, FOES.opp2, FOES.opp3, FOES.opp4].slice(0, nPlayers - 1);
+  nPlayers = clamp(parts.length + 1, 2, 6); mySlot = Math.max(0, toks.indexOf(net.tok));
+  foes = [FOES.opp, FOES.opp2, FOES.opp3, FOES.opp4, FOES.opp5].slice(0, nPlayers - 1);
   foes.forEach((f, i) => { f.peer = parts[i] ? parts[i].peer : null; f.slot = parts[i] ? Math.max(0, toks.indexOf(parts[i].presence.tok)) : i + 1; });
-  teams = null;
+  teams = null; teamGame = '';
   if (nPlayers >= 4) { // places dans l'ordre du salon (même ordre partout) ; en 2v2, les joueurs 1 et 2 partent côte à côte, face aux joueurs 3 et 4
     const L = lobbyPlayers().map(x => x.id), at = id => L.indexOf(id);
     if (L.length === nPlayers && [myId, ...foes.map(f => f.peer)].every(id => at(id) >= 0)) { mySlot = at(myId); foes.forEach(f => { f.slot = at(f.peer); }); }
-    if (duo && nPlayers === 4) { teams = { me: mySlot < 2 ? 0 : 1 }; foes.forEach(f => { teams[f.key] = f.slot < 2 ? 0 : 1; }); }
+    if (tmode && TEAM[tmode][0] === nPlayers) { const sz = TEAM[tmode][1]; teamGame = tmode; teams = { me: Math.floor(mySlot / sz) }; foes.forEach(f => { teams[f.key] = Math.floor(f.slot / sz); }); } // équipes de joueurs voisins
   }
   dealt = {};
   setWeapon(w);
@@ -4120,6 +4143,13 @@ function tourAdvance(winner) {
   }
   next.w = tourWeapon(); next.by = tourChooser(next); TOUR.cur = next;
 }
+// choix des équipes : à 4 (chacun pour soi ou 2 contre 2) et à 6 (chacun pour soi, 3 contre 3 ou 2 contre 2 contre 2)
+function showTeamsel(panel, n) {
+  const t = $(panel + ' .teamsel'), bs = [...t.querySelectorAll('button')];
+  bs.forEach(b => { b.hidden = b.dataset.tm !== 'ffa' && TEAM[b.dataset.tm][0] !== n; });
+  t.hidden = !bs.some(b => !b.hidden && b.dataset.tm !== 'ffa');
+  t.style.gridTemplateColumns = `repeat(${bs.filter(b => !b.hidden).length},1fr)`;
+}
 function renderLobby() {
   if (mode !== 'online') return;
   const n = peersNow.length, ok = n > 0, rdy = peersNow.filter(x => x.presence.rdy === true).length;
@@ -4131,26 +4161,26 @@ function renderLobby() {
   document.querySelectorAll('#lobby .modesel [data-gm=tour], #lobby .modesel [data-gm=roul]').forEach(b => { b.disabled = n >= 3; });
   if (n >= 3 && gameMode !== 'classic') setGameMode('classic');
   if (n >= 3 && !MAP_FAMILY[baseMap(menuMap(mapKey))]) applyMap('forestV2');
-  document.querySelectorAll('.teamsel').forEach(t => { t.hidden = n !== 3; });
+  showTeamsel('#lobby', n + 1);
   // qui est là : toi + les autres, et qui est prêt ; la partie part dès que tous ceux présents sont prêts
   const L = lobbyPlayers(), mine = L.find(x => x.me), esc = v => v.replace(/&/g, '&amp;').replace(/</g, '&lt;');
-  const slot = (x, i) => x ? `<div class="rslot on${x.rdy ? ' rdy' : ''}${x.me ? ' mine' : ''}" style="--pc:${PALETTE[x.col].css}"><i></i><b>${esc(x.name)}</b><small>${x.me ? 'Toi · ' : ''}${L.length === 4 && teamMode === '2v2' ? 'Équipe ' + x.team + ' · ' : ''}${x.rdy ? 'Prêt ✓' : 'Connecté'}</small></div>`
+  const slot = (x, i) => x ? `<div class="rslot on${x.rdy ? ' rdy' : ''}${x.me ? ' mine' : ''}" style="--pc:${PALETTE[x.col].css}"><i></i><b>${esc(x.name)}</b><small>${x.me ? 'Toi · ' : ''}${x.team ? 'Équipe ' + x.team + ' · ' : ''}${x.rdy ? 'Prêt ✓' : 'Connecté'}</small></div>`
     : `<div class="rslot"><i></i><b>Joueur ${i + 1}</b><small>En attente…</small></div>`;
-  $('#rslots').innerHTML = [0, 1, 2, 3, 4].map(i => slot(L[i], i)).join('');
+  $('#rslots').innerHTML = [0, 1, 2, 3, 4, 5].map(i => slot(L[i], i)).join('');
   $('#youAre').innerHTML = `Tu es <b style="color:${PALETTE[mine.col].css}">${esc(mine.name)}</b> (${PALETTE[mine.col].label})`;
   $('#nameIn').placeholder = 'Joueur ' + mine.n;
-  $('#rosterN').textContent = n + 1; $('#rosterN').classList.toggle('full', n === 4);
-  let s = !ok ? 'Seul pour l’instant : donne le numéro aux autres.' : gameMode !== 'classic' ? (gameMode === 'roul' ? 'Roulette : arme tirée à la roue à chaque manche. ' : 'Chaque manche, un des deux joueurs du duel choisit l’arme, à tour de rôle. ') + (n === 1 ? 'À 2 : manches en BO3 (deux manches gagnantes).' : 'À 3 : deux s’affrontent, le troisième regarde ; le gagnant reste. Deux duels gagnés de suite = victoire.') : n === 1 ? 'À 2 : la partie part dès que vous êtes prêts tous les deux. Pour jouer à plus de 2, attends tout le monde avant d’appuyer sur Prêt.' : n === 4 ? `Chacun pour soi à 5, dans la forêt ${baseMap(menuMap(mapKey)) === 'forestV3' ? 2 : 1}${isSnow(mapKey) ? ' enneigée' : ''}, la même pour les cinq, avec un radar.` : n === 3 ? (teamMode === '2v2' ? `2 contre 2 : ${L[0].name} et ${L[1].name} contre ${L[2].name} et ${L[3].name}` : 'Chacun pour soi à 4') + `, dans la forêt ${baseMap(menuMap(mapKey)) === 'forestV3' ? 2 : 1}${isSnow(mapKey) ? ' enneigée' : ''}, la même pour les quatre, avec un radar.` : `Classique à 3 : chacun pour soi, ${mapKey === 'japan' ? 'dans les jardins de temples' : mapKey === 'forestXL' ? 'dans la forêt géante' : `dans la forêt ${baseMap(menuMap(mapKey)) === 'forestV3' ? 2 : 1}${isSnow(mapKey) ? ' enneigée' : ''}, la même pour les trois`}, avec un radar.`;
+  $('#rosterN').textContent = n + 1; $('#rosterN').classList.toggle('full', n === 5);
+  let s = !ok ? 'Seul pour l’instant : donne le numéro aux autres.' : gameMode !== 'classic' ? (gameMode === 'roul' ? 'Roulette : arme tirée à la roue à chaque manche. ' : 'Chaque manche, un des deux joueurs du duel choisit l’arme, à tour de rôle. ') + (n === 1 ? 'À 2 : manches en BO3 (deux manches gagnantes).' : 'À 3 : deux s’affrontent, le troisième regarde ; le gagnant reste. Deux duels gagnés de suite = victoire.') : n === 1 ? 'À 2 : la partie part dès que vous êtes prêts tous les deux. Pour jouer à plus de 2, attends tout le monde avant d’appuyer sur Prêt.' : n === 5 ? (teamMode === '3v3' ? `3 contre 3 : ${andJoin(L.slice(0, 3).map(x => x.name))} contre ${andJoin(L.slice(3).map(x => x.name))}` : teamMode === '2v2v2' ? `2 contre 2 contre 2 : ${L[0].name} et ${L[1].name}, ${L[2].name} et ${L[3].name}, ${L[4].name} et ${L[5].name}` : 'Chacun pour soi à 6') + `, dans la forêt ${baseMap(menuMap(mapKey)) === 'forestV3' ? 2 : 1}${isSnow(mapKey) ? ' enneigée' : ''}, la même pour les six, avec un radar.` : n === 4 ? `Chacun pour soi à 5, dans la forêt ${baseMap(menuMap(mapKey)) === 'forestV3' ? 2 : 1}${isSnow(mapKey) ? ' enneigée' : ''}, la même pour les cinq, avec un radar.` : n === 3 ? (teamMode === '2v2' ? `2 contre 2 : ${L[0].name} et ${L[1].name} contre ${L[2].name} et ${L[3].name}` : 'Chacun pour soi à 4') + `, dans la forêt ${baseMap(menuMap(mapKey)) === 'forestV3' ? 2 : 1}${isSnow(mapKey) ? ' enneigée' : ''}, la même pour les quatre, avec un radar.` : `Classique à 3 : chacun pour soi, ${mapKey === 'japan' ? 'dans les jardins de temples' : mapKey === 'forestXL' ? 'dans la forêt géante' : `dans la forêt ${baseMap(menuMap(mapKey)) === 'forestV3' ? 2 : 1}${isSnow(mapKey) ? ' enneigée' : ''}, la même pour les trois`}, avec un radar.`;
   if (ok && rdy && !net.rp) s = n === 1 ? 'Ton adversaire est prêt : appuie sur Prêt pour lancer à 2.' : rdy === n ? `Les autres sont prêts : appuie sur Prêt pour lancer à ${n + 1}.` : rdy === 1 ? 'Un joueur est prêt.' : `${rdy} joueurs sont prêts.`;
   if (net.rp) s = ok ? `Prêt. On attend que ${n === 1 ? 'l’autre appuie' : 'les autres appuient'} aussi…` : 'Prêt. En attente d’un adversaire…';
   $('#lobbyStatus').textContent = s;
-  const b = $('#btnReady'); b.disabled = !ok || net.rp; b.textContent = net.rp ? 'En attente…' : n === 4 ? 'Prêt – lancer à 5' : n === 3 ? 'Prêt – lancer à 4' : n === 2 ? 'Prêt – lancer à 3' : n === 1 ? 'Prêt – lancer à 2' : 'Prêt';
+  const b = $('#btnReady'); b.disabled = !ok || net.rp; b.textContent = net.rp ? 'En attente…' : n === 5 ? 'Prêt – lancer à 6' : n === 4 ? 'Prêt – lancer à 5' : n === 3 ? 'Prêt – lancer à 4' : n === 2 ? 'Prêt – lancer à 3' : n === 1 ? 'Prêt – lancer à 2' : 'Prêt';
 }
 function renderOverStatus() {
   if (mode === 'bot') { $('#overStatus').textContent = ''; return; }
   if (mode !== 'online') return;
   let s = '';
-  document.querySelectorAll('#over .teamsel').forEach(t => { t.hidden = peersNow.length !== 3; });
+  showTeamsel('#over', peersNow.length + 1);
   if (!peersNow.length) s = 'Tes adversaires ont quitté la partie.';
   else s = `${peersNow.length + 1} joueurs dans le salon. `;
   if (peersNow.length && net.rp) s += 'En attente de la réponse des autres…';
@@ -4277,7 +4307,7 @@ function renderThermal() {
 function frame(now) {
   const dt = Math.min(0.05, Math.max(0, (now - last) / 1000)); last = now; t += dt;
   targetG.visible = mode === 'practice'; oppA.root.visible = mode !== 'practice';
-  opp2A.root.visible = mode === 'online' && trio() && phase !== 'idle'; opp3A.root.visible = mode === 'online' && nPlayers >= 4 && phase !== 'idle'; opp4A.root.visible = mode === 'online' && nPlayers >= 5 && phase !== 'idle';
+  opp2A.root.visible = mode === 'online' && trio() && phase !== 'idle'; opp3A.root.visible = mode === 'online' && nPlayers >= 4 && phase !== 'idle'; opp4A.root.visible = mode === 'online' && nPlayers >= 5 && phase !== 'idle'; opp5A.root.visible = mode === 'online' && nPlayers >= 6 && phase !== 'idle';
   updatePhase(dt);
   if (mode && phase !== 'idle') { updateMe(dt); updateOpp(dt); }
   updateArrows(dt); updateSplash(dt); updatePaint(dt); updateBlasts(dt); updatePetals(dt);
