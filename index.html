@@ -70,6 +70,8 @@ body{position:fixed;inset:0;touch-action:none;-webkit-user-select:none;user-sele
 .them2{color:#e8b93a}
 .mapsel button:disabled{opacity:.35;cursor:default}
 .mapsel button[hidden]{display:none}
+.mapvar{margin-top:-4px}
+.mapvar button{text-align:center}
 #lobby .mapsel,#over .mapsel{grid-template-columns:repeat(2,1fr)}
 .vs{color:var(--mute);font-size:12px;letter-spacing:.12em}
 
@@ -601,6 +603,9 @@ let weapon = 'bow';
 try { weapon = wpnKey(localStorage.getItem('duelarc-wpn')); } catch (e) {}
 let map = MAPS.canyon;
 let mapKey = 'canyon';
+MAPS.forestV2s = { ...MAPS.forestV2, key: 'forestV2s', snow: true }; MAPS.forestV3s = { ...MAPS.forestV3, key: 'forestV3s', snow: true }; // versions neige
+const MAP_FAMILY = { forestV2: ['forestV2', 'forestV2s'], forestV3: ['forestV3', 'forestV3s'] }; // on choisit la forêt, puis sa version
+const baseMap = k => k === 'forestV2s' ? 'forestV2' : k === 'forestV3s' ? 'forestV3' : k, isSnow = k => k === 'forestV2s' || k === 'forestV3s';
 try { const k = localStorage.getItem('duelarc-map2') || localStorage.getItem('duelarc-map'); if (k === 'forest') mapKey = 'forestV2'; else if (MAPS[k]) mapKey = k; } catch (e) {}
 
 // ---------- renderer
@@ -632,12 +637,57 @@ const SKY = {
   canyon: skyTex([[0, '#11132e'], [0.3, '#36284f'], [0.44, '#a85462'], [0.49, '#f0a46a'], [0.505, '#f7c27e'], [0.53, '#b4685a'], [1, '#2a1c2c']]),
   get forestXL() { return this.forestV2; },
   get forestV3() { return this.forestV2; },
+  get forestV3s() { return this.forestV2s; },
+  forestV2s: skyTex([[0, '#6f7f92'], [0.3, '#a7b4c3'], [0.46, '#dfe6ee'], [0.5, '#eef2f6'], [0.53, '#c9d3dd'], [1, '#8c96a0']]), // ciel de neige, gris clair
   japan: skyTex([[0, '#2b2b5a'], [0.28, '#6c5a8e'], [0.42, '#c98aa6'], [0.49, '#f4c7a1'], [0.51, '#f6d5b5'], [0.54, '#c9a7a8'], [1, '#3a2c33']]),
   forestV2: skyTex([[0, '#2c4a5e'], [0.3, '#5f8796'], [0.46, '#b9cbb6'], [0.5, '#d8dfc2'], [0.53, '#93a796'], [1, '#33402f']]),
 };
+// flocons : de petits points blancs qui tombent doucement en ondulant, dans une boîte qui suit la caméra
+const FLAKES = 1600, FLAKE_BOX = 32, FLAKE_H = 16, flakePos = new Float32Array(FLAKES * 3), flakeV = new Float32Array(FLAKES), flakeP = new Float32Array(FLAKES);
+for (let i = 0; i < FLAKES; i++) { flakePos[i * 3] = (Math.random() - 0.5) * FLAKE_BOX; flakePos[i * 3 + 1] = Math.random() * FLAKE_H; flakePos[i * 3 + 2] = (Math.random() - 0.5) * FLAKE_BOX; flakeV[i] = 0.7 + Math.random() * 0.8; flakeP[i] = Math.random() * 6.28; }
+const flakeGeo = new T.BufferGeometry(); flakeGeo.setAttribute('position', new T.BufferAttribute(flakePos, 3));
+const snowFx = new T.Group(); snowFx.visible = false;
+const flakeTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 32; const g = c.getContext('2d'), gr = g.createRadialGradient(16, 16, 0, 16, 16, 16); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.5, 'rgba(255,255,255,.8)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, 32, 32); return new T.CanvasTexture(c); })();
+const flakes = new T.Points(flakeGeo, new T.PointsMaterial({ color: 0xffffff, size: 0.075, map: flakeTex, transparent: true, depthWrite: false })); flakes.frustumCulled = false; snowFx.add(flakes);
+// traces de pas laissées par chaque joueur dans la neige ; elles se recouvrent peu à peu (25 s)
+const FEET = 700, FOOT_LIFE = 25, footBorn = new Float32Array(FEET).fill(-1e4), footCol = new T.Color(), footFresh = new T.Color(0x8796a8), footOld = new T.Color(0xedf1f6), footDummy = new T.Object3D(), walkers = new Map();
+const feetMesh = new T.InstancedMesh(new T.PlaneGeometry(0.12, 0.27).rotateX(-Math.PI / 2), new T.MeshLambertMaterial({ color: 0xffffff, polygonOffset: true, polygonOffsetFactor: -2 }), FEET);
+feetMesh.instanceMatrix.setUsage(T.DynamicDrawUsage); feetMesh.frustumCulled = false; snowFx.add(feetMesh);
+let footIdx = 0, footFade = 0;
+function clearFeet() { footBorn.fill(-1e4); walkers.clear(); footDummy.scale.setScalar(0); footDummy.updateMatrix(); for (let i = 0; i < FEET; i++) feetMesh.setMatrixAt(i, footDummy.matrix); feetMesh.instanceMatrix.needsUpdate = true; footDummy.scale.setScalar(1); }
+function updateSnow(dt) {
+  if (!snowFx.visible) return;
+  const c = camera.position, h = FLAKE_BOX / 2;
+  for (let i = 0; i < FLAKES; i++) {
+    let x = flakePos[i * 3], y = flakePos[i * 3 + 1], z = flakePos[i * 3 + 2];
+    y -= flakeV[i] * dt; x += Math.sin(t * 0.8 + flakeP[i]) * 0.25 * dt; z += Math.cos(t * 0.6 + flakeP[i]) * 0.15 * dt;
+    if (y < 0) y += FLAKE_H;
+    x = c.x + ((((x - c.x) + h) % FLAKE_BOX) + FLAKE_BOX) % FLAKE_BOX - h; z = c.z + ((((z - c.z) + h) % FLAKE_BOX) + FLAKE_BOX) % FLAKE_BOX - h;
+    flakePos[i * 3] = x; flakePos[i * 3 + 1] = y; flakePos[i * 3 + 2] = z;
+  }
+  flakeGeo.attributes.position.needsUpdate = true;
+  // un pas tous les 65 cm, pied gauche puis pied droit, dans le sens de la marche
+  if (mode && phase !== 'idle') for (const e of [ME, ...foes]) {
+    if (isDead(e) || (TOUR.on && e.slot === 2) || (e === ME && TOUR.on && mySlot === 2)) continue;
+    const s = e.s, w = walkers.get(e.key) || { x: s.x, z: s.z, d: 0, side: 1 }; walkers.set(e.key, w);
+    const dx = s.x - w.x, dz = s.z - w.z, step = Math.hypot(dx, dz); w.x = s.x; w.z = s.z;
+    if (step > 2) continue; w.d += step;
+    if (w.d < 0.65 || step < 1e-4) continue;
+    w.d = 0; w.side = -w.side; const yaw = Math.atan2(dx, dz);
+    footDummy.position.set(s.x + Math.cos(yaw) * 0.11 * w.side, 0.035, s.z - Math.sin(yaw) * 0.11 * w.side); footDummy.rotation.set(0, yaw, 0); footDummy.updateMatrix();
+    feetMesh.setMatrixAt(footIdx, footDummy.matrix); feetMesh.setColorAt(footIdx, footFresh); footBorn[footIdx] = t; footIdx = (footIdx + 1) % FEET; feetMesh.instanceMatrix.needsUpdate = true;
+    if (feetMesh.instanceColor) feetMesh.instanceColor.needsUpdate = true;
+  }
+  if ((footFade -= dt) <= 0) { // les traces s'effacent sous la neige qui tombe
+    footFade = 0.3;
+    for (let i = 0; i < FEET; i++) { const a = (t - footBorn[i]) / FOOT_LIFE; if (a < 0 || a > 1.2) continue; feetMesh.setColorAt(i, footCol.copy(footFresh).lerp(footOld, Math.min(1, a))); }
+    if (feetMesh.instanceColor) feetMesh.instanceColor.needsUpdate = true;
+  }
+}
 const skyMat = new T.MeshBasicMaterial({ map: SKY.canyon, side: T.BackSide, fog: false, depthWrite: false });
 const sky = new T.Mesh(new T.SphereGeometry(380, 24, 16), skyMat);
 sky.renderOrder = -1; scene.add(sky);
+scene.add(snowFx); feetMesh.setColorAt(0, footOld); clearFeet();
 scene.fog = new T.Fog(0xb4685a, 40, 200);
 const hemi = new T.HemisphereLight(0xffd8b8, 0x3b2a44, 0.95); scene.add(hemi);
 const sunL = new T.DirectionalLight(0xffb27a, 0.95); sunL.position.set(-60, 35, -20); scene.add(sunL);
@@ -731,6 +781,7 @@ const canyonG = new T.Group(); scene.add(canyonG);
 // ---------- map 2 : forêt (symétrique par rotation de 180° pour que les deux joueurs aient la même carte)
 const forestV2G = new T.Group(); scene.add(forestV2G); forestV2G.visible = false;
 const forestV3G = new T.Group(); scene.add(forestV3G); forestV3G.visible = false;
+const SNOW = { set: () => {} }; // rempli avec la forêt : passe ses deux versions en neige ou non
 {
   // forêt de départ : elle n'est plus jouable, mais la forêt 1 en reprend la moitié sud ; tout est tiré dans le même ordre pour garder les mêmes arbres
   const forestG = new T.Group(), base = [];
@@ -881,6 +932,30 @@ const forestV3G = new T.Group(); scene.add(forestV3G); forestV3G.visible = false
     OBST.forestV3.push({ ...o, r: o.r * k, tris: o.tris.map((v, i) => i % 3 === 1 ? v : (i % 3 ? o.z : o.x) + (v - (i % 3 ? o.z : o.x)) * k) });
   }
   gridObstacles(OBST.forestV3);
+  OBST.forestV2s = OBST.forestV2; OBST.forestV3s = OBST.forestV3;
+
+  // neige : sol blanc, chemin et herbes cachés, mousse des rochers enneigée, et une couche blanche sur le haut de chaque feuillage
+  const snowGround = std(0xedf1f6, { roughness: 1 }), snowCapM = std(0xf5f8fc, { roughness: .9 }), mossGreen = mossM.color.getHex(), caps = [], swaps = [], hides = [], crowns = [];
+  for (const G of [forestV2G, forestV3G]) G.traverse(m => {
+    if (m.isInstancedMesh) { hides.push(m); return; }
+    if (!m.isMesh) return;
+    if (m.material === groundM) swaps.push(m);
+    else if (m.material === path.material) hides.push(m);
+    const ty = m.geometry.type, p = m.geometry.parameters || {};
+    if ((ty === 'ConeGeometry' && p.radius > 0.4) || ty === 'IcosahedronGeometry') crowns.push(m);
+  });
+  for (const m of crowns) {
+    const p = m.geometry.parameters, c = new T.Mesh(m.geometry, snowCapM);
+    if (m.geometry.type === 'ConeGeometry') { c.scale.set(0.78, 0.7, 0.78); c.position.y = p.height * 0.15 + 0.03; } // même pointe, 70 % du haut, un peu plus large que l'étage
+    else { c.scale.set(1.08, 0.55, 1.08); c.position.y = p.radius * 0.62; }                                            // calotte sur la boule de feuilles
+    c.visible = false; m.add(c); caps.push(c);
+  }
+  SNOW.set = on => {
+    for (const m of swaps) m.material = on ? snowGround : groundM;
+    for (const m of hides) m.visible = !on;
+    for (const c of caps) c.visible = on;
+    mossM.color.setHex(on ? 0xf0f4f8 : mossGreen);
+  };
 }
 
 // ---------- map 3 : forêt géante du 1v1v1 (même graine chez tous les joueurs : mêmes arbres au même endroit).
@@ -1212,6 +1287,8 @@ let practicePrevMap = null;
 
 const MAPLOOK = {
   get forestV3() { return this.forestV2; },
+  get forestV3s() { return this.forestV2s; },
+  forestV2s: { fog: 0xd9e0e8, near: 8, far: 66, hs: 0xf2f6ff, hg: 0x8d98a6, sun: 0xfff4e6, sunI: 0.72 },
   canyon: { fog: 0xb4685a, near: 40, far: 200, hs: 0xffd8b8, hg: 0x3b2a44, sun: 0xffb27a, sunI: 0.95 },
   forestV2: { fog: 0x9fb2a3, near: 10, far: 72, hs: 0xe4f0d6, hg: 0x3a4630, sun: 0xfff0c8, sunI: 0.8 },
   // grandes cartes du 1v1v1 : pas de brume sur la zone de jeu, seulement un voile très loin pour fondre l'horizon
@@ -1220,14 +1297,15 @@ const MAPLOOK = {
 };
 function applyMap(k) {
   mapKey = k; map = MAPS[k]; obstacles = OBST[k];
-  canyonG.visible = k === 'canyon'; forestV2G.visible = k === 'forestV2'; forestV3G.visible = k === 'forestV3'; bigForestG.visible = k === 'forestXL'; japanG.visible = k === 'japan';
+  canyonG.visible = k === 'canyon'; forestV2G.visible = baseMap(k) === 'forestV2'; forestV3G.visible = baseMap(k) === 'forestV3'; SNOW.set(isSnow(k)); snowFx.visible = isSnow(k); clearFeet(); bigForestG.visible = k === 'forestXL'; japanG.visible = k === 'japan';
   skyMat.map = SKY[k]; skyMat.needsUpdate = true;
   const L = MAPLOOK[k];
   scene.fog.color.setHex(L.fog); scene.fog.near = L.near; scene.fog.far = L.far;
   hemi.color.setHex(L.hs); hemi.groundColor.setHex(L.hg); sunL.color.setHex(L.sun); sunL.intensity = L.sunI;
   if (!map.big && mode !== 'practice') try { localStorage.setItem('duelarc-map2', k); } catch (e) {}
-  const shown = k === 'forestXL' ? 'forestV2' : k; // la forêt géante (1v1v1) apparaît comme « Forêt 1 » dans les menus
+  const shown = k === 'forestXL' ? 'forestV2' : baseMap(k); // la forêt géante (1v1v1) apparaît comme « Forêt 1 » dans les menus, une version neige comme sa forêt
   document.querySelectorAll('.mapsel button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.map === shown)));
+  refreshMapVariants();
   document.querySelectorAll('.wpnrow').forEach(r => { r.hidden = (map.lateral && !r.classList.contains('always')) || (gameMode !== 'classic' && !!r.closest('#lobby')); }); // le tir libre est toujours en forêt
   refreshVariants();
   dressArchers();
@@ -3461,7 +3539,7 @@ function setGameMode(g) {
   document.querySelectorAll('#lobby .mapsel [data-map=canyon], #lobby .mapsel [data-map=japan]').forEach(b => { b.hidden = duels; });
   $('#lobby [data-map=forestV2] small').textContent = duels ? 'symétrique' : 'symétrique · géante à 3';
   $('#lobby [data-map=forestV3] small').textContent = duels ? 'troncs égaux' : 'troncs égaux, à 2';
-  if (duels && mapKey !== 'forestV2' && mapKey !== 'forestV3') applyMap('forestV2');
+  if (duels && !MAP_FAMILY[baseMap(mapKey)]) applyMap('forestV2');
   document.querySelectorAll('#lobby .wpnrow').forEach(r => { r.hidden = gameMode !== 'classic' || map.lateral; });
   refreshVariants();
 }
@@ -3613,11 +3691,19 @@ function chooseMap(k) {
   if (!MAPS[k]) return;
   if (mode === 'online') {
     if (!(phase === 'idle' || phase === 'over')) return;
-    if ((k === 'canyon' || (k === 'forestV3' && gameMode === 'classic')) && peersNow.length > 1) return; // à 3 en classique : forêt 1 (la géante) ou Japon
+    if ((k === 'canyon' || (baseMap(k) === 'forestV3' && gameMode === 'classic')) && peersNow.length > 1) return; // à 3 en classique : forêt 1 (la géante) ou Japon
     if (k === 'japan' && peersNow.length < 2) return;
     mapV = Math.max(mapV, ...peersNow.map(x => num(x.presence.mapV, 0))) + 1;
     applyMap(k); pres({ mapK: k, wpn: weapon, mapV });
   } else applyMap(k);
+}
+// rangée « Version » sous chaque choix de carte : normale ou neige, pour les deux forêts
+function refreshMapVariants() {
+  const b = baseMap(mapKey === 'forestXL' ? 'forestV2' : mapKey), fam = MAP_FAMILY[b];
+  document.querySelectorAll('.mapvar').forEach(v => {
+    v.hidden = !fam || v.previousElementSibling.hidden; if (!fam) return;
+    v.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String((x.dataset.mv === 'snow') === isSnow(mapKey))));
+  });
 }
 // rangée « Variante » sous chaque choix d'arme : visible seulement pour une arme qui a des variantes
 function refreshVariants() {
@@ -3657,7 +3743,7 @@ function evaluateReady() {
     const toks = [net.tok, ...ps.map(p => p.tok)].sort();
     const lead = toks[0] === net.tok ? { mapK: mapKey, wpn: weapon, gm: gameMode } : ps.find(p => p.tok === toks[0]);
     if (lead.gm !== 'classic') return startTour(toks.join('|'), lead.gm === 'roul' ? 'roul' : 'tour', lead.mapK);
-    const k = toks.length === 3 ? (lead.mapK === 'japan' ? 'japan' : 'forestXL') : lead.mapK === 'canyon' || lead.mapK === 'forestV3' ? lead.mapK : 'forestV2'; // à 3 : forêt géante ou Japon ; à 2 : forêt 1 sauf choix contraire
+    const k = toks.length === 3 ? (lead.mapK === 'japan' ? 'japan' : 'forestXL') : MAPS[lead.mapK] && ['canyon', 'forestV2', 'forestV3'].includes(baseMap(lead.mapK)) ? lead.mapK : 'forestV2'; // à 3 : forêt géante ou Japon ; à 2 : forêt 1 sauf choix contraire
     startOnline(toks.join('|'), k, wpnKey(lead.wpn));
   }
 }
@@ -3691,7 +3777,7 @@ function startTour(base, gm, k) {
   // participants dans l'ordre des jetons (même ordre partout)
   const ids = base.split('|').map(tk => tk === net.tok ? myId : (peersNow.find(x => x.presence.tok === tk) || {}).peer).filter(Boolean);
   if (ids.length < 2) return;
-  Object.assign(TOUR, { on: true, mode: gm === 'roul' ? 'roul' : 'tour', map: k === 'forestV3' ? 'forestV3' : 'forestV2', picked: {}, base, ids, n: ids.length, round: 0, champ: null, wins: 0, sc: {}, title: '', big: false });
+  Object.assign(TOUR, { on: true, mode: gm === 'roul' ? 'roul' : 'tour', map: MAPS[k] && MAP_FAMILY[baseMap(k)] ? k : 'forestV2', picked: {}, base, ids, n: ids.length, round: 0, champ: null, wins: 0, sc: {}, title: '', big: false });
   // ordre du salon : il départage ceux qui n'ont pas encore choisi l'arme (voir tourChooser)
   TOUR.order = lobbyPlayers().map(x => x.id).filter(id => ids.includes(id));
   TOUR.cur = tourPair(); TOUR.cur.w = tourWeapon(); TOUR.cur.by = tourChooser(TOUR.cur);
@@ -3914,7 +4000,13 @@ function renderOverStatus() {
 }
 
 // ---------- buttons
-document.querySelectorAll('.mapsel button').forEach(b => b.addEventListener('click', () => chooseMap(b.dataset.map)));
+document.querySelectorAll('.mapsel').forEach(sel => {
+  const v = document.createElement('div'); v.className = 'seg mapvar'; v.setAttribute('role', 'group'); v.setAttribute('aria-label', 'Version de la forêt'); v.hidden = true;
+  v.innerHTML = '<button data-mv="normal">Normale<small>verte</small></button><button data-mv="snow">Neige<small>neige, traces de pas, flocons</small></button>'; sel.after(v);
+  v.querySelectorAll('button').forEach(x => x.addEventListener('click', () => { const b = baseMap(mapKey === 'forestXL' ? 'forestV2' : mapKey); if (MAP_FAMILY[b]) chooseMap(MAP_FAMILY[b][x.dataset.mv === 'snow' ? 1 : 0]); }));
+});
+document.querySelectorAll('.mapsel button').forEach(b => b.addEventListener('click', () => chooseMap(baseMap(mapKey) === b.dataset.map ? mapKey : b.dataset.map))); // même forêt : on garde sa version
+refreshMapVariants();
 // chaque liste d'armes ne montre que les armes ; les variantes vont dans la rangée en dessous
 document.querySelectorAll('.wpnsel').forEach(sel => {
   sel.querySelectorAll('button').forEach(b => { if (familyOf(b.dataset.wpn) !== b.dataset.wpn) b.hidden = true; });
@@ -4028,7 +4120,7 @@ function frame(now) {
   if (mode && phase !== 'idle') { updateMe(dt); updateOpp(dt); }
   updateArrows(dt); updateSplash(dt); updatePaint(dt); updateBlasts(dt); updatePetals(dt);
   updateFlags(t);
-  updateCamera(dt);
+  updateCamera(dt); updateSnow(dt);
   netTick(now);
   drawHud();
   updateSmoke();

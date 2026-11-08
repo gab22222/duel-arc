@@ -46,6 +46,7 @@ Deux cartes :
 - **Tir à la tête** : quel que soit le mode et l'arme, quand on met une tête, en plus du « Tir à la tête ! », on entend le « Fahhh » (le vrai son, fichier `fhaaa.m4a`, chargé au premier toucher ; tant qu'il n'est pas chargé, une voix de synthèse le remplace).
 
 - **Forêt 2** (au choix en duel et dans les deux modes Tournante, à 2 comme à 3) : exactement la Forêt 1, sauf les troncs. Tous font 84,2 cm de large à hauteur de poitrine, soit 120 % de la largeur du personnage (70,2 cm). Chacun garde sa forme, sa hauteur et sa place ; le feuillage, les rochers, le sol et les apparitions ne changent pas.
+- **Versions neige** des deux forêts : on choisit la forêt, puis sa version (**Normale** ou **Neige**), contre le bot comme dans le salon (Classique et Tournantes). Mêmes arbres, rochers et obstacles, mais le sol est blanc (chemin et herbes sous la neige), le haut des sapins et des chênes et la mousse des rochers sont enneigés, le ciel et la brume sont gris clair, de petits flocons tombent en ondulant autour de soi, et chaque joueur laisse des traces de pas (pied gauche, pied droit) qui se recouvrent de neige en 25 s.
 
 Pour jouer : https://gab22222.github.io/duel-arc/
 
