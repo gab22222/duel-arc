@@ -269,12 +269,14 @@ p{margin:0}
         <button data-wpn="bow" aria-pressed="true">Arc</button>
         <button data-wpn="crossbow" aria-pressed="false">Arbalète</button>
         <button data-wpn="rifle" aria-pressed="false">Carabine</button>
+        <button data-wpn="carbine" aria-pressed="false">Carabine à mire</button>
         <button data-wpn="bat" aria-pressed="false">Batte</button>
         <button data-wpn="pistol" aria-pressed="false">Pistolet</button>
         <button data-wpn="revolver" aria-pressed="false">Revolver</button>
         <button data-wpn="deagle" aria-pressed="false">Deagle</button>
         <button data-wpn="vector" aria-pressed="false">Vector</button>
         <button data-wpn="m4" aria-pressed="false">M4</button>
+        <button data-wpn="scar" aria-pressed="false">SCAR</button>
         <button data-wpn="barrett" aria-pressed="false">Barrett</button>
         <button data-wpn="shotgun" aria-pressed="false">Pompe</button>
         <button data-wpn="beer" aria-pressed="false">Bière</button>
@@ -302,12 +304,14 @@ p{margin:0}
         <button data-wpn="bow" aria-pressed="true">Arc</button>
         <button data-wpn="crossbow" aria-pressed="false">Arbalète</button>
         <button data-wpn="rifle" aria-pressed="false">Carabine</button>
+        <button data-wpn="carbine" aria-pressed="false">Carabine à mire</button>
         <button data-wpn="bat" aria-pressed="false">Batte</button>
         <button data-wpn="pistol" aria-pressed="false">Pistolet</button>
         <button data-wpn="revolver" aria-pressed="false">Revolver</button>
         <button data-wpn="deagle" aria-pressed="false">Deagle</button>
         <button data-wpn="vector" aria-pressed="false">Vector</button>
         <button data-wpn="m4" aria-pressed="false">M4</button>
+        <button data-wpn="scar" aria-pressed="false">SCAR</button>
         <button data-wpn="barrett" aria-pressed="false">Barrett</button>
         <button data-wpn="shotgun" aria-pressed="false">Pompe</button>
         <button data-wpn="beer" aria-pressed="false">Bière</button>
@@ -351,12 +355,14 @@ p{margin:0}
         <button data-wpn="bow" aria-pressed="true">Arc</button>
         <button data-wpn="crossbow" aria-pressed="false">Arbalète</button>
         <button data-wpn="rifle" aria-pressed="false">Carabine</button>
+        <button data-wpn="carbine" aria-pressed="false">Carabine à mire</button>
         <button data-wpn="bat" aria-pressed="false">Batte</button>
         <button data-wpn="pistol" aria-pressed="false">Pistolet</button>
         <button data-wpn="revolver" aria-pressed="false">Revolver</button>
         <button data-wpn="deagle" aria-pressed="false">Deagle</button>
         <button data-wpn="vector" aria-pressed="false">Vector</button>
         <button data-wpn="m4" aria-pressed="false">M4</button>
+        <button data-wpn="scar" aria-pressed="false">SCAR</button>
         <button data-wpn="barrett" aria-pressed="false">Barrett</button>
         <button data-wpn="shotgun" aria-pressed="false">Pompe</button>
         <button data-wpn="beer" aria-pressed="false">Bière</button>
@@ -400,12 +406,14 @@ p{margin:0}
         <button data-wpn="bow" aria-pressed="true">Arc</button>
         <button data-wpn="crossbow" aria-pressed="false">Arbalète</button>
         <button data-wpn="rifle" aria-pressed="false">Carabine</button>
+        <button data-wpn="carbine" aria-pressed="false">Carabine à mire</button>
         <button data-wpn="bat" aria-pressed="false">Batte</button>
         <button data-wpn="pistol" aria-pressed="false">Pistolet</button>
         <button data-wpn="revolver" aria-pressed="false">Revolver</button>
         <button data-wpn="deagle" aria-pressed="false">Deagle</button>
         <button data-wpn="vector" aria-pressed="false">Vector</button>
         <button data-wpn="m4" aria-pressed="false">M4</button>
+        <button data-wpn="scar" aria-pressed="false">SCAR</button>
         <button data-wpn="barrett" aria-pressed="false">Barrett</button>
         <button data-wpn="shotgun" aria-pressed="false">Pompe</button>
         <button data-wpn="beer" aria-pressed="false">Bière</button>
@@ -478,12 +486,14 @@ const WPN = {
   bow: { kind: 'arrow', aimT: DRAW_T, zoomX: null },
   crossbow: { kind: 'bolt', aimT: RIFLE_AIM_T, zoomX: 2.5 },  // carreau : chute et vitesse de l'arc à fond, tue d'un coup
   rifle: { kind: 'bullet', aimT: RIFLE_AIM_T, zoomX: SCOPE_X },
+  carbine: { kind: 'bullet', aimT: RIFLE_AIM_T, zoomX: null, iron: true }, // la carabine sans lunette : on vise à la mire (hausse et guidon alignés sur le viseur)
   bat: { kind: 'melee', aimT: 0.15, zoomX: null, melee: true },     // batte : corps à corps, déplacements x3
   pistol: { kind: 'pistol', aimT: 0.15, zoomX: null, auto: true, rate: 0.25 }, // pistolet : tir continu tant qu'on maintient
   revolver: { kind: 'revolver', aimT: 0.15, zoomX: null, rate: 2 }, // revolver : une balle toutes les 2 s, tête = mort, corps = 100 HP
   deagle: { kind: 'deagle', aimT: 0.15, zoomX: null, rate: 1.5 },   // Desert Eagle : une balle toutes les 1,5 s, tête = mort, corps = 150 HP
   vector: { kind: 'vector', aimT: 0.15, zoomX: null, auto: true, rate: 0.15 }, // Kriss Vector à laser : tir continu, 25 HP au corps, 100 HP à la tête
   m4: { kind: 'm4', aimT: 0.2, zoomX: null, auto: true, rate: 0.5 },             // M4 à laser : tir continu, une balle toutes les 0,5 s, tête = mort, corps = 100 HP
+  scar: { kind: 'scar', aimT: 0.2, zoomX: null, auto: true, rate: 0.5 },         // SCAR dorée (Fortnite, la première) : cadence et dégâts de la M4, sans laser
   barrett: { kind: 'barrett', aimT: 0.4, zoomX: 4, rate: 3 },                       // Barrett .50 : lunette x4, une balle toutes les 3 s, tue d'un coup où qu'elle touche
   shotgun: { kind: 'shotgun', aimT: 0.15, zoomX: null, rate: 1.2 },                  // fusil à pompe : 9 plombs en gerbe fixe, dégâts selon la distance
   beer: { kind: 'beer', aimT: 0.45, zoomX: null, rate: 1 },                          // bouteille de bière lancée : part en ligne droite, éclate au contact, tue d'un coup
@@ -515,12 +525,12 @@ function grenadeDamage(d) { return d <= 0.6 ? WIN : Math.max(0, WIN * (1 - (d - 
 // tous les plombs au but : 300 HP jusqu'à 6 m, puis de moins en moins (60 HP à 30 m, 20 HP à 50 m) ; un plomb dans la tête compte x1,5
 const SG_SPREAD = 0.045, SG_PELLETS = 9, SG_RANGE = 60;
 function sgTotal(d) { return d <= 6 ? WIN : d <= 30 ? WIN + (0.6 - WIN) * (d - 6) / 24 : Math.max(0.2, 0.6 - 0.4 * (d - 30) / 20); }
-const isBullet = k => k === 'bullet' || k === 'pistol' || k === 'revolver' || k === 'deagle' || k === 'vector' || k === 'm4' || k === 'barrett' || k === 'shotgun'; // pas de chute, pas de temps de vol
+const isBullet = k => k === 'bullet' || k === 'pistol' || k === 'revolver' || k === 'deagle' || k === 'vector' || k === 'm4' || k === 'scar' || k === 'barrett' || k === 'shotgun'; // pas de chute, pas de temps de vol
 const hasLaser = w => w === 'vector' || w === 'm4';
 const bigGun = k => k === 'revolver' || k === 'deagle'; // armes de poing à gros recul (visuel)
 // armes à feu qui acceptent un silencieux, et leur son de tir silencieux (un par arme)
-const SIL_SFX = { bullet: 'bsil', pistol: 'psil', revolver: 'rsil', deagle: 'dsil', vector: 'vsil', m4: 'msil', barrett: 'fsil', shotgun: 'ssil', minigun: 'zsil', grenade: 'gsil' };
-const kicks = k => k === 'pistol' || k === 'vector' || k === 'm4' || k === 'barrett' || k === 'shotgun' || k === 'beer' || k === 'grenade' || k === 'minigun' || k === 'dart' || isPaint(k) || bigGun(k); // (bière : le geste du lancer) // l'arme bouge au tir
+const SIL_SFX = { bullet: 'bsil', pistol: 'psil', revolver: 'rsil', deagle: 'dsil', vector: 'vsil', m4: 'msil', scar: 'hsil', barrett: 'fsil', shotgun: 'ssil', minigun: 'zsil', grenade: 'gsil' };
+const kicks = k => k === 'pistol' || k === 'vector' || k === 'm4' || k === 'scar' || k === 'barrett' || k === 'shotgun' || k === 'beer' || k === 'grenade' || k === 'minigun' || k === 'dart' || isPaint(k) || bigGun(k); // (bière : le geste du lancer) // l'arme bouge au tir
 // dégâts en « touches » (1 touche = 100 HP, WIN touches = mort)
 function hitDamage(a, head) {
   if (a.kind === 'pistol') return head ? 1 : 0.5;
@@ -1623,6 +1633,14 @@ function makeArcher(cloth, hoodCol, owner, fpv = false) { // fpv : seulement les
   for (const z of [-0.06, -0.38]) { const l = part(new T.CylinderGeometry(0.033, 0.03, 0.06, 8), steel, 0, 0.078, z); l.rotation.x = Math.PI / 2; }
   for (const z of [-0.14, -0.3]) part(new T.BoxGeometry(0.02, 0.05, 0.02), steel, 0, 0.045, z);
   const muzzle = new T.Vector3(0, 0.02, -0.88);
+  const rScope = rifle.children.slice(-5); // la lunette, ses deux bagues et ses deux montants
+  // carabine à mire : hausse à cran sur le boîtier, guidon au bout du canon ; le fond du cran et la pointe du guidon sont à la même hauteur (ligne de visée parallèle au canon)
+  const rIron = new T.Group(); rIron.visible = false; rifle.add(rIron);
+  const ipart = (geo, x, y, z) => { const m = new T.Mesh(geo, steel); m.position.set(x, y, z); rIron.add(m); return m; };
+  ipart(new T.BoxGeometry(0.03, 0.028, 0.012), 0, 0.049, -0.1);                                 // hausse : socle jusqu'au fond du cran
+  for (const sx of [-1, 1]) ipart(new T.BoxGeometry(0.009, 0.014, 0.012), sx * 0.0105, 0.07, -0.1); // et ses deux oreilles (cran de 1,2 cm)
+  ipart(new T.BoxGeometry(0.016, 0.012, 0.03), 0, 0.037, -0.835);                              // embase du guidon
+  ipart(new T.BoxGeometry(0.005, 0.02, 0.008), 0, 0.053, -0.84);                               // guidon (pointe à 6,3 cm)
   // arbalète en bois : crosse, rail, arc d'acier en travers, corde, petite lunette, carreau engagé
   const xbow = new T.Group(); xbow.position.copy(rifle.position); xbow.visible = false; upper.add(xbow);
   const xpart = (geo, mat, x, y, z) => { const m = new T.Mesh(geo, mat); m.position.set(x, y, z); xbow.add(m); return m; };
@@ -1729,6 +1747,28 @@ function makeArcher(cloth, hoodCol, owner, fpv = false) { // fpv : seulement les
   mpart(new T.BoxGeometry(0.022, 0.022, 0.05), anod, 0, -0.02, -0.27);                               // boîtier du laser
   mpart(new T.SphereGeometry(0.006, 8, 6), vEmit.material, 0, -0.02, -0.296);
   const m4LaserP = new T.Vector3(0, -0.02, -0.3), handMR = new T.Vector3(0, 0.1, -0.26), handML = new T.Vector3(0, 0.15, -0.56);
+  // SCAR dorée comme celle de Fortnite (la première, légendaire) : long boîtier carré, rail noir avec hausse et grand guidon,
+  // garde-main carré à rails, canon court et cache-flamme, chargeur droit, poignée pistolet, crosse repliable à busc
+  const scarG = new T.Group(); scarG.position.copy(rifle.position); scarG.visible = false; upper.add(scarG);
+  const goldM = std(0xd4a52a, { metalness: .55, roughness: .35 }), goldD = std(0xa67c1c, { metalness: .5, roughness: .45 }), scBlk = std(0x1a1a1c, { roughness: .7 });
+  const hpart = (geo, mat, x, y, z) => { const m = new T.Mesh(geo, mat); m.position.set(x, y, z); scarG.add(m); return m; };
+  hpart(new T.BoxGeometry(0.044, 0.058, 0.36), goldM, 0, 0.024, -0.12);                                  // boîtier supérieur
+  hpart(new T.BoxGeometry(0.024, 0.012, 0.38), scBlk, 0, 0.059, -0.12);                                  // rail
+  hpart(new T.BoxGeometry(0.022, 0.03, 0.02), scBlk, 0, 0.078, 0.03);                                    // hausse
+  hpart(new T.BoxGeometry(0.012, 0.04, 0.014), scBlk, 0, 0.081, -0.29);                                  // grand guidon
+  hpart(new T.BoxGeometry(0.03, 0.01, 0.012), scBlk, 0.03, 0.035, -0.2);                                 // levier d'armement
+  hpart(new T.BoxGeometry(0.038, 0.04, 0.16), goldD, 0, -0.024, -0.02);                                  // boîtier inférieur
+  hpart(new T.BoxGeometry(0.05, 0.05, 0.16), goldM, 0, 0.018, -0.36);                                    // garde-main
+  for (const sx of [-1, 1]) hpart(new T.BoxGeometry(0.004, 0.012, 0.14), scBlk, sx * 0.027, 0.018, -0.36); // rails du garde-main
+  hpart(new T.BoxGeometry(0.02, 0.008, 0.14), scBlk, 0, -0.011, -0.36);
+  const scBarrel = hpart(new T.CylinderGeometry(0.009, 0.009, 0.12, 8), scBlk, 0, 0.02, -0.5); scBarrel.rotation.x = Math.PI / 2;
+  const scFh = hpart(new T.CylinderGeometry(0.013, 0.013, 0.045, 8), scBlk, 0, 0.02, -0.58); scFh.rotation.x = Math.PI / 2; // cache-flamme
+  const scMag = hpart(new T.BoxGeometry(0.026, 0.12, 0.05), scBlk, 0, -0.1, -0.07); scMag.rotation.x = 0.12;     // chargeur droit
+  const scGrip = hpart(new T.BoxGeometry(0.03, 0.09, 0.036), scBlk, 0, -0.068, 0.06); scGrip.rotation.x = -0.35; // poignée
+  hpart(new T.BoxGeometry(0.008, 0.006, 0.05), goldD, 0, -0.05, 0.02);                                   // pontet
+  hpart(new T.BoxGeometry(0.034, 0.06, 0.16), goldD, 0, 0.012, 0.15);                                    // crosse
+  hpart(new T.BoxGeometry(0.03, 0.02, 0.1), scBlk, 0, 0.05, 0.14);                                       // busc
+  hpart(new T.BoxGeometry(0.038, 0.095, 0.02), scBlk, 0, 0, 0.235);                                      // plaque de couche
   // Barrett M82A1 noir : long garde-main ajouré, canon épais et gros frein de bouche à deux chambres en flèche,
   // lunette sur rail, gros chargeur droit, poignée pistolet, crosse avec plaque de couche épaisse, bipied replié
   const bwG = new T.Group(); bwG.position.copy(rifle.position); bwG.visible = false; upper.add(bwG);
@@ -1869,7 +1909,7 @@ function makeArcher(cloth, hoodCol, owner, fpv = false) { // fpv : seulement les
   // silencieux des autres armes à feu, au bout du canon : [arme, y, z du bout du canon, rayon, longueur]
   // (la balle part du même endroit qu'avant : le silencieux ne change que le bruit)
   const sils = [sil];
-  for (const [g, y, z, r, l] of [[rifle, 0.02, -0.87, 0.024, 0.26], [revG, 0.05, -0.22, 0.016, 0.13], [dgG, 0.056, -0.196, 0.021, 0.15], [vecG, 0.02, -0.45, 0.02, 0.18], [m4G, 0.018, -0.54, 0.02, 0.2],
+  for (const [g, y, z, r, l] of [[rifle, 0.02, -0.87, 0.024, 0.26], [revG, 0.05, -0.22, 0.016, 0.13], [dgG, 0.056, -0.196, 0.021, 0.15], [vecG, 0.02, -0.45, 0.02, 0.18], [m4G, 0.018, -0.54, 0.02, 0.2], [scarG, 0.02, -0.6, 0.02, 0.2],
     [bwG, 0.056, -0.975, 0.04, 0.36], [sgG, 0.042, -0.65, 0.026, 0.3], [mgG, 0, -0.62, 0.05, 0.3], [glG, 0.032, -0.48, 0.04, 0.24]]) {
     const m = new T.Mesh(new T.CylinderGeometry(r, r, l, 12), steel); m.rotation.x = Math.PI / 2; m.position.set(0, y, z - l / 2); m.visible = false; g.add(m); sils.push(m);
   }
@@ -1911,16 +1951,16 @@ function makeArcher(cloth, hoodCol, owner, fpv = false) { // fpv : seulement les
     const led = new T.Mesh(new T.SphereGeometry(0.005, 8, 6), irLed); led.position.set(0, 0.034 * k + 0.004, l / 2 - 0.03); G.add(led);
   }
   function setWeapon(w0) {
-    const ir = w0.endsWith('IR'), w = ir ? w0.slice(0, -2) : w0;
-    irSights.forEach(G => { G.visible = ir; });
+    const ir = w0.endsWith('IR'), iron = w0 === 'carbine', w = ir ? w0.slice(0, -2) : iron ? 'rifle' : w0; // la carabine à mire est la carabine sans lunette
+    irSights.forEach(G => { G.visible = ir; }); rScope.forEach(m => { m.visible = !iron; }); rIron.visible = iron;
     wpn = w; const bowOn = w === 'bow';
     bow.visible = quiver.visible = bowOn; quiverArrows.forEach(f => { f.visible = bowOn; });
     if (fpv) { quiver.visible = false; quiverArrows.forEach(f => { f.visible = false; }); }
-    blG.visible = w === 'blowgun'; brG.visible = w === 'boomerang'; suG.visible = w === 'shuriken'; rifle.visible = w === 'rifle'; xbow.visible = w === 'crossbow'; batSwing.visible = w === 'bat'; pistolG.visible = w === 'pistol'; revG.visible = w === 'revolver'; dgG.visible = w === 'deagle'; vecG.visible = w === 'vector'; m4G.visible = w === 'm4'; bwG.visible = w === 'barrett'; sgG.visible = w === 'shotgun'; bottle.visible = w === 'beer'; glG.visible = w === 'grenade'; mgG.visible = w === 'minigun'; pbG.visible = w === 'paintball'; psG.visible = w === 'psniper'; if (!hasLaser(w)) laser(null);
+    blG.visible = w === 'blowgun'; brG.visible = w === 'boomerang'; suG.visible = w === 'shuriken'; rifle.visible = w === 'rifle'; xbow.visible = w === 'crossbow'; batSwing.visible = w === 'bat'; pistolG.visible = w === 'pistol'; revG.visible = w === 'revolver'; dgG.visible = w === 'deagle'; vecG.visible = w === 'vector'; m4G.visible = w === 'm4'; scarG.visible = w === 'scar'; bwG.visible = w === 'barrett'; sgG.visible = w === 'shotgun'; bottle.visible = w === 'beer'; glG.visible = w === 'grenade'; mgG.visible = w === 'minigun'; pbG.visible = w === 'paintball'; psG.visible = w === 'psniper'; if (!hasLaser(w)) laser(null);
     if (bowOn) armL.set(shL, grip);
     else if (w === 'pistol' || bigGun(w)) { armL.set(shL, tmpA.copy(handP).add(tmpB.set(0, -0.03, 0.03))); armR.set(shR, handP); }
     else if (w === 'vector') { armL.set(shL, handVL); armR.set(shR, handVR); }
-    else if (w === 'm4') { armL.set(shL, handML); armR.set(shR, handMR); }
+    else if (w === 'm4' || w === 'scar') { armL.set(shL, handML); armR.set(shR, handMR); }
     else if (w === 'barrett') { armL.set(shL, handBL); armR.set(shR, handBR); }
     else if (w === 'shotgun') { armL.set(shL, handSL); armR.set(shR, handSR); }
     else if (w === 'grenade') { armL.set(shL, handGL); armR.set(shR, handGR); }
@@ -1976,7 +2016,7 @@ function makeArcher(cloth, hoodCol, owner, fpv = false) { // fpv : seulement les
     }
     // Barrett : énorme recul, l'arme remonte et recule dans l'épaule, le buste encaisse (purement visuel)
     if (wpn === 'barrett') { const k = 1 - Math.pow(1 - clamp((t - pKick) / 0.6, 0, 1), 2), r = 1 - k; upper.rotation.x = pitch + r * 0.2; bwG.rotation.x = r * 0.4; bwG.position.z = rifle.position.z + draw * 0.04 + r * 0.14; bwG.position.y = rifle.position.y + r * 0.04; return; }
-    if (wpn === 'm4') { const k = clamp((t - pKick) / 0.16, 0, 1); m4G.rotation.x = (1 - k) * 0.09; m4G.position.z = rifle.position.z + (1 - k) * 0.035; return; }
+    if (wpn === 'm4' || wpn === 'scar') { const k = clamp((t - pKick) / 0.16, 0, 1), G = wpn === 'm4' ? m4G : scarG; G.rotation.x = (1 - k) * 0.09; G.position.z = rifle.position.z + (1 - k) * 0.035; return; }
     if (wpn === 'vector') { const k = clamp((t - pKick) / 0.1, 0, 1); vecG.rotation.x = (1 - k) * 0.06; vecG.position.z = rifle.position.z + (1 - k) * 0.02; return; }
     if (wpn === 'deagle') { const k = 1 - Math.pow(1 - clamp((t - pKick) / 0.4, 0, 1), 2), r = 1 - k; upper.rotation.x = pitch + r * 0.16; dgG.rotation.x = r * 1.05; dgG.position.z = handP.z + r * 0.08; dgG.position.y = handP.y + r * 0.035; return; }
     if (wpn === 'revolver') { const k = 1 - Math.pow(1 - clamp((t - pKick) / 0.45, 0, 1), 2), r = 1 - k; upper.rotation.x = pitch + r * 0.14; revG.rotation.x = r * 0.95; revG.position.z = handP.z + r * 0.07; revG.position.y = handP.y + r * 0.03; return; }
@@ -2020,6 +2060,7 @@ function makeArcher(cloth, hoodCol, owner, fpv = false) { // fpv : seulement les
     if (wpn === 'deagle') return dgG.localToWorld(out.set(0, 0.056, -0.2));
     if (wpn === 'vector') return vecG.localToWorld(out.set(0, 0.02, -0.45));
     if (wpn === 'm4') return m4G.localToWorld(out.set(0, 0.018, -0.545));
+    if (wpn === 'scar') return scarG.localToWorld(out.set(0, 0.02, -0.605));
     if (wpn === 'barrett') return bwG.localToWorld(out.copy(bwMuzzle));
     if (wpn === 'shotgun') return sgG.localToWorld(out.copy(sgMuzzle));
     if (wpn === 'grenade') return glG.localToWorld(out.copy(glMuzzle));
@@ -2192,6 +2233,8 @@ function sfx(k, v = 1) {
       hiss('bandpass', 3200, 2200, 0.04, 0.32 * v, 0.55); tone('square', 1200, 800, 0.02, 0.08 * v, 0.55);
     }
     else if (k === 'fbang') { hiss('lowpass', 9000, 140, 0.85, 1.0 * v); tone('sine', 62, 22, 0.65, 0.9 * v); tone('square', 170, 40, 0.12, 0.32 * v); tone('sine', 48, 24, 0.55, 0.35 * v, 0.16); hiss('lowpass', 1200, 120, 0.9, 0.25 * v); }
+    else if (k === 'hbang') { tone('triangle', 1900, 1500, 0.03, 0.06 * v); hiss('highpass', 6000, 1800, 0.06, 0.5 * v); tone('square', 320, 90, 0.05, 0.22 * v); hiss('bandpass', 1400, 300, 0.2, 0.45 * v); tone('sine', 95, 38, 0.24, 0.42 * v); } // SCAR : claquement sec et métallique, grosse queue grave
+    else if (k === 'hsil') { hiss('highpass', 2600, 1200, 0.05, 0.2 * v); hiss('bandpass', 900, 300, 0.07, 0.18 * v); tone('sine', 140, 70, 0.07, 0.14 * v); tone('triangle', 1700, 1400, 0.02, 0.03 * v); } // SCAR silencieuse : « tchouk » métallique
     else if (k === 'mbang') { hiss('highpass', 5200, 1500, 0.09, 0.55 * v); tone('square', 260, 80, 0.06, 0.2 * v); hiss('lowpass', 4200, 280, 0.26, 0.45 * v); tone('sine', 110, 45, 0.16, 0.32 * v); }
     else if (k === 'vbang') { hiss('highpass', 3800, 1200, 0.07, 0.38 * v); tone('square', 210, 70, 0.055, 0.17 * v); hiss('lowpass', 2400, 260, 0.1, 0.3 * v); }
     else if (k === 'dbang') { hiss('lowpass', 7500, 220, 0.55, 0.9 * v); tone('sine', 80, 26, 0.42, 0.75 * v); tone('square', 210, 50, 0.09, 0.26 * v); tone('sine', 60, 30, 0.3, 0.3 * v, 0.09); }
@@ -2435,7 +2478,8 @@ function fpCamera(dt, V = me) {
   forward(V.yaw, V.pitch, camF); camera.lookAt(look.copy(camera.position).add(camF)); camera.rotateZ(-fpRoll * 0.022);
 }
 // quand on vise, l'arme s'arrête juste sous le cercle du viseur : baisse propre à chacune, selon la hauteur de sa hausse ou de sa lunette
-const FP_LOW = { arrow: 0, pistol: 0.007, revolver: 0.021, deagle: 0.033, vector: 0.073, m4: 0.073, shotgun: 0.124, grenade: 0.094, paintball: 0.19, bolt: 0.08, bullet: 0.098, barrett: 0.185, psniper: 0.162 };
+const FP_LOW = { arrow: 0, pistol: 0.007, revolver: 0.021, deagle: 0.033, vector: 0.073, m4: 0.073, shotgun: 0.124, grenade: 0.094, paintball: 0.19, bolt: 0.08, bullet: 0.098, barrett: 0.185, psniper: 0.162, scar: 0.095 };
+const IRON_LOW = -0.0114; // carabine à mire : réglé pour que la pointe du guidon arrive pile au centre de l'écran
 // les bras et l'arme : ils suivent le regard avec un peu de retard, balancent, respirent, reculent au tir et remontent quand on vise
 function updateViewmodel(dt, V = me) {
   const ease = 1 - Math.exp(-dt * 9), wy = (V.yaw - vmLastYaw) / Math.max(dt, 0.001), wp = (V.pitch - vmLastPitch) / Math.max(dt, 0.001);
@@ -2448,7 +2492,7 @@ function updateViewmodel(dt, V = me) {
   fpPivot.position.set(side + Math.cos(fpWalk) * 0.012 * fpBob * loose + flip * vmYaw * 0.012 * loose, -Math.abs(Math.sin(fpWalk)) * 0.016 * fpBob * loose + breath - vmPitch * 0.008 * loose, vmKick);
   fpPivot.rotation.set(vmKick * 1.3 + vmPitch * 0.015 * loose, turn + flip * vmYaw * 0.02 * loose, -flip * fpRoll * 0.05 * loose - side * 0.12);
   // la sarbacane est tenue à la bouche : on la garde sous le regard, le tube file vers le viseur sans le cacher
-  fpA.root.position.set(0, kd === 'dart' ? -1.87 + ads * 0.06 : starLow ? -1.68 : thrown(kd) ? -1.55 : -1.67 + ads * (0.115 - (FP_LOW[kd] || 0)), -0.2 + ads * 0.05);
+  fpA.root.position.set(0, kd === 'dart' ? -1.87 + ads * 0.06 : starLow ? -1.68 : thrown(kd) ? -1.55 : -1.67 + ads * (0.115 - (curWpn().iron ? IRON_LOW : FP_LOW[kd] || 0)), -0.2 + ads * 0.05);
   fpHemi.color.copy(hemi.color); fpHemi.groundColor.copy(hemi.groundColor); fpHemi.intensity = hemi.intensity; fpSun.color.copy(sunL.color); fpSun.intensity = sunL.intensity;
   fpCam.aspect = camera.aspect; fpCam.fov = portrait ? 76 : 58; fpCam.updateProjectionMatrix();
 }
@@ -2507,7 +2551,7 @@ function flightEnd(o, v, g = G) {
 }
 // vitesse et gravité d'un projectile : la balle file droit, le carreau vole comme une flèche tirée à fond
 function shotSpeed(kind, draw) { return isBullet(kind) ? BULLET_V : kind === 'bolt' ? BOW_V : kind === 'beer' ? BEER_V : kind === 'grenade' ? GREN_V : kind === 'dart' ? DART_V : kind === 'shuriken' ? SHUR_V : kind === 'boomerang' ? BOOM_V : kind === 'minigun' ? MINI_V : kind === 'psniper' ? PSNIPER_V : isPaint(kind) ? PAINT_V : VMIN + (BOW_V - VMIN) * draw; }
-function shotSfx(kind, sil, v = 1) { sfx(sil && SIL_SFX[kind] ? SIL_SFX[kind] : kind === 'pistol' ? 'pbang' : kind === 'revolver' ? 'rbang' : kind === 'deagle' ? 'dbang' : kind === 'vector' ? 'vbang' : kind === 'm4' ? 'mbang' : kind === 'barrett' ? 'fbang' : kind === 'shotgun' ? 'sbang' : kind === 'beer' ? 'whoosh' : kind === 'grenade' ? 'thoomp' : kind === 'minigun' ? 'mini' : kind === 'paintball' ? 'paint' : kind === 'psniper' ? 'psnip' : kind === 'bullet' ? 'bang' : kind === 'dart' ? 'dart' : kind === 'shuriken' ? 'shur' : kind === 'boomerang' ? 'boomt' : 'twang', v); }
+function shotSfx(kind, sil, v = 1) { sfx(sil && SIL_SFX[kind] ? SIL_SFX[kind] : kind === 'pistol' ? 'pbang' : kind === 'revolver' ? 'rbang' : kind === 'deagle' ? 'dbang' : kind === 'vector' ? 'vbang' : kind === 'm4' ? 'mbang' : kind === 'scar' ? 'hbang' : kind === 'barrett' ? 'fbang' : kind === 'shotgun' ? 'sbang' : kind === 'beer' ? 'whoosh' : kind === 'grenade' ? 'thoomp' : kind === 'minigun' ? 'mini' : kind === 'paintball' ? 'paint' : kind === 'psniper' ? 'psnip' : kind === 'bullet' ? 'bang' : kind === 'dart' ? 'dart' : kind === 'shuriken' ? 'shur' : kind === 'boomerang' ? 'boomt' : 'twang', v); }
 function fire() {
   const kind = curWpn().kind, g = shotG(kind);
   const speed = shotSpeed(kind, me.draw);
@@ -2694,7 +2738,7 @@ function botUpdate(dt) {
     if (bot.shootT <= 0 && bot.reload <= 0 && see) {
       bot.drawing = true; bot.hold = 0; bot.drawGoal = rand(0.75, 1);
       bot.ex = gauss() * 0.4; bot.ey = gauss() * 0.3; bot.lead = rand(0, 0.8);
-      bot.burst = curWpn().kind === 'paintball' ? 4 + Math.floor(Math.random() * 5) : curWpn().kind === 'minigun' ? 12 + Math.floor(Math.random() * 12) : curWpn().kind === 'vector' ? 5 + Math.floor(Math.random() * 6) : curWpn().kind === 'm4' ? 2 + Math.floor(Math.random() * 3) : curWpn().auto ? 3 + Math.floor(Math.random() * 4) : 1; // pistolet : rafale de 3 à 6 balles, vector : 5 à 10
+      bot.burst = curWpn().kind === 'paintball' ? 4 + Math.floor(Math.random() * 5) : curWpn().kind === 'minigun' ? 12 + Math.floor(Math.random() * 12) : curWpn().kind === 'vector' ? 5 + Math.floor(Math.random() * 6) : curWpn().kind === 'm4' || curWpn().kind === 'scar' ? 2 + Math.floor(Math.random() * 3) : curWpn().auto ? 3 + Math.floor(Math.random() * 4) : 1; // pistolet : rafale de 3 à 6 balles, vector : 5 à 10
     }
   } else {
     opp.draw = Math.min(bot.drawGoal, opp.draw + dt / curWpn().aimT);
@@ -2751,7 +2795,7 @@ function updateOpp(dt) {
 
 // ---------- arrow physics
 function orient(a) { a.m.quaternion.setFromUnitVectors(NEG_Z, tmpV.copy(a.v).normalize()); }
-const KIND_CODE = { arrow: 'a', bolt: 'x', bullet: 'b', pistol: 'p', revolver: 'r', deagle: 'd', vector: 'v', m4: 'q', barrett: 'f', shotgun: 'g', beer: 'e', grenade: 'n', minigun: 'z', paintball: 'k', psniper: 'y', dart: 'w', boomerang: 'u', shuriken: 's' }, CODE_KIND = { w: 'dart', u: 'boomerang', s: 'shuriken', a: 'arrow', x: 'bolt', b: 'bullet', p: 'pistol', r: 'revolver', d: 'deagle', v: 'vector', q: 'm4', f: 'barrett', g: 'shotgun', e: 'beer', n: 'grenade', z: 'minigun', k: 'paintball', y: 'psniper' };
+const KIND_CODE = { arrow: 'a', bolt: 'x', bullet: 'b', pistol: 'p', revolver: 'r', deagle: 'd', vector: 'v', m4: 'q', scar: 'h', barrett: 'f', shotgun: 'g', beer: 'e', grenade: 'n', minigun: 'z', paintball: 'k', psniper: 'y', dart: 'w', boomerang: 'u', shuriken: 's' }, CODE_KIND = { h: 'scar', w: 'dart', u: 'boomerang', s: 'shuriken', a: 'arrow', x: 'bolt', b: 'bullet', p: 'pistol', r: 'revolver', d: 'deagle', v: 'vector', q: 'm4', f: 'barrett', g: 'shotgun', e: 'beer', n: 'grenade', z: 'minigun', k: 'paintball', y: 'psniper' };
 const BOLT_LEN = 0.45; // un carreau est une flèche raccourcie
 function makeProjectile(owner, kind, streak) {
   if (isBullet(kind) || kind === 'minigun') return makeBullet(owner);
@@ -2898,7 +2942,7 @@ function hitArcher(a, tgt, head) {
 function registerTaken(e, n, head, byKey) {
   n = Math.min(WIN, Math.round(n * 100) / 100); // au HP près : plombs du fusil à pompe, 25 HP au vector, 50 HP au pistolet
   if (!(phase === 'fight' || phase === 'ending') || !(n > e.s.taken)) return;
-  const wk = curWpn().kind, wasHead = head || ((wk === 'arrow' || wk === 'bullet' || wk === 'm4' || bigGun(wk)) && n === WIN && n - e.s.taken >= 2);
+  const wk = curWpn().kind, wasHead = head || ((wk === 'arrow' || wk === 'bullet' || wk === 'm4' || wk === 'scar' || bigGun(wk)) && n === WIN && n - e.s.taken >= 2);
   e.s.taken = n;
   if (e === ME) {
     if (wasHead && n >= WIN) headshot = true; // « tir à la tête » sur l'écran de fin seulement si la tête a achevé
@@ -3102,7 +3146,8 @@ function drawHud() {
   if (watchable().length) crossEl.toggleAttribute('hidden', !inSpecFP()); // spectateur : le viseur du joueur regardé, dans ses yeux seulement
   const scoped = !!mode && phase !== 'idle' && !!curWpn().zoomX && (inSpecFP() ? viewOf().draw > 0.6 : me.drawing && me.draw > 0.6);
   thermalOn = scoped && !!curWpn().ir; scopeEl.classList.toggle('ir', thermalOn);
-  scopeEl.hidden = !scoped; crossEl.style.visibility = scoped ? 'hidden' : '';
+  const ironAim = !!mode && phase !== 'idle' && !!curWpn().iron && (inSpecFP() ? viewOf().draw > 0.6 : inFP() && me.drawing && me.draw > 0.6); // à la mire : le guidon sert de viseur
+  scopeEl.hidden = !scoped; crossEl.style.visibility = scoped || ironAim ? 'hidden' : '';
   if (!mode || phase === 'idle') return;
   // fusil à pompe : viseur en cercle, de la taille exacte de la gerbe de plombs (suit le zoom)
   const sg = curWpn().kind === 'shotgun', S = sg ? Math.max(44, Math.tan(SG_SPREAD) / Math.tan(fov * Math.PI / 360) * innerHeight / 2 * 72 / 27) : 72;
