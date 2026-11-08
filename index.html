@@ -379,9 +379,10 @@ p{margin:0}
     </div>
     <div class="seg mapsel" role="group" aria-label="Carte">
       <button data-map="canyon" aria-pressed="true">Canyon<small>face à face</small></button>
-      <button data-map="forestV2" aria-pressed="false">Forêt 1<small>symétrique · géante à 3</small></button>
-      <button data-map="forestV3" aria-pressed="false">Forêt 2<small>troncs égaux, à 2</small></button>
+      <button data-map="forestV2" aria-pressed="false">Forêt 1<small>symétrique, à 2 ou à 3</small></button>
+      <button data-map="forestV3" aria-pressed="false">Forêt 2<small>troncs égaux, à 2 ou à 3</small></button>
       <button data-map="japan" aria-pressed="false" disabled>Japon<small>temples, à 3</small></button>
+      <button data-map="forestXL" aria-pressed="false" disabled>Forêt géante<small>124 m, à 3</small></button>
     </div>
     <div class="opt wpnrow" hidden><span>Arme</span>
       <div class="seg wpnsel" role="group" aria-label="Arme en forêt">
@@ -435,9 +436,10 @@ p{margin:0}
     <p class="final" id="overScore"></p>
     <div class="seg mapsel" role="group" aria-label="Carte">
       <button data-map="canyon" aria-pressed="true">Canyon<small>face à face</small></button>
-      <button data-map="forestV2" aria-pressed="false">Forêt 1<small>symétrique · géante à 3</small></button>
-      <button data-map="forestV3" aria-pressed="false">Forêt 2<small>troncs égaux, à 2</small></button>
+      <button data-map="forestV2" aria-pressed="false">Forêt 1<small>symétrique, à 2 ou à 3</small></button>
+      <button data-map="forestV3" aria-pressed="false">Forêt 2<small>troncs égaux, à 2 ou à 3</small></button>
       <button data-map="japan" aria-pressed="false" disabled>Japon<small>temples, à 3</small></button>
+      <button data-map="forestXL" aria-pressed="false" disabled>Forêt géante<small>124 m, à 3</small></button>
     </div>
     <div class="opt wpnrow" hidden><span>Arme</span>
       <div class="seg wpnsel" role="group" aria-label="Arme en forêt">
@@ -604,8 +606,14 @@ try { weapon = wpnKey(localStorage.getItem('duelarc-wpn')); } catch (e) {}
 let map = MAPS.canyon;
 let mapKey = 'canyon';
 MAPS.forestV2s = { ...MAPS.forestV2, key: 'forestV2s', snow: true }; MAPS.forestV3s = { ...MAPS.forestV3, key: 'forestV3s', snow: true }; // versions neige
+// 1v1v1 : les forêts 1 et 2 en version à trois, symétriques par rotation de 120° ; zone de jeu ronde de 40 m de rayon, apparitions à 44 m les unes des autres
+MAPS.forestT1 = { key: 'forestT1', spawnZ: 25.5, lateral: false, xlim: 40, zlim: 40, rlim: 40, maxv: 3.1, acc: 22, yawLim: Infinity, spawnR: 25.5, tri: true };
+MAPS.forestT2 = { ...MAPS.forestT1, key: 'forestT2' };
+MAPS.forestT1s = { ...MAPS.forestT1, key: 'forestT1s', snow: true }; MAPS.forestT2s = { ...MAPS.forestT2, key: 'forestT2s', snow: true };
 const MAP_FAMILY = { forestV2: ['forestV2', 'forestV2s'], forestV3: ['forestV3', 'forestV3s'] }; // on choisit la forêt, puis sa version
-const baseMap = k => k === 'forestV2s' ? 'forestV2' : k === 'forestV3s' ? 'forestV3' : k, isSnow = k => k === 'forestV2s' || k === 'forestV3s';
+const TRIO = { forestV2: 'forestT1', forestV2s: 'forestT1s', forestV3: 'forestT2', forestV3s: 'forestT2s' }, DUO = Object.fromEntries(Object.entries(TRIO).map(([a, b]) => [b, a])); // forêt à 2 <-> la même à 3
+const menuMap = k => DUO[k] || k; // dans les menus, la version à 3 s'affiche comme sa forêt
+const baseMap = k => ({ forestV2s: 'forestV2', forestV3s: 'forestV3', forestT1s: 'forestT1', forestT2s: 'forestT2' })[k] || k, isSnow = k => !!(MAPS[k] && MAPS[k].snow);
 try { const k = localStorage.getItem('duelarc-map2') || localStorage.getItem('duelarc-map'); if (k === 'forest') mapKey = 'forestV2'; else if (MAPS[k]) mapKey = k; } catch (e) {}
 
 // ---------- renderer
@@ -638,6 +646,7 @@ const SKY = {
   get forestXL() { return this.forestV2; },
   get forestV3() { return this.forestV2; },
   get forestV3s() { return this.forestV2s; },
+  get forestT1() { return this.forestV2; }, get forestT2() { return this.forestV2; }, get forestT1s() { return this.forestV2s; }, get forestT2s() { return this.forestV2s; },
   forestV2s: skyTex([[0, '#6f7f92'], [0.3, '#a7b4c3'], [0.46, '#dfe6ee'], [0.5, '#eef2f6'], [0.53, '#c9d3dd'], [1, '#8c96a0']]), // ciel de neige, gris clair
   japan: skyTex([[0, '#2b2b5a'], [0.28, '#6c5a8e'], [0.42, '#c98aa6'], [0.49, '#f4c7a1'], [0.51, '#f6d5b5'], [0.54, '#c9a7a8'], [1, '#3a2c33']]),
   forestV2: skyTex([[0, '#2c4a5e'], [0.3, '#5f8796'], [0.46, '#b9cbb6'], [0.5, '#d8dfc2'], [0.53, '#93a796'], [1, '#33402f']]),
@@ -705,7 +714,7 @@ function rough(geo, amt) {
   return geo;
 }
 const std = (color, extra) => new T.MeshStandardMaterial(Object.assign({ color, flatShading: true, roughness: 1, metalness: 0 }, extra || {}));
-const OBST = { canyon: [], forestV2: [], forestV3: [], forestXL: [], japan: [] };
+const OBST = { canyon: [], forestV2: [], forestV3: [], forestT1: [], forestT2: [], forestXL: [], japan: [] };
 const OB_CELL = 8, obNear = []; // grille des obstacles de la forêt géante (cases de 8 m)
 // forme réelle d'un tronc : les triangles de son flanc tels qu'ils sont dessinés (cylindre irrégulier qui s'affine)
 function trunkTris(geo, h, x, z) {
@@ -781,6 +790,8 @@ const canyonG = new T.Group(); scene.add(canyonG);
 // ---------- map 2 : forêt (symétrique par rotation de 180° pour que les deux joueurs aient la même carte)
 const forestV2G = new T.Group(); scene.add(forestV2G); forestV2G.visible = false;
 const forestV3G = new T.Group(); scene.add(forestV3G); forestV3G.visible = false;
+const forestT1G = new T.Group(); scene.add(forestT1G); forestT1G.visible = false; // forêt 1 à 3
+const forestT2G = new T.Group(); scene.add(forestT2G); forestT2G.visible = false; // forêt 2 à 3
 const SNOW = { set: () => {} }; // rempli avec la forêt : passe ses deux versions en neige ou non
 {
   // forêt de départ : elle n'est plus jouable, mais la forêt 1 en reprend la moitié sud ; tout est tiré dans le même ordre pour garder les mêmes arbres
@@ -934,9 +945,89 @@ const SNOW = { set: () => {} }; // rempli avec la forêt : passe ses deux versio
   gridObstacles(OBST.forestV3);
   OBST.forestV2s = OBST.forestV2; OBST.forestV3s = OBST.forestV3;
 
+  // forêts 1 et 2 à trois joueurs : la part de la forêt comprise entre -60° et +60° autour de l'apparition sud (0, 25,5),
+  // recopiée tournée de 120° et de 240°. Chaque joueur a exactement la même forêt devant lui, au centimètre près.
+  const TRI_R = MAPS.forestT1.rlim, TW = 2 * Math.PI / 3, ROTS = [0, TW, 2 * TW];
+  const rotP = (x, z, a) => [x * Math.cos(a) + z * Math.sin(a), -x * Math.sin(a) + z * Math.cos(a)]; // même sens que rotation.y
+  const inSector = (x, z) => { const a = Math.atan2(x, z); return a >= -Math.PI / 3 && a < Math.PI / 3; };
+  const items = new Map();
+  for (const c of forestG.children) {
+    if (c === ground || c === path || c === oak0 || c.isInstancedMesh) continue;
+    const x = c.position.x, z = c.position.z; if (!inSector(x, z)) continue;
+    const key = x + ',' + z; if (!items.has(key)) items.set(key, { x, z, o: base.find(o => o.x === x && o.z === z), meshes: [] });
+    items.get(key).meshes.push(c);
+  }
+  // aux deux bords de la part, un arbre ne doit pas chevaucher la copie tournée d'un autre : on garde le premier
+  const keep = [];
+  for (const it of items.values()) {
+    const r = it.o ? it.o.r : 0.6;
+    if (keep.some(k => [TW, 2 * TW].some(a => { const [x, z] = rotP(it.x, it.z, a); return Math.hypot(x - k.x, z - k.z) < r + (k.o ? k.o.r : 0.6) + 0.5; }))) continue;
+    keep.push(it);
+  }
+  // sol rond, fait de trois parts identiques (plat dans la zone de jeu, bosselé au-delà)
+  const radii = []; for (let r = 0; r <= 44; r += 1.25) radii.push(r); for (let r = 48; r <= 200; r += 4) radii.push(r);
+  const SEG = 30, NA = 3 * SEG, tp = [], tc = [], ti = [];
+  radii.forEach((r, i) => { for (let j = 0; j < NA; j++) {
+    const a = j / NA * 2 * Math.PI, jj = j % SEG, inside = r < TRI_R + 1;
+    tp.push(r * Math.sin(a), i === 0 ? -0.02 : inside ? (hash(i, 0, jj) - 0.5) * 0.08 - 0.02 : (hash(i, 1, jj) - 0.5) * 0.6 + 0.1, r * Math.cos(a));
+    const k = hash(jj, 2, i); tc.push(0.27 + k * 0.08, 0.36 + k * 0.1, 0.18 + k * 0.05);
+    if (i < radii.length - 1) { const A = i * NA + j, B = i * NA + (j + 1) % NA, C = A + NA, D = B + NA; ti.push(A, C, B, B, C, D); }
+  } });
+  const triGeo = new T.BufferGeometry(); triGeo.setAttribute('position', new T.Float32BufferAttribute(tp, 3)); triGeo.setAttribute('color', new T.Float32BufferAttribute(tc, 3)); triGeo.setIndex(ti); triGeo.computeVertexNormals();
+  forestT1G.add(new T.Mesh(triGeo, groundM));
+  // grand chêne du centre : tronc à 9 faces dont les bosses se répètent tous les 120°, et deux touffes par part
+  const tBase = new T.CylinderGeometry(0.8, 1.15, 8, 9, 3), TB = tBase.attributes.position, tOak = rough(new T.CylinderGeometry(0.8, 1.15, 8, 9, 3), 0.2), TP = tOak.attributes.position;
+  for (let i = 0; i < TB.count; i++) {
+    const x = TB.getX(i), y = TB.getY(i), z = TB.getZ(i);
+    if (Math.hypot(x, z) < 1e-6) { TP.setX(i, 0); TP.setZ(i, 0); continue; }
+    if (!inSector(x, z)) continue;
+    const px = TP.getX(i), py = TP.getY(i), pz = TP.getZ(i);
+    for (const a of ROTS) {
+      const [rx, rz] = rotP(x, z, a), [qx, qz] = rotP(px, pz, a);
+      for (let j = 0; j < TB.count; j++) if (Math.abs(TB.getX(j) - rx) + Math.abs(TB.getY(j) - y) + Math.abs(TB.getZ(j) - rz) < 1e-4) TP.setXYZ(j, qx, py, qz);
+    }
+  }
+  tOak.computeVertexNormals();
+  const tTrunk = new T.Mesh(tOak, oak0.children[0].material); tTrunk.position.y = 4; forestT1G.add(tTrunk);
+  // herbes, chemin du centre vers chaque apparition, arbres et rochers : une part, trois fois
+  const RG = mulberry32(8112026), tBlades = [];
+  while (tBlades.length < 260) {
+    const x = (RG() * 2 - 1) * (TRI_R + 3), z = RG() * (TRI_R + 3);
+    if (Math.hypot(x, z) > TRI_R + 3 || !inSector(x, z)) continue;
+    q.setFromAxisAngle(new T.Vector3(0, 1, 0), RG() * 6); sc.setScalar(0.6 + RG() * 0.8); tBlades.push(new T.Matrix4().compose(new T.Vector3(x, 0.15, z), q, sc));
+  }
+  const tGrass = new T.InstancedMesh(grass.geometry, grass.material, tBlades.length * 3);
+  ROTS.forEach((a, n) => { const rm = new T.Matrix4().makeRotationY(a); tBlades.forEach((b, i) => tGrass.setMatrixAt(n * tBlades.length + i, b.clone().premultiply(rm))); });
+  forestT1G.add(tGrass);
+  const trail = new T.Mesh(new T.PlaneGeometry(2.2, F.spawnZ + 1.5, 1, 6), path.material); trail.rotation.x = -Math.PI / 2; trail.position.set(0, 0.01, 1.5 + (F.spawnZ + 1.5) / 2);
+  for (const a of ROTS) {
+    const part = new T.Group(); part.rotation.y = a; forestT1G.add(part);
+    for (const it of keep) for (const m of it.meshes) part.add(m.clone());
+    for (const c of oak0.children.slice(1, 3)) part.add(c.clone());
+    part.add(trail.clone());
+  }
+  // obstacles, avec les mêmes copies tournées
+  OBST.forestT1.push({ type: 'trunk', x: 0, z: 0, r: 1.15, h: 8, tris: trunkTris(tOak, 8, 0, 0) });
+  for (const it of keep) if (it.o) for (const a of ROTS) {
+    const o = it.o, [x, z] = rotP(o.x, o.z, a), c = { ...o, x, z };
+    if (o.tris) { const t3 = new Float32Array(o.tris.length); for (let i = 0; i < t3.length; i += 3) { const [u, w] = rotP(o.tris[i], o.tris[i + 2], a); t3[i] = u; t3[i + 1] = o.tris[i + 1]; t3[i + 2] = w; } c.tris = t3; }
+    OBST.forestT1.push(c);
+  }
+  gridObstacles(OBST.forestT1);
+  // forêt 2 à 3 : la même, avec tous les troncs de la même largeur (comme la forêt 2)
+  for (const c of forestT1G.children) forestT2G.add(c.clone());
+  forestT2G.traverse(m => { if (m.isMesh && m.geometry.type === 'CylinderGeometry') m.scale.x = m.scale.z = TRUNK_W / trunkWidth(trunkTris(m.geometry, m.geometry.parameters.height, 0, 0)); });
+  for (const o of OBST.forestT1) {
+    if (!o.tris) { OBST.forestT2.push(o); continue; }
+    const k = TRUNK_W / trunkWidth(o.tris);
+    OBST.forestT2.push({ ...o, r: o.r * k, tris: o.tris.map((v, i) => i % 3 === 1 ? v : (i % 3 ? o.z : o.x) + (v - (i % 3 ? o.z : o.x)) * k) });
+  }
+  gridObstacles(OBST.forestT2);
+  OBST.forestT1s = OBST.forestT1; OBST.forestT2s = OBST.forestT2;
+
   // neige : sol blanc, chemin et herbes cachés, mousse des rochers enneigée, et une couche blanche sur le haut de chaque feuillage
   const snowGround = std(0xedf1f6, { roughness: 1 }), snowCapM = std(0xf5f8fc, { roughness: .9 }), mossGreen = mossM.color.getHex(), caps = [], swaps = [], hides = [], crowns = [];
-  for (const G of [forestV2G, forestV3G]) G.traverse(m => {
+  for (const G of [forestV2G, forestV3G, forestT1G, forestT2G]) G.traverse(m => {
     if (m.isInstancedMesh) { hides.push(m); return; }
     if (!m.isMesh) return;
     if (m.material === groundM) swaps.push(m);
@@ -1288,6 +1379,7 @@ let practicePrevMap = null;
 const MAPLOOK = {
   get forestV3() { return this.forestV2; },
   get forestV3s() { return this.forestV2s; },
+  get forestT1() { return this.forestV2; }, get forestT2() { return this.forestV2; }, get forestT1s() { return this.forestV2s; }, get forestT2s() { return this.forestV2s; },
   forestV2s: { fog: 0xd9e0e8, near: 8, far: 66, hs: 0xf2f6ff, hg: 0x8d98a6, sun: 0xfff4e6, sunI: 0.72 },
   canyon: { fog: 0xb4685a, near: 40, far: 200, hs: 0xffd8b8, hg: 0x3b2a44, sun: 0xffb27a, sunI: 0.95 },
   forestV2: { fog: 0x9fb2a3, near: 10, far: 72, hs: 0xe4f0d6, hg: 0x3a4630, sun: 0xfff0c8, sunI: 0.8 },
@@ -1297,13 +1389,13 @@ const MAPLOOK = {
 };
 function applyMap(k) {
   mapKey = k; map = MAPS[k]; obstacles = OBST[k];
-  canyonG.visible = k === 'canyon'; forestV2G.visible = baseMap(k) === 'forestV2'; forestV3G.visible = baseMap(k) === 'forestV3'; SNOW.set(isSnow(k)); snowFx.visible = isSnow(k); clearFeet(); bigForestG.visible = k === 'forestXL'; japanG.visible = k === 'japan';
+  canyonG.visible = k === 'canyon'; forestV2G.visible = baseMap(k) === 'forestV2'; forestV3G.visible = baseMap(k) === 'forestV3'; forestT1G.visible = baseMap(k) === 'forestT1'; forestT2G.visible = baseMap(k) === 'forestT2'; SNOW.set(isSnow(k)); snowFx.visible = isSnow(k); clearFeet(); bigForestG.visible = k === 'forestXL'; japanG.visible = k === 'japan';
   skyMat.map = SKY[k]; skyMat.needsUpdate = true;
   const L = MAPLOOK[k];
   scene.fog.color.setHex(L.fog); scene.fog.near = L.near; scene.fog.far = L.far;
   hemi.color.setHex(L.hs); hemi.groundColor.setHex(L.hg); sunL.color.setHex(L.sun); sunL.intensity = L.sunI;
-  if (!map.big && mode !== 'practice') try { localStorage.setItem('duelarc-map2', k); } catch (e) {}
-  const shown = k === 'forestXL' ? 'forestV2' : baseMap(k); // la forêt géante (1v1v1) apparaît comme « Forêt 1 » dans les menus, une version neige comme sa forêt
+  if (!map.big && !map.tri && mode !== 'practice') try { localStorage.setItem('duelarc-map2', k); } catch (e) {}
+  const shown = baseMap(menuMap(k)); // une version neige ou à 3 apparaît comme sa forêt
   document.querySelectorAll('.mapsel button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.map === shown)));
   refreshMapVariants();
   document.querySelectorAll('.wpnrow').forEach(r => { r.hidden = (map.lateral && !r.classList.contains('always')) || (gameMode !== 'classic' && !!r.closest('#lobby')); }); // le tir libre est toujours en forêt
@@ -1372,6 +1464,7 @@ function resolveMove(o) {
     if (d2 < rr * rr) { const d = Math.sqrt(d2) || 0.001, push = (rr - d) / d; o.x += (dx || 0.001) * push; o.z += dz * push; }
   }
   o.x = clamp(o.x, -map.xlim, map.xlim); o.z = clamp(o.z, -map.zlim, map.zlim);
+  if (map.rlim) { const d = Math.hypot(o.x, o.z); if (d > map.rlim) { o.x *= map.rlim / d; o.z *= map.rlim / d; } } // zone ronde des forêts à 3
 }
 const losP = new T.Vector3();
 function lineOfSight(a, b) {
@@ -3212,7 +3305,7 @@ function boomStep(a) {
     if (a.owner === 'me' || mode !== 'online') hitArcher(a, tg, z === 2); // en ligne, c'est le lanceur qui décide de la touche
   }
   if (!a.back) {
-    if ((obstacles.length && inObstacle(p)) || p.y < 0 || p.y > 20 || Math.abs(p.x) > map.xlim || Math.abs(p.z) > map.zlim) { a.back = true; sfx('thunk', clamp(1 - p.distanceTo(camera.position) / 50, 0.1, 0.7)); }
+    if ((obstacles.length && inObstacle(p)) || p.y < 0 || p.y > 20 || Math.abs(p.x) > map.xlim || Math.abs(p.z) > map.zlim || (map.rlim && Math.hypot(p.x, p.z) > map.rlim)) { a.back = true; sfx('thunk', clamp(1 - p.distanceTo(camera.position) / 50, 0.1, 0.7)); }
     return;
   }
   boomV.set(who.x - p.x, 1.5 - p.y, who.z - p.z);
@@ -3366,7 +3459,8 @@ function drawRadar() {
   g.save(); g.beginPath(); g.arc(C, C, Rpx, 0, Math.PI * 2); g.fillStyle = 'rgba(12,16,14,.62)'; g.fill(); g.clip();
   // bords de la forêt et anneaux de distance (30 et 60 m)
   g.strokeStyle = 'rgba(239,230,214,.28)'; g.lineWidth = 2; g.beginPath();
-  [[-1, -1], [1, -1], [1, 1], [-1, 1]].forEach(([a, b], i) => { const [x, y] = toScreen(a * map.xlim, b * map.zlim); i ? g.lineTo(x, y) : g.moveTo(x, y); }); g.closePath(); g.stroke();
+  if (map.rlim) { const [x, y] = toScreen(0, 0); g.arc(x, y, map.rlim * k, 0, Math.PI * 2); }
+  else [[-1, -1], [1, -1], [1, 1], [-1, 1]].forEach(([a, b], i) => { const [x, y] = toScreen(a * map.xlim, b * map.zlim); i ? g.lineTo(x, y) : g.moveTo(x, y); }); g.closePath(); g.stroke();
   g.strokeStyle = 'rgba(239,230,214,.12)'; for (const r of [30, 60]) { g.beginPath(); g.arc(C, C, r * k, 0, Math.PI * 2); g.stroke(); }
   // ennemis à leur dernière position relevée (collés au bord s'ils sont hors de portée), avec une onde à chaque relevé
   const age = t - radarAt;
@@ -3536,10 +3630,10 @@ function setGameMode(g) {
   document.querySelectorAll('.modesel button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.gm === gameMode)));
   // les tournantes se jouent en duel, en forêt 1 ou 2 : ni canyon, ni Japon, et la forêt 2 reste possible à 3
   const duels = gameMode !== 'classic';
-  document.querySelectorAll('#lobby .mapsel [data-map=canyon], #lobby .mapsel [data-map=japan]').forEach(b => { b.hidden = duels; });
-  $('#lobby [data-map=forestV2] small').textContent = duels ? 'symétrique' : 'symétrique · géante à 3';
-  $('#lobby [data-map=forestV3] small').textContent = duels ? 'troncs égaux' : 'troncs égaux, à 2';
-  if (duels && !MAP_FAMILY[baseMap(mapKey)]) applyMap('forestV2');
+  document.querySelectorAll('#lobby .mapsel [data-map=canyon], #lobby .mapsel [data-map=japan], #lobby .mapsel [data-map=forestXL]').forEach(b => { b.hidden = duels; });
+  $('#lobby [data-map=forestV2] small').textContent = duels ? 'symétrique' : 'symétrique, à 2 ou à 3';
+  $('#lobby [data-map=forestV3] small').textContent = duels ? 'troncs égaux' : 'troncs égaux, à 2 ou à 3';
+  if (duels && !MAP_FAMILY[baseMap(mapKey)]) applyMap(DUO[mapKey] || 'forestV2');
   document.querySelectorAll('#lobby .wpnrow').forEach(r => { r.hidden = gameMode !== 'classic' || map.lateral; });
   refreshVariants();
 }
@@ -3691,15 +3785,15 @@ function chooseMap(k) {
   if (!MAPS[k]) return;
   if (mode === 'online') {
     if (!(phase === 'idle' || phase === 'over')) return;
-    if ((k === 'canyon' || (baseMap(k) === 'forestV3' && gameMode === 'classic')) && peersNow.length > 1) return; // à 3 en classique : forêt 1 (la géante) ou Japon
-    if (k === 'japan' && peersNow.length < 2) return;
+    if (k === 'canyon' && peersNow.length > 1) return; // à 3 : les deux forêts (en version à 3), la forêt géante ou le Japon
+    if ((k === 'japan' || k === 'forestXL') && peersNow.length < 2) return;
     mapV = Math.max(mapV, ...peersNow.map(x => num(x.presence.mapV, 0))) + 1;
     applyMap(k); pres({ mapK: k, wpn: weapon, mapV });
   } else applyMap(k);
 }
 // rangée « Version » sous chaque choix de carte : normale ou neige, pour les deux forêts
 function refreshMapVariants() {
-  const b = baseMap(mapKey === 'forestXL' ? 'forestV2' : mapKey), fam = MAP_FAMILY[b];
+  const b = baseMap(menuMap(mapKey)), fam = MAP_FAMILY[b];
   document.querySelectorAll('.mapvar').forEach(v => {
     v.hidden = !fam || v.previousElementSibling.hidden; if (!fam) return;
     v.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String((x.dataset.mv === 'snow') === isSnow(mapKey))));
@@ -3743,7 +3837,8 @@ function evaluateReady() {
     const toks = [net.tok, ...ps.map(p => p.tok)].sort();
     const lead = toks[0] === net.tok ? { mapK: mapKey, wpn: weapon, gm: gameMode } : ps.find(p => p.tok === toks[0]);
     if (lead.gm !== 'classic') return startTour(toks.join('|'), lead.gm === 'roul' ? 'roul' : 'tour', lead.mapK);
-    const k = toks.length === 3 ? (lead.mapK === 'japan' ? 'japan' : 'forestXL') : MAPS[lead.mapK] && ['canyon', 'forestV2', 'forestV3'].includes(baseMap(lead.mapK)) ? lead.mapK : 'forestV2'; // à 3 : forêt géante ou Japon ; à 2 : forêt 1 sauf choix contraire
+    const m = menuMap(lead.mapK);
+    const k = toks.length === 3 ? (m === 'japan' || m === 'forestXL' ? m : TRIO[m] || 'forestT1') : MAPS[m] && ['canyon', 'forestV2', 'forestV3'].includes(baseMap(m)) ? m : 'forestV2'; // à 3 : la forêt choisie en version à 3, la géante ou le Japon ; à 2 : forêt 1 sauf choix contraire
     startOnline(toks.join('|'), k, wpnKey(lead.wpn));
   }
 }
@@ -3777,7 +3872,7 @@ function startTour(base, gm, k) {
   // participants dans l'ordre des jetons (même ordre partout)
   const ids = base.split('|').map(tk => tk === net.tok ? myId : (peersNow.find(x => x.presence.tok === tk) || {}).peer).filter(Boolean);
   if (ids.length < 2) return;
-  Object.assign(TOUR, { on: true, mode: gm === 'roul' ? 'roul' : 'tour', map: MAPS[k] && MAP_FAMILY[baseMap(k)] ? k : 'forestV2', picked: {}, base, ids, n: ids.length, round: 0, champ: null, wins: 0, sc: {}, title: '', big: false });
+  Object.assign(TOUR, { on: true, mode: gm === 'roul' ? 'roul' : 'tour', map: MAPS[menuMap(k)] && MAP_FAMILY[baseMap(menuMap(k))] ? menuMap(k) : 'forestV2', picked: {}, base, ids, n: ids.length, round: 0, champ: null, wins: 0, sc: {}, title: '', big: false });
   // ordre du salon : il départage ceux qui n'ont pas encore choisi l'arme (voir tourChooser)
   TOUR.order = lobbyPlayers().map(x => x.id).filter(id => ids.includes(id));
   TOUR.cur = tourPair(); TOUR.cur.w = tourWeapon(); TOUR.cur.by = tourChooser(TOUR.cur);
@@ -3970,8 +4065,8 @@ function renderLobby() {
   const n = peersNow.length, ok = n > 0, rdy = peersNow.filter(x => x.presence.rdy === true).length;
   $('#lobbyDot').classList.toggle('ok', ok);
   // à 3, le canyon (deux piliers face à face) et, en classique, la forêt 2 (duel) ne sont pas proposés
-  document.querySelectorAll('#lobby .mapsel [data-map=canyon], #over .mapsel [data-map=canyon], #lobby .mapsel [data-map=forestV3], #over .mapsel [data-map=forestV3]').forEach(b => { b.disabled = n > 1 && (gameMode === 'classic' || b.dataset.map === 'canyon'); });
-  document.querySelectorAll('#lobby .mapsel [data-map=japan], #over .mapsel [data-map=japan]').forEach(b => { b.disabled = n < 2; }); // le Japon : à 3 seulement
+  document.querySelectorAll('#lobby .mapsel [data-map=canyon], #over .mapsel [data-map=canyon]').forEach(b => { b.disabled = n > 1; });
+  document.querySelectorAll('#lobby .mapsel [data-map=japan], #over .mapsel [data-map=japan], #lobby .mapsel [data-map=forestXL], #over .mapsel [data-map=forestXL]').forEach(b => { b.disabled = n < 2; }); // le Japon et la forêt géante : à 3 seulement
   // qui est là : toi + les autres, et qui est prêt ; la partie part dès que tous ceux présents sont prêts
   const L = lobbyPlayers(), mine = L.find(x => x.me), esc = v => v.replace(/&/g, '&amp;').replace(/</g, '&lt;');
   const slot = (x, i) => x ? `<div class="rslot on${x.rdy ? ' rdy' : ''}${x.me ? ' mine' : ''}" style="--pc:${PALETTE[x.col].css}"><i></i><b>${esc(x.name)}</b><small>${x.me ? 'Toi · ' : ''}${x.rdy ? 'Prêt ✓' : 'Connecté'}</small></div>`
@@ -3980,7 +4075,7 @@ function renderLobby() {
   $('#youAre').innerHTML = `Tu es <b style="color:${PALETTE[mine.col].css}">${esc(mine.name)}</b> (${PALETTE[mine.col].label})`;
   $('#nameIn').placeholder = 'Joueur ' + mine.n;
   $('#rosterN').textContent = n + 1; $('#rosterN').classList.toggle('full', n === 2);
-  let s = !ok ? 'Seul pour l’instant : donne le numéro aux autres.' : gameMode !== 'classic' ? (gameMode === 'roul' ? 'Roulette : arme tirée à la roue à chaque manche. ' : 'Chaque manche, un des deux joueurs du duel choisit l’arme, à tour de rôle. ') + (n === 1 ? 'À 2 : manches en BO3 (deux manches gagnantes).' : 'À 3 : deux s’affrontent, le troisième regarde ; le gagnant reste. Deux duels gagnés de suite = victoire.') : n === 1 ? 'À 2 : la partie part dès que vous êtes prêts tous les deux. Pour jouer à 3, attends le 3e joueur avant d’appuyer sur Prêt.' : (mapKey === 'japan' ? 'Classique à 3 : chacun pour soi, dans les jardins de temples, avec un radar.' : 'Classique à 3 : chacun pour soi, dans la forêt géante, avec un radar.');
+  let s = !ok ? 'Seul pour l’instant : donne le numéro aux autres.' : gameMode !== 'classic' ? (gameMode === 'roul' ? 'Roulette : arme tirée à la roue à chaque manche. ' : 'Chaque manche, un des deux joueurs du duel choisit l’arme, à tour de rôle. ') + (n === 1 ? 'À 2 : manches en BO3 (deux manches gagnantes).' : 'À 3 : deux s’affrontent, le troisième regarde ; le gagnant reste. Deux duels gagnés de suite = victoire.') : n === 1 ? 'À 2 : la partie part dès que vous êtes prêts tous les deux. Pour jouer à 3, attends le 3e joueur avant d’appuyer sur Prêt.' : `Classique à 3 : chacun pour soi, ${mapKey === 'japan' ? 'dans les jardins de temples' : mapKey === 'forestXL' ? 'dans la forêt géante' : `dans la forêt ${baseMap(menuMap(mapKey)) === 'forestV3' ? 2 : 1}${isSnow(mapKey) ? ' enneigée' : ''}, la même pour les trois`}, avec un radar.`;
   if (ok && rdy && !net.rp) s = n === 1 ? 'Ton adversaire est prêt : appuie sur Prêt pour lancer à 2.' : rdy === n ? 'Les deux autres sont prêts : appuie sur Prêt pour lancer à 3.' : 'Un adversaire est prêt.';
   if (net.rp) s = ok ? `Prêt. On attend que ${n === 1 ? 'l’autre appuie' : 'les autres appuient'} aussi…` : 'Prêt. En attente d’un adversaire…';
   $('#lobbyStatus').textContent = s;
@@ -4003,9 +4098,9 @@ function renderOverStatus() {
 document.querySelectorAll('.mapsel').forEach(sel => {
   const v = document.createElement('div'); v.className = 'seg mapvar'; v.setAttribute('role', 'group'); v.setAttribute('aria-label', 'Version de la forêt'); v.hidden = true;
   v.innerHTML = '<button data-mv="normal">Normale<small>verte</small></button><button data-mv="snow">Neige<small>neige, traces de pas, flocons</small></button>'; sel.after(v);
-  v.querySelectorAll('button').forEach(x => x.addEventListener('click', () => { const b = baseMap(mapKey === 'forestXL' ? 'forestV2' : mapKey); if (MAP_FAMILY[b]) chooseMap(MAP_FAMILY[b][x.dataset.mv === 'snow' ? 1 : 0]); }));
+  v.querySelectorAll('button').forEach(x => x.addEventListener('click', () => { const b = baseMap(menuMap(mapKey)); if (MAP_FAMILY[b]) chooseMap(MAP_FAMILY[b][x.dataset.mv === 'snow' ? 1 : 0]); }));
 });
-document.querySelectorAll('.mapsel button').forEach(b => b.addEventListener('click', () => chooseMap(baseMap(mapKey) === b.dataset.map ? mapKey : b.dataset.map))); // même forêt : on garde sa version
+document.querySelectorAll('.mapsel button').forEach(b => b.addEventListener('click', () => chooseMap(baseMap(menuMap(mapKey)) === b.dataset.map ? menuMap(mapKey) : b.dataset.map))); // même forêt : on garde sa version
 refreshMapVariants();
 // chaque liste d'armes ne montre que les armes ; les variantes vont dans la rangée en dessous
 document.querySelectorAll('.wpnsel').forEach(sel => {
