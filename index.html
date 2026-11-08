@@ -3615,8 +3615,8 @@ function updateCamera(dt) {
 const ringEl = $('#ring'), knobEl = $('#knob');
 const scopeEl = $('#scope'), crossEl = $('#cross');
 let thermalOn = false; // je regarde dans une lunette infrarouge
-// radar du 1v1v1 : orienté vers où je regarde, je suis au centre ; la position des deux autres est relevée toutes les 5 s
-const radarEl = $('#radar'), radarG = radarEl.getContext('2d'), RADAR_EVERY = 5;
+// radar du 1v1v1 : orienté vers où je regarde, je suis au centre ; la position des autres est relevée toutes les 2,5 s
+const radarEl = $('#radar'), radarG = radarEl.getContext('2d'), RADAR_EVERY = 2.5;
 let radarSnap = [], radarAt = -99;
 function drawRadar() {
   const on = !!mode && mode !== 'practice' && !map.lateral && !(TOUR.on && TOUR.n === 3 && mySlot === 2) && (phase === 'countdown' || phase === 'fight' || phase === 'ending'); // radar en 1v1 (forêt) et à 3 ; pas pour le spectateur
