@@ -89,6 +89,12 @@ body{position:fixed;inset:0;touch-action:none;-webkit-user-select:none;user-sele
 #scope::before{width:min(100vw,100vh);height:1.5px;transform:translate(-50%,-50%)}
 #scope::after{width:1.5px;height:min(100vw,100vh);transform:translate(-50%,-50%)}
 #scope.ir::before,#scope.ir::after{background:rgba(255,255,255,.75)}
+/* ACOG : grand oculaire sombre, chevron rouge et sa ligne de chute graduée, sans croix */
+#scope.acog{background:radial-gradient(circle closest-side at 50% 50%,transparent 86%,rgba(0,0,0,.6) 88%,#050506 100%)}
+#scope.acog::before{width:2px;height:min(18vw,18vh);transform:translate(-50%,6px);background:repeating-linear-gradient(to bottom,rgba(10,10,12,.9) 0 2px,transparent 2px 9px);border-radius:1px}
+#scope.acog::after{width:min(14vw,14vh);height:1.5px;transform:translate(-50%,calc(min(18vh,18vw) + 6px));background:rgba(10,10,12,.85)}
+#scope.acog i{width:20px;height:14px;margin:-3px 0 0 -10px;border-radius:0;background:#ff2a14;box-shadow:none;filter:drop-shadow(0 0 3px #ff4a2a);clip-path:polygon(50% 0,100% 100%,82% 100%,50% 30%,18% 100%,0 100%)}
+#rdot{left:50%;top:50%;width:6px;height:6px;margin:-3px 0 0 -3px;border-radius:50%;background:#ff2410;box-shadow:0 0 6px 1px #ff3a20}
 #fpv{inset:0;background:radial-gradient(ellipse at center,transparent 58%,rgba(0,0,0,.42))}
 #hitm{left:50%;top:50%;width:44px;height:44px;margin:-22px 0 0 -22px;fill:none;stroke:#fff;stroke-width:3;stroke-linecap:round;opacity:0;filter:drop-shadow(0 0 3px rgba(0,0,0,.8))}
 #hitm.head{stroke:#ff4a3a}
@@ -212,6 +218,7 @@ p{margin:0}
 </svg>
 <div class="hud" id="fpv" hidden></div>
 <div class="hud" id="scope" hidden><i></i></div>
+<div class="hud" id="rdot" hidden></div>
 <svg class="hud" id="hitm" viewBox="0 0 44 44"><path d="M8 8l9 9M36 8l-9 9M8 36l9-9M36 36l-9-9"/></svg>
 <div class="hud" id="big"></div>
 <div class="hud" id="toast"></div>
@@ -277,6 +284,8 @@ p{margin:0}
         <button data-wpn="deagle" aria-pressed="false">Deagle</button>
         <button data-wpn="vector" aria-pressed="false">Vector</button>
         <button data-wpn="m4" aria-pressed="false">M4</button>
+        <button data-wpn="m4acog" aria-pressed="false">M4 ACOG</button>
+        <button data-wpn="m4rd" aria-pressed="false">M4 point rouge</button>
         <button data-wpn="scar" aria-pressed="false">SCAR</button>
         <button data-wpn="barrett" aria-pressed="false">Barrett</button>
         <button data-wpn="shotgun" aria-pressed="false">Pompe</button>
@@ -314,6 +323,8 @@ p{margin:0}
         <button data-wpn="deagle" aria-pressed="false">Deagle</button>
         <button data-wpn="vector" aria-pressed="false">Vector</button>
         <button data-wpn="m4" aria-pressed="false">M4</button>
+        <button data-wpn="m4acog" aria-pressed="false">M4 ACOG</button>
+        <button data-wpn="m4rd" aria-pressed="false">M4 point rouge</button>
         <button data-wpn="scar" aria-pressed="false">SCAR</button>
         <button data-wpn="barrett" aria-pressed="false">Barrett</button>
         <button data-wpn="shotgun" aria-pressed="false">Pompe</button>
@@ -367,6 +378,8 @@ p{margin:0}
         <button data-wpn="deagle" aria-pressed="false">Deagle</button>
         <button data-wpn="vector" aria-pressed="false">Vector</button>
         <button data-wpn="m4" aria-pressed="false">M4</button>
+        <button data-wpn="m4acog" aria-pressed="false">M4 ACOG</button>
+        <button data-wpn="m4rd" aria-pressed="false">M4 point rouge</button>
         <button data-wpn="scar" aria-pressed="false">SCAR</button>
         <button data-wpn="barrett" aria-pressed="false">Barrett</button>
         <button data-wpn="shotgun" aria-pressed="false">Pompe</button>
@@ -420,6 +433,8 @@ p{margin:0}
         <button data-wpn="deagle" aria-pressed="false">Deagle</button>
         <button data-wpn="vector" aria-pressed="false">Vector</button>
         <button data-wpn="m4" aria-pressed="false">M4</button>
+        <button data-wpn="m4acog" aria-pressed="false">M4 ACOG</button>
+        <button data-wpn="m4rd" aria-pressed="false">M4 point rouge</button>
         <button data-wpn="scar" aria-pressed="false">SCAR</button>
         <button data-wpn="barrett" aria-pressed="false">Barrett</button>
         <button data-wpn="shotgun" aria-pressed="false">Pompe</button>
@@ -502,6 +517,8 @@ const WPN = {
   deagle: { kind: 'deagle', aimT: 0.15, zoomX: null, rate: 1.5 },   // Desert Eagle : une balle toutes les 1,5 s, tête = mort, corps = 150 HP
   vector: { kind: 'vector', aimT: 0.15, zoomX: null, auto: true, rate: 0.15 }, // Kriss Vector à laser : tir continu, 25 HP au corps, 100 HP à la tête
   m4: { kind: 'm4', aimT: 0.2, zoomX: null, auto: true, rate: 0.5 },             // M4 à laser : tir continu, une balle toutes les 0,5 s, tête = mort, corps = 100 HP
+  m4acog: { kind: 'm4', aimT: 0.2, zoomX: 2.5, auto: true, rate: 0.5, acog: true },  // M4 avec ACOG de Rainbow Six Siege : lunette x2,5 à chevron rouge
+  m4rd: { kind: 'm4', aimT: 0.2, zoomX: null, auto: true, rate: 0.5, rd: true },     // M4 avec point rouge de Rainbow Six Siege : on vise dans le tube, sans grossissement
   scar: { kind: 'scar', aimT: 0.2, zoomX: null, auto: true, rate: 0.5 },         // SCAR dorée (Fortnite, la première) : cadence et dégâts de la M4, sans laser
   barrett: { kind: 'barrett', aimT: 0.4, zoomX: 4, rate: 3 },                       // Barrett .50 : lunette x4, une balle toutes les 3 s, tue d'un coup où qu'elle touche
   shotgun: { kind: 'shotgun', aimT: 0.15, zoomX: null, rate: 1.2 },                  // fusil à pompe : 9 plombs en gerbe fixe, dégâts selon la distance
@@ -1769,6 +1786,30 @@ function makeArcher(cloth, hoodCol, owner, fpv = false) { // fpv : seulement les
   mpart(new T.BoxGeometry(0.036, 0.1, 0.02), m4P, 0, -0.012, 0.262);                                     // plaque de couche
   mpart(new T.BoxGeometry(0.022, 0.022, 0.05), anod, 0, -0.02, -0.27);                               // boîtier du laser
   mpart(new T.SphereGeometry(0.006, 8, 6), vEmit.material, 0, -0.02, -0.296);
+  // ACOG comme dans Rainbow Six Siege : corps noir mat trapu, embase à deux molettes, nervure sur le dessus avec sa fibre ambrée,
+  // gros objectif évasé à l'avant, oculaire en caoutchouc à l'arrière
+  const acogG = new T.Group(); acogG.position.set(0, 0.058, -0.06); acogG.visible = false; m4G.add(acogG);
+  const acM = std(0x26282b, { metalness: .3, roughness: .65 }), acRub = std(0x111113, { roughness: .95 }), acGlass = std(0x101a2a, { metalness: .8, roughness: .1 }), acFiber = std(0xc98a20, { emissive: 0x6a3a00, roughness: .4 });
+  const apart = (geo, mat, x, y, z, rx = Math.PI / 2) => { const m = new T.Mesh(geo, mat); m.position.set(x, y, z); m.rotation.x = rx; acogG.add(m); return m; };
+  apart(new T.BoxGeometry(0.03, 0.014, 0.07), acM, 0, 0.007, 0, 0);                                  // embase
+  for (const z of [-0.02, 0.02]) { const k = apart(new T.CylinderGeometry(0.006, 0.006, 0.012, 10), acM, -0.021, 0.007, z, 0); k.rotation.z = Math.PI / 2; } // molettes
+  apart(new T.CylinderGeometry(0.021, 0.021, 0.1, 14), acM, 0, 0.043, 0);                            // corps
+  apart(new T.BoxGeometry(0.026, 0.014, 0.09), acM, 0, 0.064, 0, 0);                                 // nervure du dessus
+  apart(new T.CylinderGeometry(0.0035, 0.0035, 0.07, 6), acFiber, 0, 0.073, 0);                      // fibre optique
+  apart(new T.CylinderGeometry(0.027, 0.022, 0.032, 14), acM, 0, 0.043, -0.064);                     // objectif évasé
+  apart(new T.CircleGeometry(0.023, 14), acGlass, 0, 0.043, -0.0805, Math.PI);                       // lentille avant
+  apart(new T.CylinderGeometry(0.02, 0.019, 0.03, 14), acRub, 0, 0.043, 0.064);                      // oculaire
+  // point rouge comme le « Red Dot A » de Rainbow Six Siege : tube noir court sur réhausse, molettes dessus et à droite, verre teinté, point rouge
+  const rdG = new T.Group(); rdG.position.set(0, 0.058, -0.03); rdG.visible = false; m4G.add(rdG);
+  const rdM = std(0x1d1e21, { metalness: .35, roughness: .55 }), rdGlass = new T.MeshStandardMaterial({ color: 0x5a2030, metalness: .6, roughness: .1, transparent: true, opacity: 0.35 }), rdDot = new T.MeshBasicMaterial({ color: 0xff2410 });
+  const dpartR = (geo, mat, x, y, z, rx = Math.PI / 2) => { const m = new T.Mesh(geo, mat); m.position.set(x, y, z); m.rotation.x = rx; rdG.add(m); return m; };
+  dpartR(new T.BoxGeometry(0.026, 0.02, 0.05), rdM, 0, 0.01, 0, 0);                                  // réhausse
+  dpartR(new T.CylinderGeometry(0.019, 0.019, 0.08, 16, 1, true), rdM, 0, 0.04, 0);                  // tube (ouvert : on voit au travers)
+  for (const z of [-0.04, 0.04]) dpartR(new T.TorusGeometry(0.02, 0.0035, 6, 16), rdM, 0, 0.04, z, 0); // bagues avant et arrière
+  dpartR(new T.CylinderGeometry(0.009, 0.009, 0.012, 10), rdM, 0, 0.064, 0, 0);                      // molette du dessus
+  const rdK = dpartR(new T.CylinderGeometry(0.009, 0.009, 0.012, 10), rdM, 0.024, 0.04, 0, 0); rdK.rotation.z = Math.PI / 2; // molette de droite
+  dpartR(new T.CircleGeometry(0.018, 16), rdGlass, 0, 0.04, -0.038, Math.PI);                        // verre avant
+  dpartR(new T.SphereGeometry(0.0022, 8, 6), rdDot, 0, 0.04, -0.035, 0);                            // le point rouge
   const m4LaserP = new T.Vector3(0, -0.02, -0.3), handMR = new T.Vector3(0, 0.1, -0.26), handML = new T.Vector3(0, 0.15, -0.56);
   // SCAR dorée comme celle de Fortnite (la première, légendaire) : long boîtier carré, rail noir avec hausse et grand guidon,
   // garde-main carré à rails, canon court et cache-flamme, chargeur droit, poignée pistolet, crosse repliable à busc
@@ -1983,8 +2024,8 @@ function makeArcher(cloth, hoodCol, owner, fpv = false) { // fpv : seulement les
     const led = new T.Mesh(new T.SphereGeometry(0.005, 8, 6), irLed); led.position.set(0, 0.034 * k + 0.004, l / 2 - 0.03); G.add(led);
   }
   function setWeapon(w0) {
-    const ir = w0.endsWith('IR'), iron = w0 === 'carbine', xbow0 = w0 === 'bowx', w = ir ? w0.slice(0, -2) : iron ? 'rifle' : xbow0 ? 'bow' : w0; // la carabine à mire est la carabine sans lunette, l'arc explosif l'arc
-    irSights.forEach(G => { G.visible = ir; }); rScope.forEach(m => { m.visible = !iron; }); rIron.visible = iron;
+    const ir = w0.endsWith('IR'), iron = w0 === 'carbine', xbow0 = w0 === 'bowx', m4v = w0 === 'm4acog' || w0 === 'm4rd', w = ir ? w0.slice(0, -2) : iron ? 'rifle' : xbow0 ? 'bow' : m4v ? 'm4' : w0; // la carabine à mire est la carabine sans lunette, l'arc explosif l'arc
+    irSights.forEach(G => { G.visible = ir; }); rScope.forEach(m => { m.visible = !iron; }); rIron.visible = iron; acogG.visible = w0 === 'm4acog'; rdG.visible = w0 === 'm4rd';
     wpn = w; const bowOn = w === 'bow'; nockCharge.visible = xbow0;
     bow.visible = quiver.visible = bowOn; quiverArrows.forEach(f => { f.visible = bowOn; });
     if (fpv) { quiver.visible = false; quiverArrows.forEach(f => { f.visible = false; }); }
@@ -2520,7 +2561,7 @@ function fpCamera(dt, V = me) {
 }
 // quand on vise, l'arme s'arrête juste sous le cercle du viseur : baisse propre à chacune, selon la hauteur de sa hausse ou de sa lunette
 const FP_LOW = { arrow: 0, pistol: 0.007, revolver: 0.021, deagle: 0.033, vector: 0.073, m4: 0.073, shotgun: 0.124, grenade: 0.094, paintball: 0.19, bolt: 0.08, bullet: 0.098, barrett: 0.185, psniper: 0.162, scar: 0.095, stone: 0.063 };
-const IRON_LOW = -0.0114; // carabine à mire : réglé pour que la pointe du guidon arrive pile au centre de l'écran
+const IRON_LOW = -0.0114, ACOG_LOW = 0.089, RD_LOW = 0.0231; // ACOG : sous le viseur avant d'entrer dans la lunette ; point rouge : le centre du tube pile au centre de l'écran // carabine à mire : réglé pour que la pointe du guidon arrive pile au centre de l'écran
 // les bras et l'arme : ils suivent le regard avec un peu de retard, balancent, respirent, reculent au tir et remontent quand on vise
 function updateViewmodel(dt, V = me) {
   const ease = 1 - Math.exp(-dt * 9), wy = (V.yaw - vmLastYaw) / Math.max(dt, 0.001), wp = (V.pitch - vmLastPitch) / Math.max(dt, 0.001);
@@ -2533,7 +2574,7 @@ function updateViewmodel(dt, V = me) {
   fpPivot.position.set(side + Math.cos(fpWalk) * 0.012 * fpBob * loose + flip * vmYaw * 0.012 * loose, -Math.abs(Math.sin(fpWalk)) * 0.016 * fpBob * loose + breath - vmPitch * 0.008 * loose, vmKick);
   fpPivot.rotation.set(vmKick * 1.3 + vmPitch * 0.015 * loose, turn + flip * vmYaw * 0.02 * loose, -flip * fpRoll * 0.05 * loose - side * 0.12);
   // la sarbacane est tenue à la bouche : on la garde sous le regard, le tube file vers le viseur sans le cacher
-  fpA.root.position.set(0, kd === 'dart' ? -1.87 + ads * 0.06 : starLow ? -1.68 : thrown(kd) ? -1.55 : -1.67 + ads * (0.115 - (curWpn().iron ? IRON_LOW : FP_LOW[kd] || 0)), -0.2 + ads * 0.05);
+  fpA.root.position.set(0, kd === 'dart' ? -1.87 + ads * 0.06 : starLow ? -1.68 : thrown(kd) ? -1.55 : -1.67 + ads * (0.115 - (curWpn().iron ? IRON_LOW : curWpn().acog ? ACOG_LOW : curWpn().rd ? RD_LOW : FP_LOW[kd] || 0)), -0.2 + ads * 0.05);
   fpHemi.color.copy(hemi.color); fpHemi.groundColor.copy(hemi.groundColor); fpHemi.intensity = hemi.intensity; fpSun.color.copy(sunL.color); fpSun.intensity = sunL.intensity;
   fpCam.aspect = camera.aspect; fpCam.fov = portrait ? 76 : 58; fpCam.updateProjectionMatrix();
 }
@@ -3199,7 +3240,8 @@ function drawHud() {
   if (watchable().length) crossEl.toggleAttribute('hidden', !inSpecFP()); // spectateur : le viseur du joueur regardé, dans ses yeux seulement
   const scoped = !!mode && phase !== 'idle' && !!curWpn().zoomX && (inSpecFP() ? viewOf().draw > 0.6 : me.drawing && me.draw > 0.6);
   thermalOn = scoped && !!curWpn().ir; scopeEl.classList.toggle('ir', thermalOn);
-  const ironAim = !!mode && phase !== 'idle' && !!curWpn().iron && (inSpecFP() ? viewOf().draw > 0.6 : inFP() && me.drawing && me.draw > 0.6); // à la mire : le guidon sert de viseur
+  const ironAim = !!mode && phase !== 'idle' && !!(curWpn().iron || curWpn().rd) && (inSpecFP() ? viewOf().draw > 0.6 : inFP() && me.drawing && me.draw > 0.6); // à la mire ou au point rouge : c'est le viseur de l'arme qui vise
+  scopeEl.classList.toggle('acog', !!curWpn().acog); $('#rdot').hidden = !(ironAim && curWpn().rd);
   scopeEl.hidden = !scoped; crossEl.style.visibility = scoped || ironAim ? 'hidden' : '';
   if (!mode || phase === 'idle') return;
   // fusil à pompe : viseur en cercle, de la taille exacte de la gerbe de plombs (suit le zoom)
