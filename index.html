@@ -170,6 +170,8 @@ p{margin:0}
 .opt .wpnsel button{padding:6px 2px;font-size:13px}
 .wpnsel button[hidden]{display:none}
 .opt .wpnvar{grid-template-columns:repeat(3,1fr)}
+.opt .catsel{grid-template-columns:repeat(2,1fr)}
+.opt .catsel button{padding:6px 2px;font-size:13px;text-align:center}
 .opt .wpnvar button{padding:6px 2px;font-size:13px;text-align:center}
 .wgrid .back{grid-column:1/-1}
 .howto{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;font-size:14px;color:var(--mute);line-height:1.35;border-top:1px solid var(--line);padding-top:12px}
@@ -609,6 +611,19 @@ for (const k of ['crossbow', 'rifle', 'barrett', 'psniper']) WPN[k + 'IR'] = { .
 // on choisit l'arme, puis sa variante (la première de chaque liste est celle par défaut)
 const FAMILY = { bow: ['bow', 'bowx'], crossbow: ['crossbow', 'crossbowIR'], rifle: ['rifle', 'rifleIR', 'carbine'], m4: ['m4', 'm4acog', 'm4rd'], barrett: ['barrett', 'barrettIR'], psniper: ['psniper', 'psniperIR'] };
 const VAR_NAME = { bow: 'Normal', bowx: 'Explosif', crossbow: 'Normale', crossbowIR: 'Infrarouge', rifle: 'Lunette', rifleIR: 'Infrarouge', carbine: 'À mire', m4: 'Laser', m4acog: 'ACOG', m4rd: 'Point rouge', barrett: 'Normal', barrettIR: 'Infrarouge', psniper: 'Normal', psniperIR: 'Infrarouge' };
+// on choisit la catégorie, puis l'arme, puis sa variante
+const CATS = [
+  ['pistols', 'Pistolets', ['pistol', 'revolver', 'deagle']],
+  ['auto', 'Automatiques', ['vector', 'm4', 'scar', 'minigun', 'paintball']],
+  ['prec', 'Précision', ['rifle', 'barrett', 'psniper']],
+  ['expl', 'Explosifs', ['grenade', 'rocket']],
+  ['archer', 'Armes d’archer', ['bow', 'crossbow']],
+  ['special', 'Armes spéciales', ['blowgun', 'sling', 'boomerang', 'shuriken']],
+  ['melee', 'Mêlée', ['bat', 'shotgun']],
+  ['fun', 'Fun', ['beer']],
+];
+const catOf = w => (CATS.find(c => c[2].includes(familyOf(w))) || CATS[4])[0];
+let viewCat = null; // catégorie affichée dans les menus (celle de l'arme choisie, tant qu'on n'en ouvre pas une autre)
 const familyOf = w => Object.keys(FAMILY).find(f => FAMILY[f].includes(w)) || w;
 const isPaint = k => k === 'paintball' || k === 'psniper'; // billes de peinture (paintball et sniper paintball)
 const PAINT_BALL = { paintball: 3, psniper: 6 }; // taille des billes tirées (par rapport à une vraie bille de 17 mm grossie)
@@ -1531,7 +1546,7 @@ function applyMap(k) {
 const curW = () => map.lateral ? 'bow' : weapon;
 const curWpn = () => WPN[curW()];
 function setWeapon(w) {
-  weapon = wpnKey(w);
+  weapon = wpnKey(w); viewCat = null;
   try { localStorage.setItem('duelarc-wpn', weapon); } catch (e) {}
   document.querySelectorAll('.wpnsel button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.wpn === familyOf(weapon))));
   refreshVariants();
@@ -3979,10 +3994,19 @@ function refreshMapVariants() {
   });
 }
 // rangée « Variante » sous chaque choix d'arme : visible seulement pour une arme qui a des variantes
+function refreshCats() {
+  const vc = viewCat || catOf(weapon);
+  document.querySelectorAll('.catrow').forEach(c => {
+    const row = c.nextElementSibling; c.hidden = row.hidden;
+    c.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.cat === vc)));
+    row.querySelectorAll('.wpnsel button').forEach(b => { const w = b.dataset.wpn; b.hidden = familyOf(w) !== w || catOf(w) !== vc; });
+  });
+}
 function refreshVariants() {
+  refreshCats();
   const f = familyOf(weapon), fam = FAMILY[f];
   document.querySelectorAll('.wpnvarrow').forEach(v => {
-    v.hidden = !fam || v.previousElementSibling.hidden; if (!fam) return;
+    v.hidden = !fam || v.previousElementSibling.hidden || (!!viewCat && viewCat !== catOf(weapon)); if (!fam) return; // on parcourt une autre catégorie : pas de variantes
     const g = v.querySelector('.wpnvar');
     if (g.dataset.fam !== f) {
       g.dataset.fam = f; g.innerHTML = fam.map(w => `<button data-var="${w}">${VAR_NAME[w]}</button>`).join('');
@@ -4098,16 +4122,21 @@ function showWeaponPick(match, R) {
   $('#pMatch').textContent = `Manche ${TOUR.round + 1} · ${match}`;
   $('#pWho').textContent = mine ? 'À toi de choisir l’arme' : `${tourName(who)} choisit l’arme…`;
   $('#pSpec').textContent = R.s ? `Spectateur : ${tourName(R.s)}` : (TOUR.n === 2 ? 'BO3 : deux manches gagnantes' : '');
-  const bases = () => {
-    $('#pGrid').innerHTML = WPN_KEYS.filter(k => familyOf(k) === k).map(k => `<button data-w="${k}"${mine ? '' : ' disabled'}>${wpnLabel(k)}</button>`).join('');
-    if (mine) $('#pGrid').querySelectorAll('button').forEach(b => b.addEventListener('click', () => FAMILY[b.dataset.w] ? variants(b.dataset.w) : pickWeapon(rid, b.dataset.w)));
+  const cats = () => { // d'abord la catégorie
+    $('#pGrid').innerHTML = CATS.map(([k, n]) => `<button data-c="${k}"${mine ? '' : ' disabled'}>${n}</button>`).join('');
+    if (mine) $('#pGrid').querySelectorAll('button').forEach(b => b.addEventListener('click', () => bases(b.dataset.c)));
   };
-  const variants = f => { // l'arme a des variantes : on choisit laquelle
+  const bases = c => { // puis l'arme
+    $('#pGrid').innerHTML = CATS.find(x => x[0] === c)[2].map(k => `<button data-w="${k}">${wpnLabel(k)}</button>`).join('') + '<button class="back">← Catégories</button>';
+    $('#pGrid').querySelectorAll('button[data-w]').forEach(b => b.addEventListener('click', () => FAMILY[b.dataset.w] ? variants(b.dataset.w) : pickWeapon(rid, b.dataset.w)));
+    $('#pGrid').querySelector('.back').addEventListener('click', cats);
+  };
+  const variants = f => { // puis sa variante
     $('#pGrid').innerHTML = FAMILY[f].map(k => `<button data-w="${k}">${wpnLabel(k)}</button>`).join('') + '<button class="back">← Autres armes</button>';
     $('#pGrid').querySelectorAll('button[data-w]').forEach(b => b.addEventListener('click', () => pickWeapon(rid, b.dataset.w)));
-    $('#pGrid').querySelector('.back').addEventListener('click', bases);
+    $('#pGrid').querySelector('.back').addEventListener('click', () => bases(catOf(f)));
   };
-  bases();
+  cats();
   $('#wpick').hidden = false; TOUR.waitPick = true; sfx('tick');
   if (mine) { clearTimeout(TOUR.pickT); TOUR.pickT = setTimeout(() => { if (TOUR.waitPick && net.started === rid) pickWeapon(rid, WPN_KEYS[Math.floor(Math.random() * WPN_KEYS.length)]); }, 25000); }
   checkPick();
@@ -4127,6 +4156,7 @@ function weaponChosen(w) {
   if (!TOUR.waitPick) return;
   TOUR.waitPick = false; clearTimeout(TOUR.pickT);
   const rid = net.started;
+  if (!$('#pGrid').querySelector(`[data-w="${w}"], [data-w="${familyOf(w)}"]`)) $('#pGrid').innerHTML = CATS.find(x => x[0] === catOf(w))[2].map(k => `<button data-w="${k}">${wpnLabel(k)}</button>`).join('');
   $('#pGrid').querySelectorAll('button').forEach(b => { b.disabled = true; b.classList.toggle('chosen', b.dataset.w === w || (b.dataset.w === familyOf(w) && !$('#pGrid').querySelector(`[data-w="${w}"]`))); });
   $('#pWho').textContent = `${chooserOf() === myId ? 'Tu as choisi' : tourName(chooserOf()) + ' a choisi'} : ${wpnLabel(w)}`; sfx('ding');
   TOUR.cur.w = w;
@@ -4303,6 +4333,12 @@ refreshMapVariants();
 // chaque liste d'armes ne montre que les armes ; les variantes vont dans la rangée en dessous
 document.querySelectorAll('.wpnsel').forEach(sel => {
   sel.querySelectorAll('button').forEach(b => { if (familyOf(b.dataset.wpn) !== b.dataset.wpn) b.hidden = true; });
+  // les armes dans l'ordre de leur catégorie
+  for (const [, , ws] of CATS) for (const w of ws) { const b = sel.querySelector(`[data-wpn="${w}"]`); if (b) sel.appendChild(b); }
+  const c = document.createElement('div'); c.className = 'opt catrow';
+  c.innerHTML = '<span>Catégorie</span><div class="seg catsel" role="group" aria-label="Catégorie d’arme">' + CATS.map(([k, n]) => `<button data-cat="${k}" aria-pressed="false">${n}</button>`).join('') + '</div>';
+  sel.closest('.opt').before(c);
+  c.querySelectorAll('button').forEach(b => b.addEventListener('click', () => { viewCat = b.dataset.cat; sfx('tick', 0.5); refreshVariants(); }));
   const v = document.createElement('div'); v.className = 'opt wpnvarrow'; v.hidden = true;
   v.innerHTML = '<span>Variante</span><div class="seg wpnvar" role="group" aria-label="Variante de l’arme"></div>'; sel.closest('.opt').after(v);
 });
