@@ -171,6 +171,9 @@ p{margin:0}
 .wpnsel button[hidden]{display:none}
 .opt .wpnvar{grid-template-columns:repeat(3,1fr)}
 .opt .catsel{grid-template-columns:repeat(2,1fr)}
+.opt .botcount{grid-template-columns:repeat(6,1fr)}
+.opt .botcount button{padding:6px 2px;font-size:14px}
+.botteam button[hidden],.botteam[hidden]{display:none}
 .opt .catsel button{padding:6px 2px;font-size:13px;text-align:center}
 .opt .wpnvar button{padding:6px 2px;font-size:13px;text-align:center}
 .wgrid .back{grid-column:1/-1}
@@ -277,7 +280,7 @@ p{margin:0}
       <a class="home" href="/">← Tous les jeux</a>
       <h1>Duel de tir</h1>
       <button class="btn primary choice" data-go="friends">Jouer avec des amis <span>en ligne, de 2 à 12 joueurs</span></button>
-      <button class="btn primary choice" data-go="bot">Jouer contre un bot <span>hors ligne</span></button>
+      <button class="btn primary choice" data-go="bot">Jouer contre des bots <span>hors ligne, de 1 à 11 bots</span></button>
       <button class="btn primary choice" data-go="practice">Tir libre <span>cible en forêt, sans score</span></button>
       <div class="opt"><span>Skin</span>
         <div class="seg skinsel" role="group" aria-label="Skin">
@@ -303,7 +306,7 @@ p{margin:0}
     </div>
     <div class="step" data-step="bot" hidden>
       <button class="back" data-go="home">← Retour</button>
-      <h2>Contre un bot</h2>
+      <h2>Contre les bots</h2>
       <div class="seg mapsel" role="group" aria-label="Carte">
         <button data-map="canyon" aria-pressed="true">Canyon<small>face à face, esquive sur le côté</small></button>
         <button data-map="forestV2" aria-pressed="false">Forêt 1<small>parfaitement symétrique</small></button>
@@ -343,6 +346,24 @@ p{margin:0}
         <button data-wpn="boomerang" aria-pressed="false">Boomerang</button>
         <button data-wpn="shuriken" aria-pressed="false">Shuriken</button>
       </div>
+      </div>
+      <div class="opt"><span>Bots</span>
+        <div class="seg botcount" role="group" aria-label="Nombre de bots"><button data-n="1" aria-pressed="true">1</button><button data-n="2" aria-pressed="false">2</button><button data-n="3" aria-pressed="false">3</button><button data-n="4" aria-pressed="false">4</button><button data-n="5" aria-pressed="false">5</button><button data-n="6" aria-pressed="false">6</button><button data-n="7" aria-pressed="false">7</button><button data-n="8" aria-pressed="false">8</button><button data-n="9" aria-pressed="false">9</button><button data-n="10" aria-pressed="false">10</button><button data-n="11" aria-pressed="false">11</button></div>
+      </div>
+      <div class="seg botteam" role="group" aria-label="Mode de jeu contre les bots" hidden>
+        <button data-tm="ffa" aria-pressed="true">Chacun pour soi<small>le dernier debout gagne</small></button>
+        <button data-tm="2v2" aria-pressed="false">2 contre 2<small>toi et le bot 1</small></button>
+        <button data-tm="3v3" aria-pressed="false">3 contre 3<small>toi et les bots 1 et 2</small></button>
+        <button data-tm="2v2v2" aria-pressed="false">2 contre 2 contre 2<small>toi et le bot 1</small></button>
+        <button data-tm="2v2v2v2" aria-pressed="false">2 contre 2 contre 2 contre 2<small>toi et le bot 1</small></button>
+        <button data-tm="4v4" aria-pressed="false">4 contre 4<small>toi et les bots 1 à 3</small></button>
+        <button data-tm="3v3v3" aria-pressed="false">3 contre 3 contre 3<small>toi et les bots 1 et 2</small></button>
+        <button data-tm="2v2v2v2v2" aria-pressed="false">5 équipes de 2<small>toi et le bot 1</small></button>
+        <button data-tm="5v5" aria-pressed="false">5 contre 5<small>toi et les bots 1 à 4</small></button>
+        <button data-tm="2v2v2v2v2v2" aria-pressed="false">6 équipes de 2<small>toi et le bot 1</small></button>
+        <button data-tm="3v3v3v3" aria-pressed="false">4 équipes de 3<small>toi et les bots 1 et 2</small></button>
+        <button data-tm="4v4v4" aria-pressed="false">3 équipes de 4<small>toi et les bots 1 à 3</small></button>
+        <button data-tm="6v6" aria-pressed="false">6 contre 6<small>toi et les bots 1 à 5</small></button>
       </div>
       <div class="seg botlvl" role="group" aria-label="Niveau du bot">
         <button data-lvl="mid" aria-pressed="true">Moyen<small>le bot habituel</small></button>
@@ -2718,7 +2739,12 @@ function resetMatch(k) {
   Object.assign(me, { x: 0, z: map.spawnZ, vx: 0, vz: 0, yaw: 0, pitch: 0.04, draw: 0, drawing: false, reload: 0, taken: 0 });
   Object.assign(opp, { x: 0, z: -map.spawnZ, tx: 0, tz: -map.spawnZ, vx: 0, vz: 0, yaw: 0, tyaw: 0, pitch: 0.04, tpitch: 0.04, draw: 0, nock: true, taken: 0 });
   Object.assign(opp2, { vx: 0, vz: 0, pitch: 0.04, tpitch: 0.04, draw: 0, nock: true, taken: 0 }); Object.assign(opp3, { vx: 0, vz: 0, pitch: 0.04, tpitch: 0.04, draw: 0, nock: true, taken: 0 }); Object.assign(opp4, { vx: 0, vz: 0, pitch: 0.04, tpitch: 0.04, draw: 0, nock: true, taken: 0 }); Object.assign(opp5, { vx: 0, vz: 0, pitch: 0.04, tpitch: 0.04, draw: 0, nock: true, taken: 0 }); Object.assign(opp6, { vx: 0, vz: 0, pitch: 0.04, tpitch: 0.04, draw: 0, nock: true, taken: 0 }); Object.assign(opp7, { vx: 0, vz: 0, pitch: 0.04, tpitch: 0.04, draw: 0, nock: true, taken: 0 }); Object.assign(opp8, { vx: 0, vz: 0, pitch: 0.04, tpitch: 0.04, draw: 0, nock: true, taken: 0 }); Object.assign(opp9, { vx: 0, vz: 0, pitch: 0.04, tpitch: 0.04, draw: 0, nock: true, taken: 0 }); Object.assign(opp10, { vx: 0, vz: 0, pitch: 0.04, tpitch: 0.04, draw: 0, nock: true, taken: 0 }); Object.assign(opp11, { vx: 0, vz: 0, pitch: 0.04, tpitch: 0.04, draw: 0, nock: true, taken: 0 });
-  if (mode !== 'online') { nPlayers = 2; foes = [FOES.opp]; FOES.opp.peer = null; teams = null; }
+  if (mode !== 'online') { nPlayers = 2; foes = [FOES.opp]; FOES.opp.peer = null; teams = null; mySlot = 0; }
+  if (mode === 'bot' && botCount > 1) { // plusieurs bots : comme une partie en ligne à botCount + 1 joueurs, chacun à sa place
+    nPlayers = botCount + 1; foes = Object.values(FOES).slice(0, botCount); foes.forEach((f, i) => { f.peer = null; f.slot = i + 1; });
+    teamGame = TEAM[botTeam] && TEAM[botTeam][0] === nPlayers ? botTeam : '';
+    if (teamGame) { const sz = TEAM[teamGame][1]; teams = { me: 0 }; foes.forEach(f => { teams[f.key] = Math.floor(f.slot / sz); }); }
+  }
   if (trio()) {
     const sp = spawnOf(mySlot); Object.assign(me, { x: sp.x, z: sp.z, yaw: sp.yaw }); resolveMove(me);
     for (const f of foes) { const q = spawnOf(f.slot); Object.assign(f.s, { x: q.x, z: q.z, tx: q.x, tz: q.z, yaw: q.yaw, tyaw: q.yaw }); }
@@ -2726,7 +2752,7 @@ function resetMatch(k) {
   for (const A of archers) { A.root.rotation.z = 0; A.root.position.y = 0; }
   $('#side2').hidden = !trio(); $('#side3').hidden = nPlayers < 4; $('#side4').hidden = nPlayers < 5; $('#side5').hidden = nPlayers < 6; $('#side6').hidden = nPlayers < 7; $('#side7').hidden = nPlayers < 8; $('#side8').hidden = nPlayers < 9; $('#side9').hidden = nPlayers < 10; $('#side10').hidden = nPlayers < 11; $('#side11').hidden = nPlayers < 12; $('#score').classList.toggle('many', nPlayers >= 5); $('#score').classList.toggle('lots', nPlayers >= 8); $('#score').classList.toggle('tons', nPlayers >= 11); $('.vs').hidden = trio(); opp2A.root.visible = trio(); opp3A.root.visible = nPlayers >= 4; opp4A.root.visible = nPlayers >= 5; opp5A.root.visible = nPlayers >= 6; opp6A.root.visible = nPlayers >= 7; opp7A.root.visible = nPlayers >= 8; opp8A.root.visible = nPlayers >= 9; opp9A.root.visible = nPlayers >= 10; opp10A.root.visible = nPlayers >= 11; opp11A.root.visible = nPlayers >= 12;
   $('#score .side.me').hidden = false; $('#score .side.them').hidden = false; $('#spec').hidden = true; specIdx = 0; wasDeadSpec = false;
-  Object.assign(bot, { tx: 0, tz: -map.spawnZ, moveT: 0, shootT: hardBot() ? rand(0.6, 1) : rand(1.4, 2.2), drawing: false, reload: 0, hold: 0, stuck: 0, swingHit: 0 });
+  for (const f of Object.values(FOES)) Object.assign(f.bot, { tx: trio() ? f.s.x : 0, tz: trio() ? f.s.z : -map.spawnZ, moveT: 0, shootT: hardBot() ? rand(0.6, 1) : rand(1.4, 2.2), drawing: false, reload: 0, hold: 0, stuck: 0, swingHit: 0, tg: null, tgT: 0 });
   me.swingHit = 0;
   aimId = null; moveId = null; moveIn.x = moveIn.y = 0; headshot = false;
   phase = 'countdown'; cd = 3; big('3', 0.8);
@@ -2740,7 +2766,8 @@ function resetMatch(k) {
     for (const k of ['opp', 'opp2', 'opp3', 'opp4', 'opp5', 'opp6', 'opp7', 'opp8', 'opp9', 'opp10', 'opp11']) if (!(k in map)) map[k] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].find(i => !Object.values(map).includes(i));
     if (teams) for (const k in teams) map[k] = teams[k]; // en équipes : même couleur pour tous les coéquipiers (vert d'eau, rouge, jaune, violet, bleu, rose)
     applyColors(map);
-  } else { applyColors(null); FOES.opp.name = 'Rouge'; FOES.opp2.name = 'Jaune'; FOES.opp3.name = 'Violet'; FOES.opp4.name = 'Bleu'; FOES.opp5.name = 'Rose'; FOES.opp6.name = 'Orange'; FOES.opp11.name = 'Sable'; FOES.opp10.name = 'Gris'; FOES.opp9.name = 'Marron'; FOES.opp8.name = 'Vert clair'; FOES.opp7.name = 'Noir'; }
+  } else { applyColors(teams ? Object.fromEntries(Object.entries(teams)) : null); FOES.opp.name = 'Rouge'; FOES.opp2.name = 'Jaune'; FOES.opp3.name = 'Violet'; FOES.opp4.name = 'Bleu'; FOES.opp5.name = 'Rose'; FOES.opp6.name = 'Orange'; FOES.opp11.name = 'Sable'; FOES.opp10.name = 'Gris'; FOES.opp9.name = 'Marron'; FOES.opp8.name = 'Vert clair'; FOES.opp7.name = 'Noir'; }
+  if (mode === 'bot' && botCount > 1) foes.forEach((f, i) => { f.name = 'Bot ' + (i + 1); });
   $('#themName').textContent = mode === 'bot' ? 'Bot' : mode === 'online' ? FOES.opp.name : 'Rival';
   $('#them2Name').textContent = FOES.opp2.name; $('#them3Name').textContent = FOES.opp3.name; $('#them4Name').textContent = FOES.opp4.name; $('#them5Name').textContent = FOES.opp5.name; $('#them6Name').textContent = FOES.opp6.name; $('#them7Name').textContent = FOES.opp7.name; $('#them8Name').textContent = FOES.opp8.name; $('#them9Name').textContent = FOES.opp9.name; $('#them10Name').textContent = FOES.opp10.name; $('#them11Name').textContent = FOES.opp11.name;
   for (const k in tags) { const f = FOES[k]; tags[k].visible = mode === 'online' && foes.includes(f); setTag(tags[k], f.name, PALETTE[colorOf[k]].css); }
@@ -3034,7 +3061,12 @@ function updateMe(dt) {
 let botLvl = 'mid';
 try { if (localStorage.getItem('duelarc-botlvl') === 'hard') botLvl = 'hard'; } catch (e) {}
 const hardBot = () => botLvl === 'hard';
-const bot = { tx: 0, tz: -12, moveT: 0, shootT: 2, drawing: false, drawGoal: 1, reload: 0, hold: 0, ex: 0, ey: 0, lead: 0, stuck: 0, swingHit: 0, react: 0.25 };
+const newBot = () => ({ tx: 0, tz: -12, moveT: 0, shootT: 2, drawing: false, drawGoal: 1, reload: 0, hold: 0, ex: 0, ey: 0, lead: 0, stuck: 0, swingHit: 0, react: 0.25, tg: null, tgT: 0 });
+const bot = newBot(); // le bot du duel (adversaire « opp »)
+for (const f of Object.values(FOES)) f.bot = f === FOES.opp ? bot : newBot();
+// contre les bots : de 1 à 11 bots, et le mode de jeu quand il y en a plusieurs (comme en ligne)
+let botCount = 1, botTeam = 'ffa';
+try { botCount = clamp(parseInt(localStorage.getItem('duelarc-botn') || '1', 10) || 1, 1, 11); botTeam = localStorage.getItem('duelarc-botteam') || 'ffa'; } catch (e) {}
 function solveBallistic(o, tx, ty, tz, speed, G) {
   const dx = tx - o.x, dz = tz - o.z, d = Math.hypot(dx, dz) || 0.01, h = ty - o.y, v2 = speed * speed;
   if (!G) return { yaw: Math.atan2(dx, dz), pitch: Math.atan2(h, d), hx: dx / d, hz: dz / d, d };
@@ -3042,123 +3074,135 @@ function solveBallistic(o, tx, ty, tz, speed, G) {
   const th = disc < 0 ? Math.PI / 4 : Math.atan((v2 - Math.sqrt(disc)) / (G * d));
   return { yaw: Math.atan2(dx, dz), pitch: th, hx: dx / d, hz: dz / d, d };
 }
-function botAim() {
-  const kind = curWpn().kind, speed = shotSpeed(kind, bot.drawGoal);
-  const o = oppA.bowWorld(tmpB);
-  const dist = Math.hypot(me.x - o.x, me.z - o.z), flight = dist / (speed * 0.97), err = hardBot() ? Math.max(0.25, dist / 60) : Math.max(0.6, dist / 24);
-  return { o, speed, sol: solveBallistic(o, me.x + bot.ex * err + me.vx * flight * bot.lead, 1.0 + bot.ey * err, me.z + me.vz * flight * bot.lead, speed, shotG(kind)) };
+function botAim(f) {
+  const S = f.s, B = f.bot, A = f.A, TG = B.tg || ME, TS = TG.s, YO = trio() ? Math.PI : 0;
+  const kind = curWpn().kind, speed = shotSpeed(kind, B.drawGoal);
+  const o = A.bowWorld(tmpB);
+  const dist = Math.hypot(TS.x - o.x, TS.z - o.z), flight = dist / (speed * 0.97), err = hardBot() ? Math.max(0.25, dist / 60) : Math.max(0.6, dist / 24);
+  return { o, speed, sol: solveBallistic(o, TS.x + B.ex * err + TS.vx * flight * B.lead, 1.0 + B.ey * err, TS.z + TS.vz * flight * B.lead, speed, shotG(kind)) };
 }
 const losA = new T.Vector3(), losB = new T.Vector3();
-function botPickWaypoint() {
+function botPickWaypoint(f) {
+  const S = f.s, B = f.bot, A = f.A, TG = B.tg || ME, TS = TG.s, YO = trio() ? Math.PI : 0;
   const r = Math.random(), F = map;
   if (r < 0.45) { // fonce vers le joueur
-    const dx = me.x - opp.x, dz = me.z - opp.z, d = Math.hypot(dx, dz) || 1, stop = rand(5, 9);
+    const dx = TS.x - S.x, dz = TS.z - S.z, d = Math.hypot(dx, dz) || 1, stop = rand(5, 9);
     const k = Math.max(0, d - stop) / d;
-    bot.tx = opp.x + dx * k + rand(-3, 3); bot.tz = opp.z + dz * k;
+    B.tx = S.x + dx * k + rand(-3, 3); B.tz = S.z + dz * k;
   } else if (r < 0.85 && obstacles.length) { // se cache derrière un obstacle proche
     let best = null, bd = 1e9;
-    for (const o of obstacles) { const d = Math.hypot(o.x - opp.x, o.z - opp.z) + rand(0, 4); if (d < bd) { bd = d; best = o; } }
-    const dx = best.x - me.x, dz = best.z - me.z, d = Math.hypot(dx, dz) || 1;
-    bot.tx = best.x + dx / d * (best.r + 0.8); bot.tz = best.z + dz / d * (best.r + 0.8);
-  } else { bot.tx = rand(-F.xlim, F.xlim); bot.tz = rand(-F.zlim, F.zlim * 0.3); }
-  bot.tx = clamp(bot.tx, -F.xlim, F.xlim); bot.tz = clamp(bot.tz, -F.zlim, F.zlim);
-  bot.moveT = rand(2, 4);
+    for (const o of obstacles) { const d = Math.hypot(o.x - S.x, o.z - S.z) + rand(0, 4); if (d < bd) { bd = d; best = o; } }
+    const dx = best.x - TS.x, dz = best.z - TS.z, d = Math.hypot(dx, dz) || 1;
+    B.tx = best.x + dx / d * (best.r + 0.8); B.tz = best.z + dz / d * (best.r + 0.8);
+  } else { B.tx = rand(-F.xlim, F.xlim); B.tz = rand(-F.zlim, trio() ? F.zlim : F.zlim * 0.3); }
+  B.tx = clamp(B.tx, -F.xlim, F.xlim); B.tz = clamp(B.tz, -F.zlim, F.zlim);
+  if (F.rlim) { const d = Math.hypot(B.tx, B.tz); if (d > F.rlim - 1) { B.tx *= (F.rlim - 1) / d; B.tz *= (F.rlim - 1) / d; } }
+  B.moveT = rand(2, 4);
 }
-function botMove(dt) {
+function botMove(f, dt) {
+  const S = f.s, B = f.bot, A = f.A, TG = B.tg || ME, TS = TG.s, YO = trio() ? Math.PI : 0;
   const active = canMove();
   if (map.lateral) {
-    bot.moveT -= dt;
-    if (bot.moveT <= 0) { bot.tx = rand(-map.xlim, map.xlim); bot.moveT = rand(0.5, 1.8); }
+    B.moveT -= dt;
+    if (B.moveT <= 0) { B.tx = rand(-map.xlim, map.xlim); B.moveT = rand(0.5, 1.8); }
     if (phase === 'fight') for (const a of arrows) {
       if (a.owner !== 'me' || !a.flying || a.botSeen || a.v.z >= 0) continue;
-      const t = (a.p.z - opp.z) / (-a.v.z);
+      const t = (a.p.z - S.z) / (-a.v.z);
       if (t < 0.4) {
         a.botSeen = true;
         const px = a.p.x + a.v.x * t;
-        if (Math.abs(px - opp.x) < 0.7 && Math.random() < (hardBot() ? 0.8 : 0.35)) { bot.tx = clamp(opp.x + (px > opp.x ? -1.7 : 1.7), -map.xlim, map.xlim); bot.moveT = 0.9; }
+        if (Math.abs(px - S.x) < 0.7 && Math.random() < (hardBot() ? 0.8 : 0.35)) { B.tx = clamp(S.x + (px > S.x ? -1.7 : 1.7), -map.xlim, map.xlim); B.moveT = 0.9; }
       }
     }
-    const target = active ? clamp((bot.tx - opp.x) * 3, -1, 1) * map.maxv * (bot.drawing ? 0.65 : 1) : 0;
-    opp.vx = approach(opp.vx, target, map.acc * dt);
-    opp.x = clamp(opp.x + opp.vx * dt, -map.xlim, map.xlim); opp.z = -map.spawnZ;
+    const target = active ? clamp((B.tx - S.x) * 3, -1, 1) * map.maxv * (B.drawing ? 0.65 : 1) : 0;
+    S.vx = approach(S.vx, target, map.acc * dt);
+    S.x = clamp(S.x + S.vx * dt, -map.xlim, map.xlim); S.z = -map.spawnZ;
     return;
   }
-  bot.moveT -= dt;
+  B.moveT -= dt;
   if (curWpn().melee) { // à la batte, il fonce sur le joueur et s'arrête au contact
-    const ex = me.x - opp.x, ez = me.z - opp.z, el = Math.hypot(ex, ez) || 1, k = Math.max(0, el - 1.1) / el;
-    bot.tx = opp.x + ex * k; bot.tz = opp.z + ez * k;
+    const ex = TS.x - S.x, ez = TS.z - S.z, el = Math.hypot(ex, ez) || 1, k = Math.max(0, el - 1.1) / el;
+    B.tx = S.x + ex * k; B.tz = S.z + ez * k;
   }
-  const dx = bot.tx - opp.x, dz = bot.tz - opp.z, d = Math.hypot(dx, dz);
-  if (!curWpn().melee && (bot.moveT <= 0 || d < 0.6 || bot.stuck > 0.8)) { botPickWaypoint(); bot.stuck = 0; }
+  const dx = B.tx - S.x, dz = B.tz - S.z, d = Math.hypot(dx, dz);
+  if (!curWpn().melee && (B.moveT <= 0 || d < 0.6 || B.stuck > 0.8)) { botPickWaypoint(f); B.stuck = 0; }
   let vx = 0, vz = 0;
   if (active && d > 0.6) {
-    const sp = map.maxv * (bot.drawing ? 0.5 : 0.95) * speedMul();
+    const sp = map.maxv * (B.drawing ? 0.5 : 0.95) * speedMul();
     let ux = dx / d, uz = dz / d;
     // évite les obstacles en tournant si la route est bloquée
     for (const ang of [0, 0.7, -0.7, 1.4, -1.4]) {
       const c = Math.cos(ang), s = Math.sin(ang), rx = ux * c - uz * s, rz = ux * s + uz * c;
-      tmpA.set(opp.x + rx * 1.2, 1, opp.z + rz * 1.2);
+      tmpA.set(S.x + rx * 1.2, 1, S.z + rz * 1.2);
       if (!inObstacle(tmpA, PLAYER_R)) { ux = rx; uz = rz; break; }
     }
     vx = ux * sp; vz = uz * sp;
   }
-  opp.vx = approach(opp.vx, vx, map.acc * speedMul() * dt); opp.vz = approach(opp.vz, vz, map.acc * speedMul() * dt);
-  const px = opp.x, pz = opp.z;
-  opp.x += opp.vx * dt; opp.z += opp.vz * dt; resolveMove(opp);
-  if (active && d > 0.6 && Math.hypot(opp.x - px, opp.z - pz) < dt * 0.6) bot.stuck += dt; else bot.stuck = 0;
+  S.vx = approach(S.vx, vx, map.acc * speedMul() * dt); S.vz = approach(S.vz, vz, map.acc * speedMul() * dt);
+  const px = S.x, pz = S.z;
+  S.x += S.vx * dt; S.z += S.vz * dt; resolveMove(opp);
+  if (active && d > 0.6 && Math.hypot(S.x - px, S.z - pz) < dt * 0.6) B.stuck += dt; else B.stuck = 0;
 }
-function botUpdate(dt) {
-  botMove(dt);
-  bot.reload = Math.max(0, bot.reload - dt);
-  opp.nock = bot.reload <= 0;
-  if (!map.lateral && !bot.drawing) { // regarde le joueur
-    const want = Math.atan2(me.x - opp.x, me.z - opp.z);
-    opp.yaw += angDiff(opp.yaw, want) * (1 - Math.exp(-dt * (hardBot() ? 10 : 6)));
+function botUpdate(f, dt) {
+  if ((B0 => { B0.tgT = (B0.tgT || 0) - dt; return B0.tgT <= 0 || !B0.tg || isDead(B0.tg); })(f.bot)) {
+    let best = null, bd = 1e9;
+    for (const c of [ME, ...foes]) { if (c === f || isDead(c) || mates(f.key, c.key)) continue; const d = Math.hypot(c.s.x - f.s.x, c.s.z - f.s.z); if (d < bd) { bd = d; best = c; } }
+    f.bot.tg = best; f.bot.tgT = rand(1, 1.5);
   }
-  if (phase !== 'fight') { bot.drawing = false; opp.draw = 0; return; }
-  if (curWpn().melee) { botMelee(dt); return; }
-  oppA.bowWorld(losA); losB.set(me.x, 1.2, me.z);
-  const see = lineOfSight(losA, losB) && Math.hypot(me.x - opp.x, me.z - opp.z) < (hardBot() ? 60 : 34);
-  if (!bot.drawing) {
-    bot.shootT -= dt;
-    if (bot.shootT <= 0 && bot.reload <= 0 && see) {
-      const H = hardBot(); bot.drawing = true; bot.hold = 0; bot.drawGoal = H ? 1 : rand(0.75, 1);
-      bot.ex = gauss() * (H ? 0.15 : 0.4); bot.ey = gauss() * (H ? 0.12 : 0.3); bot.lead = H ? rand(0.85, 1.05) : rand(0, 0.8);
-      bot.burst = curWpn().kind === 'paintball' ? 4 + Math.floor(Math.random() * 5) : curWpn().kind === 'minigun' ? 12 + Math.floor(Math.random() * 12) : curWpn().kind === 'vector' ? 5 + Math.floor(Math.random() * 6) : curWpn().kind === 'm4' || curWpn().kind === 'scar' ? 2 + Math.floor(Math.random() * 3) : curWpn().auto ? 3 + Math.floor(Math.random() * 4) : 1; // pistolet : rafale de 3 à 6 balles, vector : 5 à 10
+  if (!f.bot.tg) return;
+  const S = f.s, B = f.bot, A = f.A, TG = B.tg || ME, TS = TG.s, YO = trio() ? Math.PI : 0;
+  botMove(f, dt);
+  B.reload = Math.max(0, B.reload - dt);
+  S.nock = B.reload <= 0;
+  if (!map.lateral && !B.drawing) { // regarde le joueur
+    const want = Math.atan2(TS.x - S.x, TS.z - S.z);
+    S.yaw += angDiff(S.yaw, want + YO) * (1 - Math.exp(-dt * (hardBot() ? 10 : 6)));
+  }
+  if (phase !== 'fight') { B.drawing = false; S.draw = 0; return; }
+  if (curWpn().melee) { botMelee(f, dt); return; }
+  A.bowWorld(losA); losB.set(TS.x, 1.2, TS.z);
+  const see = lineOfSight(losA, losB) && Math.hypot(TS.x - S.x, TS.z - S.z) < (hardBot() ? 60 : 34);
+  if (!B.drawing) {
+    B.shootT -= dt;
+    if (B.shootT <= 0 && B.reload <= 0 && see) {
+      const H = hardBot(); B.drawing = true; B.hold = 0; B.drawGoal = H ? 1 : rand(0.75, 1);
+      B.ex = gauss() * (H ? 0.15 : 0.4); B.ey = gauss() * (H ? 0.12 : 0.3); B.lead = H ? rand(0.85, 1.05) : rand(0, 0.8);
+      B.burst = curWpn().kind === 'paintball' ? 4 + Math.floor(Math.random() * 5) : curWpn().kind === 'minigun' ? 12 + Math.floor(Math.random() * 12) : curWpn().kind === 'vector' ? 5 + Math.floor(Math.random() * 6) : curWpn().kind === 'm4' || curWpn().kind === 'scar' ? 2 + Math.floor(Math.random() * 3) : curWpn().auto ? 3 + Math.floor(Math.random() * 4) : 1; // pistolet : rafale de 3 à 6 balles, vector : 5 à 10
     }
   } else {
-    opp.draw = Math.min(bot.drawGoal, opp.draw + dt / curWpn().aimT);
-    const { o, speed, sol } = botAim();
+    S.draw = Math.min(B.drawGoal, S.draw + dt / curWpn().aimT);
+    const { o, speed, sol } = botAim(f);
     const k = 1 - Math.exp(-dt * (hardBot() ? 14 : 8));
-    opp.yaw += angDiff(opp.yaw, sol.yaw) * k; opp.pitch += (sol.pitch - opp.pitch) * k;
-    if (opp.draw >= bot.drawGoal) {
-      bot.hold += dt;
-      if (bot.hold > (hardBot() ? 0.08 : 0.18) && see) {
+    S.yaw += angDiff(S.yaw, sol.yaw + YO) * k; S.pitch += (sol.pitch - S.pitch) * k;
+    if (S.draw >= B.drawGoal) {
+      B.hold += dt;
+      if (B.hold > (hardBot() ? 0.08 : 0.18) && see) {
         const c = Math.cos(sol.pitch) * speed;
         const kind = curWpn().kind;
-        spawnShot('opp', o.clone(), new T.Vector3(sol.hx * c, Math.sin(sol.pitch) * speed, sol.hz * c), 0, kind);
+        spawnShot(f.key, o.clone(), new T.Vector3(sol.hx * c, Math.sin(sol.pitch) * speed, sol.hz * c), 0, kind);
         shotSfx(kind, false, isBullet(kind) ? 0.5 : 0.35);
-        if (kicks(kind)) oppA.recoil();
-        if (--bot.burst > 0) { bot.hold = (hardBot() ? 0.08 : 0.18) - curWpn().rate; bot.ex = gauss() * (hardBot() ? 0.15 : 0.4); bot.ey = gauss() * (hardBot() ? 0.12 : 0.3); } // balle suivante 0,25 s plus tard
-        else { bot.drawing = false; opp.draw = 0; bot.reload = curWpn().auto ? RELOAD : Math.max(RELOAD, curWpn().rate || 0); bot.shootT = hardBot() ? rand(0.25, 0.7) : rand(0.8, 2.3); }
-      } else if (bot.hold > 1.6) { bot.drawing = false; opp.draw = 0; bot.shootT = rand(0.3, 1); }
+        if (kicks(kind)) A.recoil();
+        if (--B.burst > 0) { B.hold = (hardBot() ? 0.08 : 0.18) - curWpn().rate; B.ex = gauss() * (hardBot() ? 0.15 : 0.4); B.ey = gauss() * (hardBot() ? 0.12 : 0.3); } // balle suivante 0,25 s plus tard
+        else { B.drawing = false; S.draw = 0; B.reload = curWpn().auto ? RELOAD : Math.max(RELOAD, curWpn().rate || 0); B.shootT = hardBot() ? rand(0.25, 0.7) : rand(0.8, 2.3); }
+      } else if (B.hold > 1.6) { B.drawing = false; S.draw = 0; B.shootT = rand(0.3, 1); }
     }
   }
 }
-function botMelee(dt) {
-  const d = Math.hypot(me.x - opp.x, me.z - opp.z);
-  if (bot.swingHit > 0) {
-    bot.swingHit -= dt;
+function botMelee(f, dt) {
+  const S = f.s, B = f.bot, A = f.A, TG = B.tg || ME, TS = TG.s, YO = trio() ? Math.PI : 0;
+  const d = Math.hypot(TS.x - S.x, TS.z - S.z);
+  if (B.swingHit > 0) {
+    B.swingHit -= dt;
     // le bot est vu de face : son « devant » est son angle + π dans le repère du joueur
-    if (bot.swingHit <= 0 && !isDead(ME) && inBatReach(opp.x, opp.z, opp.yaw + Math.PI, ME)) { sfx('thunk', 1); registerTaken(ME, me.taken + 1, false, 'opp'); }
-  } else if (d < BAT_RANGE * 0.85 && bot.reload <= 0) {
-    bot.hold += dt;
-    if (bot.hold > (bot.react || 0.25)) { oppA.swing(); sfx('whoosh', 0.5); bot.swingHit = 0.1; bot.reload = BAT_COOLDOWN * (hardBot() ? rand(1, 1.15) : rand(1, 1.6)); bot.hold = 0; bot.react = hardBot() ? rand(0.06, 0.16) : rand(0.12, 0.4); }
-  } else bot.hold = 0;
+    if (B.swingHit <= 0 && !isDead(TG) && inBatReach(S.x, S.z, S.yaw + Math.PI - YO, TG)) { sfx('thunk', 1); registerTaken(TG, TS.taken + 1, false, f.key); }
+  } else if (d < BAT_RANGE * 0.85 && B.reload <= 0) {
+    B.hold += dt;
+    if (B.hold > (B.react || 0.25)) { A.swing(); sfx('whoosh', 0.5); B.swingHit = 0.1; B.reload = BAT_COOLDOWN * (hardBot() ? rand(1, 1.15) : rand(1, 1.6)); B.hold = 0; B.react = hardBot() ? rand(0.06, 0.16) : rand(0.12, 0.4); }
+  } else B.hold = 0;
 }
 function updateOpp(dt) {
   if (mode === 'practice') return;
-  if (mode === 'bot') botUpdate(dt);
+  if (mode === 'bot') for (const f of foes) if (!isDead(f)) botUpdate(f, dt);
   const seen = inSpecFP() && specTarget(); // on est dans ses yeux : on ne voit pas son corps
   const k = 1 - Math.exp(-dt * 14);
   for (const f of foes) {
@@ -3363,7 +3407,7 @@ function canyonRock(p) {
 // puis revient droit sur son lanceur sans s'arrêter aux arbres. Tant qu'il est en l'air, le lanceur ne peut pas relancer
 function boomStep(a) {
   const p = a.p, who = a.owner === 'me' ? me : FOES[a.owner].s;
-  if (a.owner === 'me') me.reload = Math.max(me.reload, 0.12); else if (mode === 'bot') bot.reload = Math.max(bot.reload, 0.12);
+  if (a.owner === 'me') me.reload = Math.max(me.reload, 0.12); else if (mode === 'bot') FOES[a.owner].bot.reload = Math.max(FOES[a.owner].bot.reload, 0.12);
   if (mode !== 'practice') for (const tg of [ME, ...foes]) {
     if (tg.key === a.owner || isDead(tg) || a.hitSet.has(tg.key) || mates(a.owner, tg.key)) continue;
     const z = hitStep(a, tg); if (!z) continue;
@@ -3378,7 +3422,7 @@ function boomStep(a) {
   const d = boomV.length();
   if (d < 0.9) { // rattrapé
     stopArrow(a); a.gone = true; a.m.visible = false; sfx('catch', a.owner === 'me' ? 1 : 0.4);
-    if (a.owner === 'me') me.reload = 0.2; else if (mode === 'bot') bot.reload = 0.6;
+    if (a.owner === 'me') me.reload = 0.2; else if (mode === 'bot') FOES[a.owner].bot.reload = 0.6;
     return;
   }
   a.v.lerp(boomV.multiplyScalar(BOOM_V / d), 0.12).setLength(BOOM_V);
@@ -4106,7 +4150,7 @@ function tourRoles() {
 const fighters = () => foes.filter(f => f.slot !== 2);
 // spectateur : celui de la tournante, ou le joueur éliminé d'une partie à 3 (grandes cartes) qui suit les survivants
 const tourSpec = () => TOUR.on && TOUR.n === 3 && mySlot === 2 && phase !== 'idle';
-const deadSpec = () => !TOUR.on && mode === 'online' && trio() && isDead(ME) && (phase === 'fight' || phase === 'ending');
+const deadSpec = () => !TOUR.on && (mode === 'online' || mode === 'bot') && trio() && isDead(ME) && (phase === 'fight' || phase === 'ending');
 const watchable = () => tourSpec() ? fighters() : deadSpec() ? foes.filter(f => !isDead(f)).sort((a, b) => mates('me', b.key) - mates('me', a.key)) : [];
 const specTarget = () => { const F = watchable(); return F.length ? F[specIdx % F.length] : null; };
 // spectateur : dans les yeux du joueur regardé (tant qu'il est en vie), ou de derrière lui si on l'a choisi
@@ -4237,10 +4281,26 @@ $('#btnJoin').addEventListener('click', () => {
   enterRoom(String(c), false);
 });
 $('#code').addEventListener('keydown', e => { if (e.key === 'Enter') $('#btnJoin').click(); });
+// nombre de bots et mode : à plusieurs bots, seulement les forêts (même version à n joueurs qu'en ligne), et les modes en équipes qui existent pour ce nombre de joueurs
+function refreshBotMenu() {
+  const n = botCount + 1, t = $('.botteam'), bs = [...t.querySelectorAll('button')];
+  if (botTeam !== 'ffa' && !(TEAM[botTeam] && TEAM[botTeam][0] === n)) botTeam = 'ffa';
+  bs.forEach(b => { b.hidden = b.dataset.tm !== 'ffa' && !(TEAM[b.dataset.tm] && TEAM[b.dataset.tm][0] === n); b.setAttribute('aria-pressed', String(b.dataset.tm === botTeam)); });
+  t.hidden = botCount < 2; t.style.gridTemplateColumns = `repeat(${Math.min(3, bs.filter(b => !b.hidden).length)},1fr)`;
+  document.querySelectorAll('.botcount button').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.n === botCount)));
+  const cy = document.querySelector('[data-step=bot] [data-map=canyon]'); if (cy) cy.disabled = botCount > 1;
+  if (botCount > 1 && !MAP_FAMILY[baseMap(menuMap(mapKey))]) applyMap('forestV2');
+  try { localStorage.setItem('duelarc-botn', String(botCount)); localStorage.setItem('duelarc-botteam', botTeam); } catch (e) {}
+}
+document.querySelectorAll('.botcount button').forEach(b => b.addEventListener('click', () => { botCount = +b.dataset.n; sfx('tick', 0.6); refreshBotMenu(); }));
+document.querySelectorAll('.botteam button').forEach(b => b.addEventListener('click', () => { botTeam = b.dataset.tm; sfx('tick', 0.6); refreshBotMenu(); }));
+refreshBotMenu();
+const BOT_FAM = { 3: TRIO, 4: QUAD, 5: PENTA, 6: HEXA, 7: HEPTA, 8: OCTA, 9: FAM9, 10: FAM10, 11: FAM11, 12: FAM12 }; // forêt à 2 -> la même à n joueurs
+const botMapKey = () => botCount > 1 ? (BOT_FAM[botCount + 1][menuMap(mapKey)] || BOT_FAM[botCount + 1].forestV2) : menuMap(mapKey);
 const botLvlBtns = () => document.querySelectorAll('.botlvl button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.lvl === botLvl)));
 document.querySelectorAll('.botlvl button').forEach(b => b.addEventListener('click', () => { botLvl = b.dataset.lvl === 'hard' ? 'hard' : 'mid'; botLvlBtns(); sfx('tick', 0.6); try { localStorage.setItem('duelarc-botlvl', botLvl); } catch (e) {} }));
 botLvlBtns();
-$('#btnBot').addEventListener('click', () => { audioInit(); menuNote(''); mode = 'bot'; resetMatch(); });
+$('#btnBot').addEventListener('click', () => { audioInit(); menuNote(''); mode = 'bot'; resetMatch(botMapKey()); });
 $('#btnPractice').addEventListener('click', () => { audioInit(); menuNote(''); practicePrevMap = mapKey; mode = 'practice'; resetMatch('forestV2'); });
 $('#btnReady').addEventListener('click', pressReady);
 document.querySelectorAll('.modesel button').forEach(b => b.addEventListener('click', () => chooseGameMode(b.dataset.gm)));
@@ -4328,11 +4388,11 @@ function renderThermal() {
 function frame(now) {
   const dt = Math.min(0.05, Math.max(0, (now - last) / 1000)); last = now; t += dt;
   targetG.visible = mode === 'practice'; oppA.root.visible = mode !== 'practice';
-  opp2A.root.visible = mode === 'online' && trio() && phase !== 'idle'; opp3A.root.visible = mode === 'online' && nPlayers >= 4 && phase !== 'idle'; opp4A.root.visible = mode === 'online' && nPlayers >= 5 && phase !== 'idle'; opp5A.root.visible = mode === 'online' && nPlayers >= 6 && phase !== 'idle'; opp6A.root.visible = mode === 'online' && nPlayers >= 7 && phase !== 'idle'; opp7A.root.visible = mode === 'online' && nPlayers >= 8 && phase !== 'idle'; opp8A.root.visible = mode === 'online' && nPlayers >= 9 && phase !== 'idle'; opp9A.root.visible = mode === 'online' && nPlayers >= 10 && phase !== 'idle'; opp10A.root.visible = mode === 'online' && nPlayers >= 11 && phase !== 'idle'; opp11A.root.visible = mode === 'online' && nPlayers >= 12 && phase !== 'idle';
+  opp2A.root.visible = (mode === 'online' || mode === 'bot') && trio() && phase !== 'idle'; opp3A.root.visible = (mode === 'online' || mode === 'bot') && nPlayers >= 4 && phase !== 'idle'; opp4A.root.visible = (mode === 'online' || mode === 'bot') && nPlayers >= 5 && phase !== 'idle'; opp5A.root.visible = (mode === 'online' || mode === 'bot') && nPlayers >= 6 && phase !== 'idle'; opp6A.root.visible = (mode === 'online' || mode === 'bot') && nPlayers >= 7 && phase !== 'idle'; opp7A.root.visible = (mode === 'online' || mode === 'bot') && nPlayers >= 8 && phase !== 'idle'; opp8A.root.visible = (mode === 'online' || mode === 'bot') && nPlayers >= 9 && phase !== 'idle'; opp9A.root.visible = (mode === 'online' || mode === 'bot') && nPlayers >= 10 && phase !== 'idle'; opp10A.root.visible = (mode === 'online' || mode === 'bot') && nPlayers >= 11 && phase !== 'idle'; opp11A.root.visible = (mode === 'online' || mode === 'bot') && nPlayers >= 12 && phase !== 'idle';
   updatePhase(dt);
   if (mode && phase !== 'idle') { updateMe(dt); updateOpp(dt); }
   updateFat(dt);
-  meA.setSkin(skinOfE(ME)); for (const f of Object.values(FOES)) f.A.setSkin((mode === 'bot' && f === FOES.opp) || (!!f.peer && foes.includes(f) && skinOfE(f))); // le bot (moyen ou dur) porte le skin Tung x3
+  meA.setSkin(skinOfE(ME)); for (const f of Object.values(FOES)) f.A.setSkin((mode === 'bot' && foes.includes(f)) || (!!f.peer && foes.includes(f) && skinOfE(f))); // les bots (moyen ou dur) portent le skin Tung x3
   { const st = inSpecFP() && specTarget(); fpA.setSkin(st ? skinOfE(st) : skinOfE(ME)); } // à la première personne : mes bras, ou ceux du joueur regardé
   updateArrows(dt); updateSplash(dt); updatePaint(dt); updateBlasts(dt);
   updateFlags(t);
