@@ -595,8 +595,8 @@ const WPN = {
   barrett: { kind: 'barrett', aimT: 0.4, zoomX: 4, rate: 1.5 },                       // Barrett .50 : lunette x4, une balle toutes les 1,5 s, tue d'un coup où qu'elle touche
   shotgun: { kind: 'shotgun', aimT: 0.15, zoomX: null, rate: 0.8 },                  // fusil à pompe : 9 plombs en gerbe fixe, dégâts selon la distance
   beer: { kind: 'beer', aimT: 0.45, zoomX: null, rate: 0.8 },                          // bouteille de bière lancée : part en ligne droite, éclate au contact, tue d'un coup
-  rocket: { kind: 'rocket', aimT: 0.35, zoomX: null, rate: 2 },                     // lance-roquettes (Fortnite) : roquette à 55 m/s sans chute, explose au contact comme une grenade
-  grenade: { kind: 'grenade', aimT: 0.2, zoomX: null, rate: 1.2 },                   // lance-grenades : tir en cloche, explose au contact, dégâts selon la distance
+  rocket: { kind: 'rocket', aimT: 0.35, zoomX: null, rate: 0.9 },                     // lance-roquettes (Fortnite) : roquette à 55 m/s sans chute, explose au contact comme une grenade
+  grenade: { kind: 'grenade', aimT: 0.2, zoomX: null, rate: 0.9 },                   // lance-grenades : tir en cloche, explose au contact, dégâts selon la distance
   minigun: { kind: 'minigun', aimT: 0.5, zoomX: null, auto: true, rate: 0.1 },       // minigun : 0,5 s pour lancer les canons, puis une balle toutes les 0,1 s
   paintball: { kind: 'paintball', aimT: 0.15, zoomX: null, auto: true, rate: 0.2 },  // paintball : tir continu, billes comme une flèche d'arc, 30 HP corps / 60 HP tête
   boomerang: { kind: 'boomerang', aimT: 0.2, zoomX: null, rate: 0.25 },               // boomerang : part tout droit, repart du premier obstacle ou du bout de la carte, revient dans la main ; tue d'un coup au passage
