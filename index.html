@@ -585,25 +585,25 @@ const WPN = {
   carbine: { kind: 'bullet', aimT: RIFLE_AIM_T, zoomX: null, iron: true }, // la carabine sans lunette : on vise à la mire (hausse et guidon alignés sur le viseur)
   bat: { kind: 'melee', aimT: 0.15, zoomX: null, melee: true },     // batte : corps à corps, déplacements x3
   pistol: { kind: 'pistol', aimT: 0.15, zoomX: null, auto: true, rate: 0.25 }, // pistolet : tir continu tant qu'on maintient
-  revolver: { kind: 'revolver', aimT: 0.15, zoomX: null, rate: 2 }, // revolver : une balle toutes les 2 s, tête = mort, corps = 100 HP
-  deagle: { kind: 'deagle', aimT: 0.15, zoomX: null, rate: 1.5 },   // Desert Eagle : une balle toutes les 1,5 s, tête = mort, corps = 150 HP
+  revolver: { kind: 'revolver', aimT: 0.15, zoomX: null, rate: 0.8 }, // revolver : une balle toutes les 0,8 s, tête = mort, corps = 100 HP
+  deagle: { kind: 'deagle', aimT: 0.15, zoomX: null, rate: 0.8 },   // Desert Eagle : une balle toutes les 0,8 s, tête = mort, corps = 150 HP
   vector: { kind: 'vector', aimT: 0.15, zoomX: null, auto: true, rate: 0.15 }, // Kriss Vector à laser : tir continu, 25 HP au corps, 100 HP à la tête
   m4: { kind: 'm4', aimT: 0.2, zoomX: null, auto: true, rate: 0.5 },             // M4 à laser : tir continu, une balle toutes les 0,5 s, tête = mort, corps = 100 HP
   m4acog: { kind: 'm4', aimT: 0.2, zoomX: 2.5, auto: true, rate: 0.5, acog: true },  // M4 avec ACOG de Rainbow Six Siege : lunette x2,5 à chevron rouge
   m4rd: { kind: 'm4', aimT: 0.2, zoomX: null, auto: true, rate: 0.5, rd: true },     // M4 avec point rouge de Rainbow Six Siege : on vise dans le tube, sans grossissement
   scar: { kind: 'scar', aimT: 0.2, zoomX: null, auto: true, rate: 0.5 },         // SCAR dorée (Fortnite, la première) : cadence et dégâts de la M4, sans laser
   barrett: { kind: 'barrett', aimT: 0.4, zoomX: 4, rate: 3 },                       // Barrett .50 : lunette x4, une balle toutes les 3 s, tue d'un coup où qu'elle touche
-  shotgun: { kind: 'shotgun', aimT: 0.15, zoomX: null, rate: 1.2 },                  // fusil à pompe : 9 plombs en gerbe fixe, dégâts selon la distance
-  beer: { kind: 'beer', aimT: 0.45, zoomX: null, rate: 1 },                          // bouteille de bière lancée : part en ligne droite, éclate au contact, tue d'un coup
+  shotgun: { kind: 'shotgun', aimT: 0.15, zoomX: null, rate: 0.8 },                  // fusil à pompe : 9 plombs en gerbe fixe, dégâts selon la distance
+  beer: { kind: 'beer', aimT: 0.45, zoomX: null, rate: 0.8 },                          // bouteille de bière lancée : part en ligne droite, éclate au contact, tue d'un coup
   rocket: { kind: 'rocket', aimT: 0.35, zoomX: null, rate: 2 },                     // lance-roquettes (Fortnite) : roquette à 55 m/s sans chute, explose au contact comme une grenade
   grenade: { kind: 'grenade', aimT: 0.2, zoomX: null, rate: 1.2 },                   // lance-grenades : tir en cloche, explose au contact, dégâts selon la distance
   minigun: { kind: 'minigun', aimT: 0.5, zoomX: null, auto: true, rate: 0.1 },       // minigun : 0,5 s pour lancer les canons, puis une balle toutes les 0,1 s
   paintball: { kind: 'paintball', aimT: 0.15, zoomX: null, auto: true, rate: 0.2 },  // paintball : tir continu, billes comme une flèche d'arc, 30 HP corps / 60 HP tête
   boomerang: { kind: 'boomerang', aimT: 0.2, zoomX: null, rate: 0.25 },               // boomerang : part tout droit, repart du premier obstacle ou du bout de la carte, revient dans la main ; tue d'un coup au passage
-  sling: { kind: 'stone', aimT: 0.3, zoomX: null, rate: 1 },                         // lance-pierre : une pierre par seconde, 200 m/s, sans chute, tête = mort, corps = 100 HP
-  blowgun: { kind: 'dart', aimT: 0.25, zoomX: null, rate: 1.2 },                     // sarbacane : fléchette silencieuse à 300 m/s, sans chute, tête = mort, corps = 100 HP
-  shuriken: { kind: 'shuriken', aimT: 0.15, zoomX: null, rate: 1 },                   // shuriken : un par seconde, 300 m/s, sans chute, tête = mort, corps = 100 HP
-  psniper: { kind: 'psniper', aimT: 0.3, zoomX: 4, rate: 1 },                        // sniper paintball : lunette x4, une bille par seconde (336 m/s, sans chute), tête = mort, corps = 75 HP
+  sling: { kind: 'stone', aimT: 0.3, zoomX: null, rate: 0.8 },                         // lance-pierre : une pierre toutes les 0,8 s, 200 m/s, sans chute, tête = mort, corps = 100 HP
+  blowgun: { kind: 'dart', aimT: 0.25, zoomX: null, rate: 0.8 },                     // sarbacane : fléchette silencieuse à 300 m/s, sans chute, tête = mort, corps = 100 HP
+  shuriken: { kind: 'shuriken', aimT: 0.15, zoomX: null, rate: 0.8 },                   // shuriken : un toutes les 0,8 s, 300 m/s, sans chute, tête = mort, corps = 100 HP
+  psniper: { kind: 'psniper', aimT: 0.3, zoomX: 4, rate: 0.8 },                        // sniper paintball : lunette x4, une bille toutes les 0,8 s (336 m/s, sans chute), tête = mort, corps = 75 HP
 };
 // paintball : billes de peinture à la vitesse d'une flèche d'arc tirée à fond, en ligne droite (sans chute), couleurs fluo
 // versions infrarouges des armes à lunette : mêmes réglages, boîtier thermique sur l'arme et vision thermique dans la lunette
