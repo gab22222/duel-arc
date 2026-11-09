@@ -282,7 +282,7 @@ p{margin:0}
       <div class="opt"><span>Skin</span>
         <div class="seg skinsel" role="group" aria-label="Skin">
           <button data-skin="base" aria-pressed="true">Classique</button>
-          <button data-skin="tung" aria-pressed="false">Tung x3</button>
+          <button data-skin="tung" aria-pressed="false">Tung x3<small>en ligne : 1v1 seulement</small></button>
         </div>
       </div>
       <div class="opt"><span>Bruitages</span>
@@ -2512,7 +2512,9 @@ let funSfx = false;
 // skin choisi par le joueur (« base » par défaut, ou « tung ») ; envoyé aux autres dans sa présence
 let mySkin = 'base';
 try { mySkin = localStorage.getItem('duelarc-skin') === 'tung' ? 'tung' : 'base'; } catch (e) {}
-const skinOfE = e => e === ME ? mySkin === 'tung' : mode === 'online' && ((peersNow.find(x => x.peer === e.peer) || { presence: {} }).presence.sk === 'tung');
+// en ligne, le skin Tung x3 n'existe qu'en 1v1 (partie à 2 joueurs) ; à 3 joueurs et plus, tout le monde est en skin classique. Contre le bot : comme avant
+const onlineDuo = () => TOUR.on ? TOUR.n === 2 : nPlayers === 2;
+const skinOfE = e => e === ME ? mySkin === 'tung' && (mode !== 'online' || onlineDuo()) : mode === 'online' && onlineDuo() && ((peersNow.find(x => x.peer === e.peer) || { presence: {} }).presence.sk === 'tung');
 try { funSfx = localStorage.getItem('duelarc-bruit') === '1'; } catch (e) {}
 function fhaa(v = 1) {
   if (!funSfx) return;
