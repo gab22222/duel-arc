@@ -279,6 +279,12 @@ p{margin:0}
       <button class="btn primary choice" data-go="friends">Jouer avec des amis <span>en ligne, de 2 à 12 joueurs</span></button>
       <button class="btn primary choice" data-go="bot">Jouer contre un bot <span>hors ligne</span></button>
       <button class="btn primary choice" data-go="practice">Tir libre <span>cible en forêt, sans score</span></button>
+      <div class="opt"><span>Skin</span>
+        <div class="seg skinsel" role="group" aria-label="Skin">
+          <button data-skin="base" aria-pressed="true">Classique</button>
+          <button data-skin="tung" aria-pressed="false">Tung x3</button>
+        </div>
+      </div>
       <div class="opt"><span>Bruitages</span>
         <div class="seg funsel" role="group" aria-label="Bruitages">
           <button data-fun="0" aria-pressed="true">Désactivés</button>
@@ -1792,9 +1798,11 @@ function convexPlanes(geo) {
   add(1, 0, 0, max.x); add(0, 1, 0, max.y); add(0, 0, 1, max.z); add(-1, 0, 0, -min.x); add(0, -1, 0, -min.y); add(0, 0, -1, -min.z);
   return out;
 }
+const HEAT_LAYER_ID = 1; // couche de la vision infrarouge
+const TUNG = { wood: std(0xc27a43, { roughness: .85 }), end: std(0xdcab72, { roughness: .9 }), lid: std(0xb46f3c, { roughness: .85 }), eye: std(0xf3efe6, { roughness: .35 }), iris: std(0x24160e, { roughness: .3 }), mouth: std(0x4e2414, { roughness: .7 }) };
 function limb(mat, thick) {
   const m = new T.Mesh(new T.BoxGeometry(thick, thick, 1), mat);
-  return { m, set(a, b) { m.position.copy(a).add(b).multiplyScalar(0.5); tmpL.copy(b).sub(a); m.scale.set(1, 1, Math.max(0.01, tmpL.length())); m.quaternion.setFromUnitVectors(Z1, tmpL.normalize()); } };
+  return { m, set(a, b) { m.position.copy(a).add(b).multiplyScalar(0.5); tmpL.copy(b).sub(a); const th = m.userData.th || 1; m.scale.set(th, th, Math.max(0.01, tmpL.length())); m.quaternion.setFromUnitVectors(Z1, tmpL.normalize()); } };
 }
 // bouteille de bière ambrée de 33 cl, pleine (capsule dorée, étiquette crème à bande rouge) : debout le long de +Y, fond à l'origine
 const beerGlass = std(0x6a3510, { roughness: .12, metalness: .15 }), beerLabel = std(0xeadfc4, { roughness: .7 }), beerBand = std(0xb2231c, { roughness: .6 }), beerCap = std(0xd2ab3e, { metalness: .7, roughness: .3 });
@@ -2593,10 +2601,37 @@ function makeArcher(cloth, hoodCol, owner, fpv = false) { // fpv : seulement les
   function setColors(c, h) { clothM.color.setHex(c); hoodM.color.setHex(h); }
   function wear(B) { clothM.color.copy(B.clothM.color); hoodM.color.copy(B.hoodM.color); } // les couleurs d'un autre joueur
   // première personne : pas de corps, et des mains au bout des bras
-  const hands = [armL, armR].map(a => { const h = new T.Mesh(new T.BoxGeometry(0.066, 0.076, 0.1), std(0x2b2d33, { roughness: .7 })), cuff = new T.Mesh(new T.BoxGeometry(0.074, 0.074, 0.03), skin); cuff.position.z = -0.065; h.add(cuff); h.visible = fpv; upper.add(h); return [a.m, h]; }); // gants et poignets
+  const gloveM = std(0x2b2d33, { roughness: .7 }), hands = [armL, armR].map(a => { const h = new T.Mesh(new T.BoxGeometry(0.066, 0.076, 0.1), gloveM), cuff = new T.Mesh(new T.BoxGeometry(0.074, 0.074, 0.03), skin); cuff.position.z = -0.065; h.add(cuff); h.visible = fpv; upper.add(h); return [a.m, h]; }); // gants et poignets
   if (fpv) for (const [m] of heatParts) if (m !== armL.m && m !== armR.m) m.visible = false;
+  // skin « Tung x3 » : un tronc de bois avec un visage, des jambes fines et de grands pieds nus ; ses couleurs ne changent jamais.
+  // Les pièces du personnage de base restent là, invisibles, comme zone de touche : même taille pour tous les joueurs, quel que soit le skin
+  const tungG = new T.Group(); tungG.visible = false; root.add(tungG); let tungOn = false;
+  if (!fpv) {
+    const tp = (geo, mat, x, y, z, sx = 1, sy = 1, sz = 1) => { const m = new T.Mesh(geo, mat); m.position.set(x, y, z); m.scale.set(sx, sy, sz); tungG.add(m); return m; };
+    const log = tp(new T.CylinderGeometry(0.205, 0.215, 1.0, 14, 3), TUNG.wood, 0, 1.36, 0);                     // le tronc : corps et tête
+    tp(new T.CylinderGeometry(0.2, 0.2, 0.012, 14), TUNG.end, 0, 1.866, 0);                                          // le bois coupé, en haut
+    for (const sx of [-1, 1]) {
+      tp(new T.SphereGeometry(0.068, 12, 10), TUNG.eye, sx * 0.08, 1.625, -0.176, 1, 1.08, 0.55);                 // grands yeux ronds, grands ouverts
+      tp(new T.SphereGeometry(0.031, 10, 8), TUNG.iris, sx * 0.075, 1.618, -0.208, 1, 1, 0.45);                    // pupilles
+      const brow = tp(new T.BoxGeometry(0.11, 0.018, 0.03), TUNG.mouth, sx * 0.082, 1.715, -0.198); brow.rotation.z = -sx * 0.18; // sourcils levés
+      tp(new T.CylinderGeometry(0.036, 0.03, 0.8, 8), TUNG.wood, sx * 0.085, 0.43, 0);                             // jambes fines
+      tp(new T.SphereGeometry(0.044, 10, 8), TUNG.wood, sx * 0.085, 0.43, -0.006, 1, 0.8, 1);                    // genoux
+      const foot = tp(new T.SphereGeometry(0.075, 12, 8), TUNG.wood, sx * 0.095, 0.035, -0.07, 0.95, 0.5, 1.75);  // grands pieds nus
+      for (let i = 0; i < 4; i++) tp(new T.SphereGeometry(0.018, 6, 5), TUNG.wood, sx * (0.06 + i * 0.022), 0.03, -0.185 + Math.abs(i - 1.5) * 0.01, 1, 0.8, 1.2); // orteils
+    }
+    tp(new T.ConeGeometry(0.034, 0.1, 8), TUNG.wood, 0, 1.53, -0.215, 1, 1, 0.7).rotation.x = -Math.PI / 2 - 0.25; // nez
+    const smile = tp(new T.TorusGeometry(0.085, 0.017, 6, 16, Math.PI), TUNG.mouth, 0, 1.49, -0.2); smile.rotation.set(0.12, 0, Math.PI); smile.scale.set(1, 0.7, 1); // grand sourire
+    tp(new T.CylinderGeometry(0.205, 0.17, 0.06, 14), TUNG.wood, 0, 0.85, 0);                                        // le bas du tronc, arrondi
+    for (const m of tungG.children) { m.layers.enable(HEAT_LAYER_ID); heatParts.push([m, 0.62]); } // vision infrarouge : le tronc chauffe comme un corps
+  }
+  function setSkin(tung) {
+    if (tung === tungOn) return; tungOn = tung;
+    if (!fpv) { tungG.visible = tung; for (const m of [head, hood, chest, torso, belt, cape, ...legs]) { if (tung) { m.layers.disable(0); m.layers.disable(HEAT_LAYER_ID); } else { m.layers.enable(0); m.layers.enable(HEAT_LAYER_ID); } } }
+    for (const a of [armL, armR]) { a.m.material = tung ? TUNG.wood : clothM; a.m.userData.th = tung ? 0.62 : 1; }
+    for (const [, h] of hands) { h.material = tung ? TUNG.wood : gloveM; h.children[0].visible = !tung; }
+  }
   function placeHands() { for (const [m, h] of hands) { h.quaternion.copy(m.quaternion); h.position.set(0, 0, m.scale.z / 2).applyQuaternion(m.quaternion).add(m.position); } }
-  return { root, upper, setPose, setWeapon, swing, setSilencer, recoil, bowWorld, updateHead, zoneAt, heatParts, placeHands, headPos, laser, laserFrom, setColors, wear, clothM, hoodM, get wpn() { return wpn; } };
+  return { root, upper, setPose, setWeapon, swing, setSilencer, recoil, bowWorld, updateHead, zoneAt, heatParts, placeHands, headPos, laser, laserFrom, setColors, wear, setSkin, clothM, hoodM, get wpn() { return wpn; }, get tung() { return tungOn; } };
 }
 const meA = makeArcher(0x2f8f83, 0x1f5f58, 'me');
 const oppA = makeArcher(0xa8342a, 0x6e1f1a, 'opp');
@@ -2695,6 +2730,10 @@ function loadFhaa() {
 }
 // bruitages (désactivés par défaut) : pour l'instant, seulement le « fhaaa » du tir à la tête
 let funSfx = false;
+// skin choisi par le joueur (« base » par défaut, ou « tung ») ; envoyé aux autres dans sa présence
+let mySkin = 'base';
+try { mySkin = localStorage.getItem('duelarc-skin') === 'tung' ? 'tung' : 'base'; } catch (e) {}
+const skinOfE = e => e === ME ? mySkin === 'tung' : mode === 'online' && ((peersNow.find(x => x.peer === e.peer) || { presence: {} }).presence.sk === 'tung');
 try { funSfx = localStorage.getItem('duelarc-bruit') === '1'; } catch (e) {}
 function fhaa(v = 1) {
   if (!funSfx) return;
@@ -3925,7 +3964,7 @@ async function enterRoom(code, creator) {
   myJoin = Date.now();
   setGameMode('tour'); TOUR.on = false;
   setTeamMode('ffa');
-  pres({ np: 0, rdy: false, tok: '', started: '', dealt: {}, mapK: mapKey, wpn: weapon, mapV, j: myJoin, nm: myName, gm: gameMode, tm: teamMode, tourBase: '', tourMode: '', pick: null });
+  pres({ sk: mySkin, np: 0, rdy: false, tok: '', started: '', dealt: {}, mapK: mapKey, wpn: weapon, mapV, j: myJoin, nm: myName, gm: gameMode, tm: teamMode, tourBase: '', tourMode: '', pick: null });
   phase = 'idle';
   $('#lobbyCode').textContent = code;
   renderLobby(); showPanel('#lobby');
@@ -4404,6 +4443,9 @@ document.querySelectorAll('.wpnsel').forEach(sel => {
 });
 document.querySelectorAll('.wpnsel button').forEach(b => b.addEventListener('click', () => chooseWeapon(familyOf(weapon) === b.dataset.wpn ? weapon : b.dataset.wpn))); // même arme : on garde sa variante
 refreshVariants();
+const skinBtns = () => document.querySelectorAll('.skinsel button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.skin === mySkin)));
+document.querySelectorAll('.skinsel button').forEach(b => b.addEventListener('click', () => { mySkin = b.dataset.skin === 'tung' ? 'tung' : 'base'; skinBtns(); audioInit(); sfx('tick', 0.6); try { localStorage.setItem('duelarc-skin', mySkin); } catch (e) {} if (nroom) pres({ sk: mySkin }); }));
+skinBtns();
 const funBtns = () => document.querySelectorAll('.funsel button').forEach(b => b.setAttribute('aria-pressed', String((b.dataset.fun === '1') === funSfx)));
 document.querySelectorAll('.funsel button').forEach(b => b.addEventListener('click', () => { funSfx = b.dataset.fun === '1'; funBtns(); audioInit(); sfx('tick', 0.6); try { localStorage.setItem('duelarc-bruit', funSfx ? '1' : '0'); } catch (e) {} }));
 funBtns();
@@ -4509,6 +4551,8 @@ function frame(now) {
   updatePhase(dt);
   if (mode && phase !== 'idle') { updateMe(dt); updateOpp(dt); }
   updateFat(dt);
+  meA.setSkin(skinOfE(ME)); for (const f of Object.values(FOES)) f.A.setSkin(!!f.peer && foes.includes(f) && skinOfE(f));
+  { const st = inSpecFP() && specTarget(); fpA.setSkin(st ? skinOfE(st) : skinOfE(ME)); } // à la première personne : mes bras, ou ceux du joueur regardé
   updateArrows(dt); updateSplash(dt); updatePaint(dt); updateBlasts(dt); updatePetals(dt);
   updateFlags(t);
   updateCamera(dt); updateSnow(dt);
