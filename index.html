@@ -4551,7 +4551,7 @@ function frame(now) {
   updatePhase(dt);
   if (mode && phase !== 'idle') { updateMe(dt); updateOpp(dt); }
   updateFat(dt);
-  meA.setSkin(skinOfE(ME)); for (const f of Object.values(FOES)) f.A.setSkin(!!f.peer && foes.includes(f) && skinOfE(f));
+  meA.setSkin(skinOfE(ME)); for (const f of Object.values(FOES)) f.A.setSkin((mode === 'bot' && f === FOES.opp) || (!!f.peer && foes.includes(f) && skinOfE(f))); // le bot (moyen ou dur) porte le skin Tung x3
   { const st = inSpecFP() && specTarget(); fpA.setSkin(st ? skinOfE(st) : skinOfE(ME)); } // à la première personne : mes bras, ou ceux du joueur regardé
   updateArrows(dt); updateSplash(dt); updatePaint(dt); updateBlasts(dt); updatePetals(dt);
   updateFlags(t);
