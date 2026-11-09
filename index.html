@@ -601,7 +601,7 @@ const WPN = {
   scar: { kind: 'scar', aimT: 0.2, zoomX: null, auto: true, rate: 0.5 },         // SCAR dorée (Fortnite, la première) : cadence et dégâts de la M4, sans laser
   barrett: { kind: 'barrett', aimT: 0.4, zoomX: 4, rate: 1.5 },                       // Barrett .50 : lunette x4, une balle toutes les 1,5 s, tue d'un coup où qu'elle touche
   shotgun: { kind: 'shotgun', aimT: 0.15, zoomX: null, rate: 0.8 },                  // fusil à pompe : 9 plombs en gerbe fixe, dégâts selon la distance
-  kebab: { kind: 'kebab', aimT: 0.45, zoomX: null, rate: 0.8 },                       // kebab lancé : comme la bière, mais il faut 3 touches pour tuer (tête comprise) et chaque touche rend la victime 1,8 fois plus large
+  kebab: { kind: 'kebab', aimT: 0.45, zoomX: null, rate: 0.8 },                       // kebab lancé : comme la bière, mais il faut 6 kebabs pour tuer (-50 HP chacun, tête comprise) et chaque kebab rend la victime 1,8 fois plus large
   beer: { kind: 'beer', aimT: 0.45, zoomX: null, rate: 0.8 },                          // bouteille de bière lancée : part en ligne droite, éclate au contact, tue d'un coup
   rocket: { kind: 'rocket', aimT: 0.35, zoomX: null, rate: 0.9 },                     // lance-roquettes (Fortnite) : roquette à 55 m/s sans chute, explose au contact comme une grenade
   grenade: { kind: 'grenade', aimT: 0.2, zoomX: null, rate: 0.9 },                   // lance-grenades : tir en cloche, explose au contact, dégâts selon la distance
@@ -662,7 +662,7 @@ const SIL_SFX = { bullet: 'bsil', pistol: 'psil', revolver: 'rsil', deagle: 'dsi
 const kicks = k => k === 'pistol' || k === 'vector' || k === 'm4' || k === 'scar' || k === 'barrett' || k === 'shotgun' || beerLike(k) || k === 'grenade' || k === 'rocket' || k === 'minigun' || k === 'dart' || isPaint(k) || bigGun(k); // (bière : le geste du lancer) // l'arme bouge au tir
 // dégâts en « touches » (1 touche = 100 HP, WIN touches = mort)
 function hitDamage(a, head) {
-  if (a.kind === 'kebab') return 1; // 3 kebabs pour tuer, même dans la tête
+  if (a.kind === 'kebab') return 0.5; // 6 kebabs pour tuer (-50 HP chacun), même dans la tête
   if (a.kind === 'pistol') return head ? 1 : 0.5;
   if (a.kind === 'deagle') return head ? WIN : 1.5;
   if (a.kind === 'vector') return head ? 1 : 0.25;
@@ -1772,7 +1772,7 @@ function splatKebab(a, onPlayer) { stopArrow(a); a.m.visible = false; a.gone = t
 function updateFat(dt) {
   const keb = !!mode && curWpn().kind === 'kebab';
   for (const e of [ME, ...Object.values(FOES)]) {
-    const goal = keb ? Math.pow(KEBAB_FAT, Math.min(WIN, Math.round(e.s.taken))) : 1;
+    const goal = keb ? Math.pow(KEBAB_FAT, Math.min(6, Math.round(e.s.taken * 2))) : 1; // un kebab = 50 HP = une demi-touche : x1,8 par kebab, jusqu'à 6 fois
     if (e.fat === undefined) { e.fat = 1; e.fatV = 0; }
     e.fatV += ((goal - e.fat) * 140 - e.fatV * 11) * dt; e.fat += e.fatV * dt;
     if (!keb) { e.fat = 1; e.fatV = 0; }
