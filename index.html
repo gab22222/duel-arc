@@ -643,6 +643,7 @@ function grenadeDamage(d) { return d <= 0.6 ? WIN : Math.max(0, WIN * (1 - (d - 
 // tous les plombs au but : 300 HP jusqu'à 6 m, puis de moins en moins (60 HP à 30 m, 20 HP à 50 m) ; un plomb dans la tête compte x1,5
 const SG_SPREAD = 0.045, SG_PELLETS = 9, SG_RANGE = 60;
 function sgTotal(d) { return d <= 6 ? WIN : d <= 30 ? WIN + (0.6 - WIN) * (d - 6) / 24 : Math.max(0.2, 0.6 - 0.4 * (d - 30) / 20); }
+const NO_TRAVEL = new Set(['shuriken', 'stone', 'dart', 'minigun']); // shuriken, lance-pierre, sarbacane et minigun : arrivent instantanément, comme une balle (le reste ne change pas)
 const isBullet = k => k === 'bullet' || k === 'pistol' || k === 'revolver' || k === 'deagle' || k === 'vector' || k === 'm4' || k === 'scar' || k === 'barrett' || k === 'shotgun'; // pas de chute, pas de temps de vol
 const hasLaser = w => w === 'vector' || w === 'm4';
 const bigGun = k => k === 'revolver' || k === 'deagle'; // armes de poing à gros recul (visuel)
@@ -3333,7 +3334,7 @@ function spawnArrow(owner, p, v, id = 0, kind = 'arrow', noSmoke = false) {
   if (kind === 'boomerang') { a.noSmoke = true; a.hitSet = new Set(); a.back = false; }
   if (kind === 'stone') a.noSmoke = true;
   if (owner !== 'me' && !bullet && !isPaint(kind) && kind !== 'dart' && !thrown(kind)) sfx('whoosh', 0.7);
-  if (bullet) flyNow(a);
+  if (bullet || NO_TRAVEL.has(kind)) flyNow(a); // tout le trajet d'un coup : pas de temps de vol
   const stuck = arrows.filter(x => !x.flying);
   while (stuck.length > 30) { const old = stuck.shift(); if (old.m.parent) old.m.parent.remove(old.m); arrows.splice(arrows.indexOf(old), 1); }
 }
