@@ -311,6 +311,8 @@ p{margin:0}
         <button data-map="canyon" aria-pressed="true">Canyon<small>face à face, esquive sur le côté</small></button>
         <button data-map="forestV2" aria-pressed="false">Forêt V1<small>parfaitement symétrique</small></button>
         <button data-map="forestV3" aria-pressed="false">Forêt V2<small>tous les troncs de la même largeur</small></button>
+        <button data-map="forestB1" aria-pressed="false" hidden>Forêt V1.2<small>3 fois plus grande, avec 2 bots</small></button>
+        <button data-map="forestB2" aria-pressed="false" hidden>Forêt V2.2<small>3 fois plus grande, avec 2 bots</small></button>
       </div>
       <div class="opt wpnrow" hidden><span>Arme</span>
       <div class="seg wpnsel" role="group" aria-label="Arme en forêt">
@@ -446,6 +448,8 @@ p{margin:0}
       <button data-map="forestV2" aria-pressed="false">Forêt V1<small>symétrique, de 2 à 12</small></button>
       <button data-map="forestV3" aria-pressed="false">Forêt V2<small>troncs égaux, de 2 à 12</small></button>
       <button data-map="forestXL" aria-pressed="false" disabled>Forêt géante<small>124 m, à 3</small></button>
+      <button data-map="forestB1" aria-pressed="false" disabled>Forêt V1.2<small>3 fois plus grande, à 3</small></button>
+      <button data-map="forestB2" aria-pressed="false" disabled>Forêt V2.2<small>3 fois plus grande, à 3</small></button>
     </div>
     <div class="opt wpnrow" hidden><span>Arme</span>
       <div class="seg wpnsel" role="group" aria-label="Arme en forêt">
@@ -518,6 +522,8 @@ p{margin:0}
       <button data-map="forestV2" aria-pressed="false">Forêt V1<small>symétrique, de 2 à 12</small></button>
       <button data-map="forestV3" aria-pressed="false">Forêt V2<small>troncs égaux, de 2 à 12</small></button>
       <button data-map="forestXL" aria-pressed="false" disabled>Forêt géante<small>124 m, à 3</small></button>
+      <button data-map="forestB1" aria-pressed="false" disabled>Forêt V1.2<small>3 fois plus grande, à 3</small></button>
+      <button data-map="forestB2" aria-pressed="false" disabled>Forêt V2.2<small>3 fois plus grande, à 3</small></button>
     </div>
     <div class="opt wpnrow" hidden><span>Arme</span>
       <div class="seg wpnsel" role="group" aria-label="Arme en forêt">
@@ -734,11 +740,15 @@ MAPS.forestE1s = { ...MAPS.forestE1, key: 'forestE1s', snow: true }; MAPS.forest
 // à 12 : les forêts 1 et 2 en version à 12, symétriques par rotation de 360°/12 ; même zone de 42 m, apparitions à 25,5 m du centre
 MAPS.forestZ1 = { ...MAPS.forestQ1, key: 'forestZ1' }; MAPS.forestZ2 = { ...MAPS.forestQ1, key: 'forestZ2' };
 MAPS.forestZ1s = { ...MAPS.forestZ1, key: 'forestZ1s', snow: true }; MAPS.forestZ2s = { ...MAPS.forestZ2, key: 'forestZ2s', snow: true };
+// forêts V1.2 et V2.2 : à 3 joueurs seulement, la forêt V1 (ou V2) sur une surface 3 fois plus grande (rayon 69 m au lieu de 40), apparitions à 44 m du centre
+MAPS.forestB1 = { ...MAPS.forestT1, key: 'forestB1', spawnZ: 44, spawnR: 44, xlim: 69, zlim: 69, rlim: 69, big: true }; MAPS.forestB2 = { ...MAPS.forestB1, key: 'forestB2' };
+MAPS.forestB1s = { ...MAPS.forestB1, key: 'forestB1s', snow: true }; MAPS.forestB2s = { ...MAPS.forestB2, key: 'forestB2s', snow: true };
+const BIG3 = { forestB1: ['forestB1', 'forestB1s'], forestB2: ['forestB2', 'forestB2s'] }; // leurs versions normale et neige
 const MAP_FAMILY = { forestV2: ['forestV2', 'forestV2s'], forestV3: ['forestV3', 'forestV3s'] }; // on choisit la forêt, puis sa version
 const TRIO = { forestV2: 'forestT1', forestV2s: 'forestT1s', forestV3: 'forestT2', forestV3s: 'forestT2s' }, QUAD = { forestV2: 'forestQ1', forestV2s: 'forestQ1s', forestV3: 'forestQ2', forestV3s: 'forestQ2s' }, PENTA = { forestV2: 'forestP1', forestV2s: 'forestP1s', forestV3: 'forestP2', forestV3s: 'forestP2s' }, HEXA = { forestV2: 'forestH1', forestV2s: 'forestH1s', forestV3: 'forestH2', forestV3s: 'forestH2s' }, HEPTA = { forestV2: 'forestS1', forestV2s: 'forestS1s', forestV3: 'forestS2', forestV3s: 'forestS2s' }, OCTA = { forestV2: 'forestO1', forestV2s: 'forestO1s', forestV3: 'forestO2', forestV3s: 'forestO2s' }, FAM9 = { forestV2: 'forestN1', forestV2s: 'forestN1s', forestV3: 'forestN2', forestV3s: 'forestN2s' }, FAM10 = { forestV2: 'forestD1', forestV2s: 'forestD1s', forestV3: 'forestD2', forestV3s: 'forestD2s' }, FAM11 = { forestV2: 'forestE1', forestV2s: 'forestE1s', forestV3: 'forestE2', forestV3s: 'forestE2s' }, FAM12 = { forestV2: 'forestZ1', forestV2s: 'forestZ1s', forestV3: 'forestZ2', forestV3s: 'forestZ2s' };
 const DUO = Object.fromEntries([...Object.entries(TRIO), ...Object.entries(QUAD), ...Object.entries(PENTA), ...Object.entries(HEXA), ...Object.entries(HEPTA), ...Object.entries(OCTA), ...Object.entries(FAM9), ...Object.entries(FAM10), ...Object.entries(FAM11), ...Object.entries(FAM12)].map(([a, b]) => [b, a])); // forêt à 3 ou 4 -> la même à 2
 const menuMap = k => DUO[k] || k; // dans les menus, la version à 3 s'affiche comme sa forêt
-const baseMap = k => ({ forestV2s: 'forestV2', forestV3s: 'forestV3', forestT1s: 'forestT1', forestT2s: 'forestT2', forestQ1s: 'forestQ1', forestQ2s: 'forestQ2', forestP1s: 'forestP1', forestP2s: 'forestP2', forestH1s: 'forestH1', forestH2s: 'forestH2', forestS1s: 'forestS1', forestS2s: 'forestS2', forestO1s: 'forestO1', forestO2s: 'forestO2', forestN1s: 'forestN1', forestN2s: 'forestN2', forestD1s: 'forestD1', forestD2s: 'forestD2', forestE1s: 'forestE1', forestE2s: 'forestE2', forestZ1s: 'forestZ1', forestZ2s: 'forestZ2' })[k] || k, isSnow = k => !!(MAPS[k] && MAPS[k].snow);
+const baseMap = k => ({ forestB1s: 'forestB1', forestB2s: 'forestB2', forestV2s: 'forestV2', forestV3s: 'forestV3', forestT1s: 'forestT1', forestT2s: 'forestT2', forestQ1s: 'forestQ1', forestQ2s: 'forestQ2', forestP1s: 'forestP1', forestP2s: 'forestP2', forestH1s: 'forestH1', forestH2s: 'forestH2', forestS1s: 'forestS1', forestS2s: 'forestS2', forestO1s: 'forestO1', forestO2s: 'forestO2', forestN1s: 'forestN1', forestN2s: 'forestN2', forestD1s: 'forestD1', forestD2s: 'forestD2', forestE1s: 'forestE1', forestE2s: 'forestE2', forestZ1s: 'forestZ1', forestZ2s: 'forestZ2' })[k] || k, isSnow = k => !!(MAPS[k] && MAPS[k].snow);
 try { const k = localStorage.getItem('duelarc-map2') || localStorage.getItem('duelarc-map'); if (k === 'forest') mapKey = 'forestV2'; else if (MAPS[k]) mapKey = k; } catch (e) {}
 
 // ---------- renderer
@@ -772,6 +782,7 @@ const SKY = {
   get forestV3() { return this.forestV2; },
   get forestV3s() { return this.forestV2s; },
   get forestT1() { return this.forestV2; }, get forestT2() { return this.forestV2; }, get forestT1s() { return this.forestV2s; }, get forestT2s() { return this.forestV2s; },
+  get forestB1() { return this.forestV2; }, get forestB2() { return this.forestV2; }, get forestB1s() { return this.forestV2s; }, get forestB2s() { return this.forestV2s; },
   get forestQ1() { return this.forestV2; }, get forestQ2() { return this.forestV2; }, get forestQ1s() { return this.forestV2s; }, get forestQ2s() { return this.forestV2s; },
   get forestP1() { return this.forestV2; }, get forestP2() { return this.forestV2; }, get forestP1s() { return this.forestV2s; }, get forestP2s() { return this.forestV2s; },
   get forestH1() { return this.forestV2; }, get forestH2() { return this.forestV2; }, get forestH1s() { return this.forestV2s; }, get forestH2s() { return this.forestV2s; },
@@ -847,7 +858,7 @@ function rough(geo, amt) {
   return geo;
 }
 const std = (color, extra) => new T.MeshStandardMaterial(Object.assign({ color, flatShading: true, roughness: 1, metalness: 0 }, extra || {}));
-const OBST = { canyon: [], forestV2: [], forestV3: [], forestT1: [], forestT2: [], forestQ1: [], forestQ2: [], forestP1: [], forestP2: [], forestH1: [], forestH2: [], forestS1: [], forestS2: [], forestO1: [], forestO2: [], forestN1: [], forestN2: [], forestD1: [], forestD2: [], forestE1: [], forestE2: [], forestZ1: [], forestZ2: [], forestXL: [] };
+const OBST = { canyon: [], forestV2: [], forestV3: [], forestB1: [], forestB2: [], forestT1: [], forestT2: [], forestQ1: [], forestQ2: [], forestP1: [], forestP2: [], forestH1: [], forestH2: [], forestS1: [], forestS2: [], forestO1: [], forestO2: [], forestN1: [], forestN2: [], forestD1: [], forestD2: [], forestE1: [], forestE2: [], forestZ1: [], forestZ2: [], forestXL: [] };
 const OB_CELL = 8, obNear = []; // grille des obstacles de la forêt géante (cases de 8 m)
 // forme réelle d'un tronc : les triangles de son flanc tels qu'ils sont dessinés (cylindre irrégulier qui s'affine)
 function trunkTris(geo, h, x, z) {
@@ -943,6 +954,8 @@ const forestE1G = new T.Group(); scene.add(forestE1G); forestE1G.visible = false
 const forestE2G = new T.Group(); scene.add(forestE2G); forestE2G.visible = false; // forêt 2 à 11
 const forestZ1G = new T.Group(); scene.add(forestZ1G); forestZ1G.visible = false; // forêt 1 à 12
 const forestZ2G = new T.Group(); scene.add(forestZ2G); forestZ2G.visible = false; // forêt 2 à 12
+const forestB1G = new T.Group(); scene.add(forestB1G); forestB1G.visible = false; // forêt V1.2 (à 3, 3 fois plus grande)
+const forestB2G = new T.Group(); scene.add(forestB2G); forestB2G.visible = false; // forêt V2.2
 const SYM_BUILD = {}; // construction à la demande des forêts à 3 joueurs et plus
 const SNOW = { set: () => {} }; // rempli avec la forêt : passe ses deux versions en neige ou non
 {
@@ -1099,12 +1112,53 @@ const SNOW = { set: () => {} }; // rempli avec la forêt : passe ses deux versio
 
   // forêts 1 et 2 de 3 à 12 joueurs : la part de la forêt comprise entre -180°/n et +180°/n autour de l'apparition sud (0, 25,5),
   // recopiée n fois en tournant (120° à 3, 90° à 4). Chaque joueur a exactement la même forêt devant lui, au centimètre près.
-  function symForest(N, G1, G2, O1, O2, TRI_R, seed) {
+  // grandes forêts à 3 (V1.2 et V2.2) : la part est générée avec les mêmes pins, chênes et rochers que la forêt V1 (mêmes tailles, même densité),
+  // avec son propre tirage (le même chez tous les joueurs). Entre deux apparitions, un gros pin entre deux grands rochers coupe la vue
+  function genBig(spawnR, seed) {
+    return (N, RL, inSector) => {
+      const RB = mulberry32(seed), rb = (a, b) => a + RB() * (b - a), out = [];
+      const obst = (type, x, z, r, extra) => ({ type, x, z, r, ...extra });
+      const mkPine = (x, z, r) => { const g = new T.Group(); g.position.set(x, 0, z); const h = 9;
+        const trunk = new T.Mesh(rough(new T.CylinderGeometry(r * 0.7, r * 1.05, h, 7, 3), r * 0.15), RB() < 0.5 ? bark : bark2); trunk.position.y = h / 2; g.add(trunk);
+        const s = 0.8 + r * 0.9; for (let i = 0; i < 3; i++) { const c = new T.Mesh(new T.ConeGeometry((2.4 - i * 0.55) * s, 2.8 * s, 7), i % 2 ? pine2 : pine); c.position.y = 4.4 + i * 1.55 * s + 1.4 * s; c.rotation.y = rb(0, 3); g.add(c); }
+        out.push({ x, z, meshes: [g], o: obst('trunk', x, z, r * 1.05, { h, tris: trunkTris(trunk.geometry, h, x, z) }) }); };
+      const oak = (x, z, r) => { const g = new T.Group(); g.position.set(x, 0, z); const h = 8;
+        const trunk = new T.Mesh(rough(new T.CylinderGeometry(r * 0.8, r * 1.15, h, 8, 3), r * 0.2), bark2); trunk.position.y = h / 2; g.add(trunk);
+        for (let i = 0; i < 4; i++) { const c = new T.Mesh(new T.IcosahedronGeometry(rb(1.3, 1.9) * (0.7 + r), 0), i % 2 ? leaf : pine2); c.position.set(rb(-1.2, 1.2), rb(6.8, 8.4), rb(-1.2, 1.2)); g.add(c); }
+        out.push({ x, z, meshes: [g], o: obst('trunk', x, z, r * 1.15, { h, tris: trunkTris(trunk.geometry, h, x, z) }) }); };
+      const rock = (x, z, r) => { const rot = rb(0, 6), m = new T.Mesh(rough(new T.DodecahedronGeometry(r, 1), r * 0.18), rockM); m.scale.y = 0.75; m.position.set(x, 0.15, z); m.rotation.y = rot;
+        const moss = new T.Mesh(new T.DodecahedronGeometry(r * 0.75, 0), mossM); moss.scale.set(1, 0.35, 1); moss.position.set(x, 0.15 + r * 0.6, z);
+        out.push({ x, z, meshes: [m, moss], o: obst('rock', x, z, r, { cy: 0.15, sy: 0.75 }) }); };
+      const spots = [{ x: 0, z: spawnR, d: 6 }, { x: 0, z: 0, d: 5 }];
+      // les cache-vues, au milieu de la ligne entre l'apparition 0 et sa voisine (sur le bord de la part ; ses copies tournées font les deux autres)
+      const a0 = -Math.PI / N, md = spawnR * Math.cos(Math.PI / N), mx = md * Math.sin(a0), mz = md * Math.cos(a0), ux = Math.cos(a0), uz = -Math.sin(a0);
+      mkPine(mx, mz, 1.0); spots.push({ x: mx, z: mz, d: 7 });
+      for (const k of [-1, 1]) rock(mx + ux * k * 2.9, mz + uz * k * 2.9, 1.7);
+      const free = (x, z, d) => spots.every(p => Math.hypot(p.x - x, p.z - z) > Math.max(d, p.d));
+      const fill = (r0, r1, count, solidMix) => {
+        let n = 0, tries = 0;
+        while (n < count && tries++ < count * 60) {
+          const a = rb(-Math.PI / N, Math.PI / N), r = Math.sqrt(rb(r0 * r0, r1 * r1)), x = r * Math.sin(a), z = r * Math.cos(a);
+          if (!inSector(x, z)) continue;
+          const isRock = RB() < solidMix.rock, d = isRock ? 3.2 : 3.6;
+          if (!free(x, z, d)) continue;
+          spots.push({ x, z, d }); n++;
+          if (isRock) rock(x, z, rb(0.85, 1.25)); else (RB() < solidMix.oak ? oak : mkPine)(x, z, rb(0.4, solidMix.rmax));
+        }
+      };
+      const sec = r => Math.PI * r * r / N;
+      fill(0, RL, Math.round(0.0199 * sec(RL)), { rock: 0.3, oak: 0.35, rmax: 0.8 });               // zone de jeu : la densité de la forêt V1
+      fill(RL + 2, RL + 32, Math.round(0.012 * (sec(RL + 32) - sec(RL + 2))), { rock: 0, oak: 0.25, rmax: 0.9 }); // lisière tout autour
+      return out;
+    };
+  }
+  function symForest(N, G1, G2, O1, O2, TRI_R, seed, opts = {}) {
   const TW = 2 * Math.PI / N, ROTS = Array.from({ length: N }, (_, i) => i * TW);
   const rotP = (x, z, a) => [x * Math.cos(a) + z * Math.sin(a), -x * Math.sin(a) + z * Math.cos(a)]; // même sens que rotation.y
   const inSector = (x, z) => { const a = Math.atan2(x, z); return a >= -Math.PI / N && a < Math.PI / N; };
   const items = new Map();
-  for (const c of forestG.children) {
+  if (opts.gen) for (const it of opts.gen(N, TRI_R, inSector)) items.set(it.x + ',' + it.z, it);
+  else for (const c of forestG.children) {
     if (c === ground || c === path || c === oak0 || c.isInstancedMesh) continue;
     const x = c.position.x, z = c.position.z; if (!inSector(x, z)) continue;
     const key = x + ',' + z; if (!items.has(key)) items.set(key, { x, z, o: base.find(o => o.x === x && o.z === z), meshes: [] });
@@ -1144,7 +1198,7 @@ const SNOW = { set: () => {} }; // rempli avec la forêt : passe ses deux versio
   const tTrunk = new T.Mesh(tOak, oak0.children[0].material); tTrunk.position.y = 4; G1.add(tTrunk);
   // herbes, chemin du centre vers chaque apparition, arbres et rochers : une part, trois fois
   const RG = mulberry32(seed), tBlades = [];
-  while (tBlades.length < Math.round(780 / N)) {
+  while (tBlades.length < Math.round(780 / N * (opts.grassK || 1))) {
     const x = (RG() * 2 - 1) * (TRI_R + 3), z = RG() * (TRI_R + 3);
     if (Math.hypot(x, z) > TRI_R + 3 || !inSector(x, z)) continue;
     q.setFromAxisAngle(new T.Vector3(0, 1, 0), RG() * 6); sc.setScalar(0.6 + RG() * 0.8); tBlades.push(new T.Matrix4().compose(new T.Vector3(x, 0.15, z), q, sc));
@@ -1152,7 +1206,7 @@ const SNOW = { set: () => {} }; // rempli avec la forêt : passe ses deux versio
   const tGrass = new T.InstancedMesh(grass.geometry, grass.material, tBlades.length * N);
   ROTS.forEach((a, n) => { const rm = new T.Matrix4().makeRotationY(a); tBlades.forEach((b, i) => tGrass.setMatrixAt(n * tBlades.length + i, b.clone().premultiply(rm))); });
   G1.add(tGrass);
-  const trail = new T.Mesh(new T.PlaneGeometry(2.2, F.spawnZ + 1.5, 1, 6), path.material); trail.rotation.x = -Math.PI / 2; trail.position.set(0, 0.01, 1.5 + (F.spawnZ + 1.5) / 2);
+  const SZ = opts.spawnR || F.spawnZ, trail = new T.Mesh(new T.PlaneGeometry(2.2, SZ + 1.5, 1, 6), path.material); trail.rotation.x = -Math.PI / 2; trail.position.set(0, 0.01, 1.5 + (SZ + 1.5) / 2);
   for (const a of ROTS) {
     const part = new T.Group(); part.rotation.y = a; G1.add(part);
     for (const it of keep) for (const m of it.meshes) part.add(m.clone());
@@ -1179,11 +1233,11 @@ const SNOW = { set: () => {} }; // rempli avec la forêt : passe ses deux versio
   }
   // chaque forêt à plusieurs n'est construite que la première fois qu'on la choisit : le jeu se charge aussi vite qu'avant
   [[3, forestT1G, forestT2G, 'T', 8112026], [4, forestQ1G, forestQ2G, 'Q', 9112026], [5, forestP1G, forestP2G, 'P', 10112026],
-   [6, forestH1G, forestH2G, 'H', 11112026], [7, forestS1G, forestS2G, 'S', 12112026], [8, forestO1G, forestO2G, 'O', 13112026], [9, forestN1G, forestN2G, 'N', 14112026], [10, forestD1G, forestD2G, 'D', 15112026], [11, forestE1G, forestE2G, 'E', 16112026], [12, forestZ1G, forestZ2G, 'Z', 17112026]].forEach(([N, G1, G2, L, seed]) => {
-    const build = () => { if (build.done) return; build.done = true; symForest(N, G1, G2, OBST['forest' + L + '1'], OBST['forest' + L + '2'], MAPS['forest' + L + '1'].rlim, seed); snowify([G1, G2]); };
+   [6, forestH1G, forestH2G, 'H', 11112026], [7, forestS1G, forestS2G, 'S', 12112026], [8, forestO1G, forestO2G, 'O', 13112026], [9, forestN1G, forestN2G, 'N', 14112026], [10, forestD1G, forestD2G, 'D', 15112026], [11, forestE1G, forestE2G, 'E', 16112026], [12, forestZ1G, forestZ2G, 'Z', 17112026], [3, forestB1G, forestB2G, 'B', 18112026, { gen: genBig(MAPS.forestB1.spawnR, 18112026), spawnR: MAPS.forestB1.spawnR, grassK: 3 }]].forEach(([N, G1, G2, L, seed, opts]) => {
+    const build = () => { if (build.done) return; build.done = true; symForest(N, G1, G2, OBST['forest' + L + '1'], OBST['forest' + L + '2'], MAPS['forest' + L + '1'].rlim, seed, opts); snowify([G1, G2]); };
     SYM_BUILD['forest' + L + '1'] = SYM_BUILD['forest' + L + '2'] = build;
   });
-  OBST.forestT1s = OBST.forestT1; OBST.forestT2s = OBST.forestT2; OBST.forestQ1s = OBST.forestQ1; OBST.forestQ2s = OBST.forestQ2; OBST.forestP1s = OBST.forestP1; OBST.forestP2s = OBST.forestP2; OBST.forestH1s = OBST.forestH1; OBST.forestH2s = OBST.forestH2; OBST.forestS1s = OBST.forestS1; OBST.forestS2s = OBST.forestS2; OBST.forestO1s = OBST.forestO1; OBST.forestO2s = OBST.forestO2; OBST.forestN1s = OBST.forestN1; OBST.forestN2s = OBST.forestN2; OBST.forestD1s = OBST.forestD1; OBST.forestD2s = OBST.forestD2; OBST.forestE1s = OBST.forestE1; OBST.forestE2s = OBST.forestE2; OBST.forestZ1s = OBST.forestZ1; OBST.forestZ2s = OBST.forestZ2;
+  OBST.forestB1s = OBST.forestB1; OBST.forestB2s = OBST.forestB2; OBST.forestT1s = OBST.forestT1; OBST.forestT2s = OBST.forestT2; OBST.forestQ1s = OBST.forestQ1; OBST.forestQ2s = OBST.forestQ2; OBST.forestP1s = OBST.forestP1; OBST.forestP2s = OBST.forestP2; OBST.forestH1s = OBST.forestH1; OBST.forestH2s = OBST.forestH2; OBST.forestS1s = OBST.forestS1; OBST.forestS2s = OBST.forestS2; OBST.forestO1s = OBST.forestO1; OBST.forestO2s = OBST.forestO2; OBST.forestN1s = OBST.forestN1; OBST.forestN2s = OBST.forestN2; OBST.forestD1s = OBST.forestD1; OBST.forestD2s = OBST.forestD2; OBST.forestE1s = OBST.forestE1; OBST.forestE2s = OBST.forestE2; OBST.forestZ1s = OBST.forestZ1; OBST.forestZ2s = OBST.forestZ2;
 
   // neige : sol blanc, chemin et herbes cachés, mousse des rochers enneigée, et une couche blanche sur le haut de chaque feuillage
   const snowGround = std(0xedf1f6, { roughness: 1 }), snowCapM = std(0xf5f8fc, { roughness: .9 }), mossGreen = mossM.color.getHex(), caps = [], swaps = [], hides = [];
@@ -1327,6 +1381,7 @@ const MAPLOOK = {
   get forestV3() { return this.forestV2; },
   get forestV3s() { return this.forestV2s; },
   get forestT1() { return this.forestV2; }, get forestT2() { return this.forestV2; }, get forestT1s() { return this.forestV2s; }, get forestT2s() { return this.forestV2s; },
+  get forestB1() { return this.forestV2; }, get forestB2() { return this.forestV2; }, get forestB1s() { return this.forestV2s; }, get forestB2s() { return this.forestV2s; },
   get forestQ1() { return this.forestV2; }, get forestQ2() { return this.forestV2; }, get forestQ1s() { return this.forestV2s; }, get forestQ2s() { return this.forestV2s; },
   get forestP1() { return this.forestV2; }, get forestP2() { return this.forestV2; }, get forestP1s() { return this.forestV2s; }, get forestP2s() { return this.forestV2s; },
   get forestH1() { return this.forestV2; }, get forestH2() { return this.forestV2; }, get forestH1s() { return this.forestV2s; }, get forestH2s() { return this.forestV2s; },
@@ -1345,7 +1400,7 @@ const MAPLOOK = {
 function applyMap(k) {
   if (SYM_BUILD[baseMap(k)]) SYM_BUILD[baseMap(k)]();
   mapKey = k; map = MAPS[k]; obstacles = OBST[k];
-  canyonG.visible = k === 'canyon'; forestV2G.visible = baseMap(k) === 'forestV2'; forestV3G.visible = baseMap(k) === 'forestV3'; forestT1G.visible = baseMap(k) === 'forestT1'; forestT2G.visible = baseMap(k) === 'forestT2'; forestQ1G.visible = baseMap(k) === 'forestQ1'; forestQ2G.visible = baseMap(k) === 'forestQ2'; forestP1G.visible = baseMap(k) === 'forestP1'; forestP2G.visible = baseMap(k) === 'forestP2'; forestH1G.visible = baseMap(k) === 'forestH1'; forestH2G.visible = baseMap(k) === 'forestH2'; forestS1G.visible = baseMap(k) === 'forestS1'; forestS2G.visible = baseMap(k) === 'forestS2'; forestO1G.visible = baseMap(k) === 'forestO1'; forestO2G.visible = baseMap(k) === 'forestO2'; forestN1G.visible = baseMap(k) === 'forestN1'; forestN2G.visible = baseMap(k) === 'forestN2'; forestD1G.visible = baseMap(k) === 'forestD1'; forestD2G.visible = baseMap(k) === 'forestD2'; forestE1G.visible = baseMap(k) === 'forestE1'; forestE2G.visible = baseMap(k) === 'forestE2'; forestZ1G.visible = baseMap(k) === 'forestZ1'; forestZ2G.visible = baseMap(k) === 'forestZ2'; SNOW.set(isSnow(k)); snowFx.visible = isSnow(k); clearFeet(); bigForestG.visible = k === 'forestXL';
+  canyonG.visible = k === 'canyon'; forestV2G.visible = baseMap(k) === 'forestV2'; forestV3G.visible = baseMap(k) === 'forestV3'; forestB1G.visible = baseMap(k) === 'forestB1'; forestB2G.visible = baseMap(k) === 'forestB2'; forestT1G.visible = baseMap(k) === 'forestT1'; forestT2G.visible = baseMap(k) === 'forestT2'; forestQ1G.visible = baseMap(k) === 'forestQ1'; forestQ2G.visible = baseMap(k) === 'forestQ2'; forestP1G.visible = baseMap(k) === 'forestP1'; forestP2G.visible = baseMap(k) === 'forestP2'; forestH1G.visible = baseMap(k) === 'forestH1'; forestH2G.visible = baseMap(k) === 'forestH2'; forestS1G.visible = baseMap(k) === 'forestS1'; forestS2G.visible = baseMap(k) === 'forestS2'; forestO1G.visible = baseMap(k) === 'forestO1'; forestO2G.visible = baseMap(k) === 'forestO2'; forestN1G.visible = baseMap(k) === 'forestN1'; forestN2G.visible = baseMap(k) === 'forestN2'; forestD1G.visible = baseMap(k) === 'forestD1'; forestD2G.visible = baseMap(k) === 'forestD2'; forestE1G.visible = baseMap(k) === 'forestE1'; forestE2G.visible = baseMap(k) === 'forestE2'; forestZ1G.visible = baseMap(k) === 'forestZ1'; forestZ2G.visible = baseMap(k) === 'forestZ2'; SNOW.set(isSnow(k)); snowFx.visible = isSnow(k); clearFeet(); bigForestG.visible = k === 'forestXL';
   skyMat.map = SKY[k]; skyMat.needsUpdate = true;
   const L = MAPLOOK[k];
   scene.fog.color.setHex(L.fog); scene.fog.near = L.near; scene.fog.far = L.far;
@@ -3740,7 +3795,7 @@ function setGameMode(g) {
   document.querySelectorAll('.modesel button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.gm === gameMode)));
   // les tournantes se jouent en duel, en forêt 1 ou 2 : ni canyon, et la forêt 2 reste possible à 3
   const duels = gameMode !== 'classic';
-  document.querySelectorAll('#lobby .mapsel [data-map=canyon], #lobby .mapsel [data-map=forestXL]').forEach(b => { b.hidden = duels; });
+  document.querySelectorAll('#lobby .mapsel [data-map=canyon], #lobby .mapsel [data-map=forestXL], #lobby .mapsel [data-map=forestB1], #lobby .mapsel [data-map=forestB2]').forEach(b => { b.hidden = duels; });
   $('#lobby [data-map=forestV2] small').textContent = duels ? 'symétrique' : 'symétrique, de 2 à 12';
   $('#lobby [data-map=forestV3] small').textContent = duels ? 'troncs égaux' : 'troncs égaux, de 2 à 12';
   if (duels && !MAP_FAMILY[baseMap(mapKey)]) applyMap(DUO[mapKey] || 'forestV2');
@@ -3904,14 +3959,14 @@ function chooseMap(k) {
   if (mode === 'online') {
     if (!(phase === 'idle' || phase === 'over')) return;
     if (k === 'canyon' && peersNow.length > 1) return; // à 3 : les deux forêts (en version à 3) ou la forêt géante
-    if (k === 'forestXL' && peersNow.length < 2) return;
+    if ((k === 'forestXL' || BIG3[baseMap(k)]) && peersNow.length !== 2) return; // la forêt géante, V1.2 et V2.2 : à 3 seulement
     mapV = Math.max(mapV, ...peersNow.map(x => num(x.presence.mapV, 0))) + 1;
     applyMap(k); pres({ mapK: k, wpn: weapon, mapV });
   } else applyMap(k);
 }
 // rangée « Version » sous chaque choix de carte : normale ou neige, pour les deux forêts
 function refreshMapVariants() {
-  const b = baseMap(menuMap(mapKey)), fam = MAP_FAMILY[b];
+  const b = baseMap(menuMap(mapKey)), fam = MAP_FAMILY[b] || BIG3[b];
   document.querySelectorAll('.mapvar').forEach(v => {
     v.hidden = !fam || v.previousElementSibling.hidden; if (!fam) return;
     v.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String((x.dataset.mv === 'snow') === isSnow(mapKey))));
@@ -3965,7 +4020,7 @@ function evaluateReady() {
     const lead = toks[0] === net.tok ? { mapK: mapKey, wpn: weapon, gm: gameMode, tm: teamMode } : ps.find(p => p.tok === toks[0]);
     if (lead.gm !== 'classic' && toks.length < 4) return startTour(toks.join('|'), lead.gm === 'roul' ? 'roul' : 'tour', lead.mapK); // à 4 : pas de tournante
     const m = menuMap(lead.mapK);
-    const k = toks.length === 12 ? FAM12[m] || 'forestZ1' : toks.length === 11 ? FAM11[m] || 'forestE1' : toks.length === 10 ? FAM10[m] || 'forestD1' : toks.length === 9 ? FAM9[m] || 'forestN1' : toks.length === 8 ? OCTA[m] || 'forestO1' : toks.length === 7 ? HEPTA[m] || 'forestS1' : toks.length === 6 ? HEXA[m] || 'forestH1' : toks.length === 5 ? PENTA[m] || 'forestP1' : toks.length === 4 ? QUAD[m] || 'forestQ1' : toks.length === 3 ? (m === 'forestXL' ? m : TRIO[m] || 'forestT1') : MAPS[m] && ['canyon', 'forestV2', 'forestV3'].includes(baseMap(m)) ? m : 'forestV2'; // à 3 : la forêt choisie en version à 3, ou la géante ; à 2 : forêt 1 sauf choix contraire
+    const k = toks.length === 12 ? FAM12[m] || 'forestZ1' : toks.length === 11 ? FAM11[m] || 'forestE1' : toks.length === 10 ? FAM10[m] || 'forestD1' : toks.length === 9 ? FAM9[m] || 'forestN1' : toks.length === 8 ? OCTA[m] || 'forestO1' : toks.length === 7 ? HEPTA[m] || 'forestS1' : toks.length === 6 ? HEXA[m] || 'forestH1' : toks.length === 5 ? PENTA[m] || 'forestP1' : toks.length === 4 ? QUAD[m] || 'forestQ1' : toks.length === 3 ? (m === 'forestXL' || BIG3[baseMap(m)] ? m : TRIO[m] || 'forestT1') : MAPS[m] && ['canyon', 'forestV2', 'forestV3'].includes(baseMap(m)) ? m : 'forestV2'; // à 3 : la forêt choisie en version à 3, ou la géante ; à 2 : forêt 1 sauf choix contraire
     startOnline(toks.join('|') + (TEAM[lead.tm] && TEAM[lead.tm][0] === toks.length ? '|' + lead.tm : ''), k, wpnKey(lead.wpn));
   }
 }
@@ -4212,7 +4267,8 @@ function renderLobby() {
   $('#lobbyDot').classList.toggle('ok', ok);
   // à 3, le canyon (deux piliers face à face) et, en classique, la forêt 2 (duel) ne sont pas proposés
   document.querySelectorAll('#lobby .mapsel [data-map=canyon], #over .mapsel [data-map=canyon]').forEach(b => { b.disabled = n > 1; });
-  document.querySelectorAll('#lobby .mapsel [data-map=forestXL], #over .mapsel [data-map=forestXL]').forEach(b => { b.disabled = n !== 2; }); // la forêt géante : à 3 seulement
+  document.querySelectorAll('#lobby .mapsel [data-map=forestXL], #over .mapsel [data-map=forestXL], #lobby .mapsel [data-map=forestB1], #over .mapsel [data-map=forestB1], #lobby .mapsel [data-map=forestB2], #over .mapsel [data-map=forestB2]').forEach(b => { b.disabled = n !== 2; }); // la forêt géante, V1.2 et V2.2 : à 3 seulement
+  if (n !== 2 && BIG3[baseMap(mapKey)] && (phase === 'idle' || phase === 'over')) applyMap('forestV2');
   // à 4 : seulement le classique (chacun pour soi ou 2 contre 2), dans les forêts 1 et 2
   document.querySelectorAll('#lobby .modesel [data-gm=tour], #lobby .modesel [data-gm=roul]').forEach(b => { b.disabled = n >= 3; });
   if (n >= 3 && gameMode !== 'classic') setGameMode('classic');
@@ -4226,7 +4282,7 @@ function renderLobby() {
   $('#youAre').innerHTML = `Tu es <b style="color:${PALETTE[mine.col].css}">${esc(mine.name)}</b> (${PALETTE[mine.col].label})`;
   $('#nameIn').placeholder = 'Joueur ' + mine.n;
   $('#rosterN').textContent = n + 1; $('#rosterN').classList.toggle('full', n === 11);
-  let s = !ok ? 'Seul pour l’instant : donne le numéro aux autres.' : gameMode !== 'classic' ? (gameMode === 'roul' ? 'Roulette : arme tirée à la roue à chaque manche. ' : 'Chaque manche, un des deux joueurs du duel choisit l’arme, à tour de rôle. ') + (n === 1 ? 'À 2 : manches en BO3 (deux manches gagnantes).' : 'À 3 : deux s’affrontent, le troisième regarde ; le gagnant reste. Deux duels gagnés de suite = victoire.') : n === 1 ? 'À 2 : la partie part dès que vous êtes prêts tous les deux. Pour jouer à plus de 2, attends tout le monde avant d’appuyer sur Prêt.' : n === 11 ? (TEAM[teamMode] && TEAM[teamMode][0] === 12 ? `${TEAM[teamMode][2]} : ${teamText(L, TEAM[teamMode][1])}` : 'Chacun pour soi à 12') + `, dans la forêt ${baseMap(menuMap(mapKey)) === 'forestV3' ? 'V2' : 'V1'}${isSnow(mapKey) ? ' enneigée' : ''}, la même pour les douze, avec un radar.` : n === 10 ? `Chacun pour soi à 11, dans la forêt ${baseMap(menuMap(mapKey)) === 'forestV3' ? 'V2' : 'V1'}${isSnow(mapKey) ? ' enneigée' : ''}, la même pour les onze, avec un radar.` : n === 9 ? (teamMode === '5v5' ? `5 contre 5 : ${andJoin(L.slice(0, 5).map(x => x.name))} contre ${andJoin(L.slice(5).map(x => x.name))}` : teamMode === '2v2v2v2v2' ? `5 équipes de 2 : ${[0, 2, 4, 6, 8].map(i => L[i].name + ' et ' + L[i + 1].name).join(', ')}` : 'Chacun pour soi à 10') + `, dans la forêt ${baseMap(menuMap(mapKey)) === 'forestV3' ? 'V2' : 'V1'}${isSnow(mapKey) ? ' enneigée' : ''}, la même pour les dix, avec un radar.` : n === 8 ? (teamMode === '3v3v3' ? `3 contre 3 contre 3 : ${[0, 3, 6].map(i => andJoin(L.slice(i, i + 3).map(x => x.name))).join(' ; ')}` : 'Chacun pour soi à 9') + `, dans la forêt ${baseMap(menuMap(mapKey)) === 'forestV3' ? 'V2' : 'V1'}${isSnow(mapKey) ? ' enneigée' : ''}, la même pour les neuf, avec un radar.` : n === 7 ? (teamMode === '4v4' ? `4 contre 4 : ${andJoin(L.slice(0, 4).map(x => x.name))} contre ${andJoin(L.slice(4).map(x => x.name))}` : teamMode === '2v2v2v2' ? `2 contre 2 contre 2 contre 2 : ${[0, 2, 4, 6].map(i => L[i].name + ' et ' + L[i + 1].name).join(', ')}` : 'Chacun pour soi à 8') + `, dans la forêt ${baseMap(menuMap(mapKey)) === 'forestV3' ? 'V2' : 'V1'}${isSnow(mapKey) ? ' enneigée' : ''}, la même pour les huit, avec un radar.` : n === 6 ? `Chacun pour soi à 7, dans la forêt ${baseMap(menuMap(mapKey)) === 'forestV3' ? 'V2' : 'V1'}${isSnow(mapKey) ? ' enneigée' : ''}, la même pour les sept, avec un radar.` : n === 5 ? (teamMode === '3v3' ? `3 contre 3 : ${andJoin(L.slice(0, 3).map(x => x.name))} contre ${andJoin(L.slice(3).map(x => x.name))}` : teamMode === '2v2v2' ? `2 contre 2 contre 2 : ${L[0].name} et ${L[1].name}, ${L[2].name} et ${L[3].name}, ${L[4].name} et ${L[5].name}` : 'Chacun pour soi à 6') + `, dans la forêt ${baseMap(menuMap(mapKey)) === 'forestV3' ? 'V2' : 'V1'}${isSnow(mapKey) ? ' enneigée' : ''}, la même pour les six, avec un radar.` : n === 4 ? `Chacun pour soi à 5, dans la forêt ${baseMap(menuMap(mapKey)) === 'forestV3' ? 'V2' : 'V1'}${isSnow(mapKey) ? ' enneigée' : ''}, la même pour les cinq, avec un radar.` : n === 3 ? (teamMode === '2v2' ? `2 contre 2 : ${L[0].name} et ${L[1].name} contre ${L[2].name} et ${L[3].name}` : 'Chacun pour soi à 4') + `, dans la forêt ${baseMap(menuMap(mapKey)) === 'forestV3' ? 'V2' : 'V1'}${isSnow(mapKey) ? ' enneigée' : ''}, la même pour les quatre, avec un radar.` : `Classique à 3 : chacun pour soi, ${mapKey === 'forestXL' ? 'dans la forêt géante' : `dans la forêt ${baseMap(menuMap(mapKey)) === 'forestV3' ? 'V2' : 'V1'}${isSnow(mapKey) ? ' enneigée' : ''}, la même pour les trois`}, avec un radar.`;
+  let s = !ok ? 'Seul pour l’instant : donne le numéro aux autres.' : gameMode !== 'classic' ? (gameMode === 'roul' ? 'Roulette : arme tirée à la roue à chaque manche. ' : 'Chaque manche, un des deux joueurs du duel choisit l’arme, à tour de rôle. ') + (n === 1 ? 'À 2 : manches en BO3 (deux manches gagnantes).' : 'À 3 : deux s’affrontent, le troisième regarde ; le gagnant reste. Deux duels gagnés de suite = victoire.') : n === 1 ? 'À 2 : la partie part dès que vous êtes prêts tous les deux. Pour jouer à plus de 2, attends tout le monde avant d’appuyer sur Prêt.' : n === 11 ? (TEAM[teamMode] && TEAM[teamMode][0] === 12 ? `${TEAM[teamMode][2]} : ${teamText(L, TEAM[teamMode][1])}` : 'Chacun pour soi à 12') + `, dans la forêt ${baseMap(menuMap(mapKey)) === 'forestV3' ? 'V2' : 'V1'}${isSnow(mapKey) ? ' enneigée' : ''}, la même pour les douze, avec un radar.` : n === 10 ? `Chacun pour soi à 11, dans la forêt ${baseMap(menuMap(mapKey)) === 'forestV3' ? 'V2' : 'V1'}${isSnow(mapKey) ? ' enneigée' : ''}, la même pour les onze, avec un radar.` : n === 9 ? (teamMode === '5v5' ? `5 contre 5 : ${andJoin(L.slice(0, 5).map(x => x.name))} contre ${andJoin(L.slice(5).map(x => x.name))}` : teamMode === '2v2v2v2v2' ? `5 équipes de 2 : ${[0, 2, 4, 6, 8].map(i => L[i].name + ' et ' + L[i + 1].name).join(', ')}` : 'Chacun pour soi à 10') + `, dans la forêt ${baseMap(menuMap(mapKey)) === 'forestV3' ? 'V2' : 'V1'}${isSnow(mapKey) ? ' enneigée' : ''}, la même pour les dix, avec un radar.` : n === 8 ? (teamMode === '3v3v3' ? `3 contre 3 contre 3 : ${[0, 3, 6].map(i => andJoin(L.slice(i, i + 3).map(x => x.name))).join(' ; ')}` : 'Chacun pour soi à 9') + `, dans la forêt ${baseMap(menuMap(mapKey)) === 'forestV3' ? 'V2' : 'V1'}${isSnow(mapKey) ? ' enneigée' : ''}, la même pour les neuf, avec un radar.` : n === 7 ? (teamMode === '4v4' ? `4 contre 4 : ${andJoin(L.slice(0, 4).map(x => x.name))} contre ${andJoin(L.slice(4).map(x => x.name))}` : teamMode === '2v2v2v2' ? `2 contre 2 contre 2 contre 2 : ${[0, 2, 4, 6].map(i => L[i].name + ' et ' + L[i + 1].name).join(', ')}` : 'Chacun pour soi à 8') + `, dans la forêt ${baseMap(menuMap(mapKey)) === 'forestV3' ? 'V2' : 'V1'}${isSnow(mapKey) ? ' enneigée' : ''}, la même pour les huit, avec un radar.` : n === 6 ? `Chacun pour soi à 7, dans la forêt ${baseMap(menuMap(mapKey)) === 'forestV3' ? 'V2' : 'V1'}${isSnow(mapKey) ? ' enneigée' : ''}, la même pour les sept, avec un radar.` : n === 5 ? (teamMode === '3v3' ? `3 contre 3 : ${andJoin(L.slice(0, 3).map(x => x.name))} contre ${andJoin(L.slice(3).map(x => x.name))}` : teamMode === '2v2v2' ? `2 contre 2 contre 2 : ${L[0].name} et ${L[1].name}, ${L[2].name} et ${L[3].name}, ${L[4].name} et ${L[5].name}` : 'Chacun pour soi à 6') + `, dans la forêt ${baseMap(menuMap(mapKey)) === 'forestV3' ? 'V2' : 'V1'}${isSnow(mapKey) ? ' enneigée' : ''}, la même pour les six, avec un radar.` : n === 4 ? `Chacun pour soi à 5, dans la forêt ${baseMap(menuMap(mapKey)) === 'forestV3' ? 'V2' : 'V1'}${isSnow(mapKey) ? ' enneigée' : ''}, la même pour les cinq, avec un radar.` : n === 3 ? (teamMode === '2v2' ? `2 contre 2 : ${L[0].name} et ${L[1].name} contre ${L[2].name} et ${L[3].name}` : 'Chacun pour soi à 4') + `, dans la forêt ${baseMap(menuMap(mapKey)) === 'forestV3' ? 'V2' : 'V1'}${isSnow(mapKey) ? ' enneigée' : ''}, la même pour les quatre, avec un radar.` : `Classique à 3 : chacun pour soi, ${mapKey === 'forestXL' ? 'dans la forêt géante' : `dans la forêt ${{ forestV3: 'V2', forestB1: 'V1.2', forestB2: 'V2.2' }[baseMap(menuMap(mapKey))] || 'V1'}${isSnow(mapKey) ? ' enneigée' : ''}, la même pour les trois`}, avec un radar.`;
   if (ok && rdy && !net.rp) s = n === 1 ? 'Ton adversaire est prêt : appuie sur Prêt pour lancer à 2.' : rdy === n ? `Les autres sont prêts : appuie sur Prêt pour lancer à ${n + 1}.` : rdy === 1 ? 'Un joueur est prêt.' : `${rdy} joueurs sont prêts.`;
   if (net.rp) s = ok ? `Prêt. On attend que ${n === 1 ? 'l’autre appuie' : 'les autres appuient'} aussi…` : 'Prêt. En attente d’un adversaire…';
   $('#lobbyStatus').textContent = s;
@@ -4250,7 +4306,7 @@ function renderOverStatus() {
 document.querySelectorAll('.mapsel').forEach(sel => {
   const v = document.createElement('div'); v.className = 'seg mapvar'; v.setAttribute('role', 'group'); v.setAttribute('aria-label', 'Version de la forêt'); v.hidden = true;
   v.innerHTML = '<button data-mv="normal">Normale<small>verte</small></button><button data-mv="snow">Neige<small>neige, traces de pas, flocons</small></button>'; sel.after(v);
-  v.querySelectorAll('button').forEach(x => x.addEventListener('click', () => { const b = baseMap(menuMap(mapKey)); if (MAP_FAMILY[b]) chooseMap(MAP_FAMILY[b][x.dataset.mv === 'snow' ? 1 : 0]); }));
+  v.querySelectorAll('button').forEach(x => x.addEventListener('click', () => { const b = baseMap(menuMap(mapKey)), fm = MAP_FAMILY[b] || BIG3[b]; if (fm) chooseMap(fm[x.dataset.mv === 'snow' ? 1 : 0]); }));
 });
 document.querySelectorAll('.mapsel button').forEach(b => b.addEventListener('click', () => chooseMap(baseMap(menuMap(mapKey)) === b.dataset.map ? menuMap(mapKey) : b.dataset.map))); // même forêt : on garde sa version
 refreshMapVariants();
@@ -4289,14 +4345,16 @@ function refreshBotMenu() {
   t.hidden = botCount < 2; t.style.gridTemplateColumns = `repeat(${Math.min(3, bs.filter(b => !b.hidden).length)},1fr)`;
   document.querySelectorAll('.botcount button').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.n === botCount)));
   const cy = document.querySelector('[data-step=bot] [data-map=canyon]'); if (cy) cy.disabled = botCount > 1;
-  if (botCount > 1 && !MAP_FAMILY[baseMap(menuMap(mapKey))]) applyMap('forestV2');
+  document.querySelectorAll('[data-step=bot] [data-map=forestB1], [data-step=bot] [data-map=forestB2]').forEach(b => { b.hidden = botCount !== 2; });
+  if (botCount !== 2 && BIG3[baseMap(mapKey)]) applyMap('forestV2');
+  if (botCount > 1 && !MAP_FAMILY[baseMap(menuMap(mapKey))] && !(botCount === 2 && BIG3[baseMap(mapKey)])) applyMap('forestV2');
   try { localStorage.setItem('duelarc-botn', String(botCount)); localStorage.setItem('duelarc-botteam', botTeam); } catch (e) {}
 }
 document.querySelectorAll('.botcount button').forEach(b => b.addEventListener('click', () => { botCount = +b.dataset.n; sfx('tick', 0.6); refreshBotMenu(); }));
 document.querySelectorAll('.botteam button').forEach(b => b.addEventListener('click', () => { botTeam = b.dataset.tm; sfx('tick', 0.6); refreshBotMenu(); }));
 refreshBotMenu();
 const BOT_FAM = { 3: TRIO, 4: QUAD, 5: PENTA, 6: HEXA, 7: HEPTA, 8: OCTA, 9: FAM9, 10: FAM10, 11: FAM11, 12: FAM12 }; // forêt à 2 -> la même à n joueurs
-const botMapKey = () => botCount > 1 ? (BOT_FAM[botCount + 1][menuMap(mapKey)] || BOT_FAM[botCount + 1].forestV2) : menuMap(mapKey);
+const botMapKey = () => botCount === 2 && BIG3[baseMap(mapKey)] ? mapKey : botCount > 1 ? (BOT_FAM[botCount + 1][menuMap(mapKey)] || BOT_FAM[botCount + 1].forestV2) : menuMap(mapKey);
 const botLvlBtns = () => document.querySelectorAll('.botlvl button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.lvl === botLvl)));
 document.querySelectorAll('.botlvl button').forEach(b => b.addEventListener('click', () => { botLvl = b.dataset.lvl === 'hard' ? 'hard' : 'mid'; botLvlBtns(); sfx('tick', 0.6); try { localStorage.setItem('duelarc-botlvl', botLvl); } catch (e) {} }));
 botLvlBtns();
