@@ -365,6 +365,8 @@ p{margin:0}
         <button data-wpn="flamer" aria-pressed="false">Lance-flammes</button>
         <button data-wpn="telegun" aria-pressed="false">Fusil à téléportation</button>
         <button data-wpn="netgun" aria-pressed="false">Lance-filet</button>
+        <button data-wpn="harpoongun" aria-pressed="false">Harpon</button>
+        <button data-wpn="grapplegun" aria-pressed="false">Grappin</button>
       </div>
       </div>
       <div class="opt"><span>Bots</span>
@@ -444,6 +446,8 @@ p{margin:0}
         <button data-wpn="flamer" aria-pressed="false">Lance-flammes</button>
         <button data-wpn="telegun" aria-pressed="false">Fusil à téléportation</button>
         <button data-wpn="netgun" aria-pressed="false">Lance-filet</button>
+        <button data-wpn="harpoongun" aria-pressed="false">Harpon</button>
+        <button data-wpn="grapplegun" aria-pressed="false">Grappin</button>
       </div>
       </div>
       <button class="btn primary" id="btnPractice">Commencer</button>
@@ -534,6 +538,8 @@ p{margin:0}
         <button data-wpn="flamer" aria-pressed="false">Lance-flammes</button>
         <button data-wpn="telegun" aria-pressed="false">Fusil à téléportation</button>
         <button data-wpn="netgun" aria-pressed="false">Lance-filet</button>
+        <button data-wpn="harpoongun" aria-pressed="false">Harpon</button>
+        <button data-wpn="grapplegun" aria-pressed="false">Grappin</button>
       </div>
     </div>
     <div class="roster" aria-live="polite">
@@ -624,6 +630,8 @@ p{margin:0}
         <button data-wpn="flamer" aria-pressed="false">Lance-flammes</button>
         <button data-wpn="telegun" aria-pressed="false">Fusil à téléportation</button>
         <button data-wpn="netgun" aria-pressed="false">Lance-filet</button>
+        <button data-wpn="harpoongun" aria-pressed="false">Harpon</button>
+        <button data-wpn="grapplegun" aria-pressed="false">Grappin</button>
       </div>
     </div>
     <p class="sub" id="overStatus"></p>
@@ -714,6 +722,8 @@ const WPN = {
   telegun: { kind: 'tele', aimT: 0.25, zoomX: null, rate: 1.5 },                       // fusil à téléportation : orbe violet à 50 m/s qui retombe ; on est téléporté là où il touche ; s'il touche un joueur, on échange de place (sans dégâts)
   netgun: { kind: 'net', aimT: 0.25, zoomX: null, rate: 2 },                            // lance-filet : un filet toutes les 2 s, 30 m/s, retombe et s'ouvre en vol (jusqu'à 1,8 m) ; le joueur pris est emprisonné 3 s (ni bouger ni tirer) ; 10 HP
   pinecone: { kind: 'pinecone', aimT: 0.2, zoomX: null, rate: 0.6 },                   // pomme de pin : lancée à la main, 30 m/s, retombe en tournoyant ; 35 HP corps, 100 HP tête
+  harpoongun: { kind: 'harpoon', aimT: 0.3, zoomX: null, rate: 2 },                    // harpon : 60 m/s, corde de 35 m ; il se plante dans l'ennemi et le ramène au corps à corps ; 50 HP corps, 100 HP tête
+  grapplegun: { kind: 'grapple', aimT: 0.25, zoomX: null, rate: 2 },                    // grappin : 55 m/s, corde de 35 m ; il s'accroche à l'ennemi et on est tiré jusqu'à lui ; 10 HP
   bolas: { kind: 'bolas', aimT: 0.3, zoomX: null, rate: 1 },                          // bolas : un par seconde, 35 m/s, retombe (gravité du jeu) ; la victime est ralentie (35 % de sa vitesse) pendant 3 s ; tête = 100 HP, corps = 50 HP
   frisbee: { kind: 'frisbee', aimT: 0.2, zoomX: null, rate: 0.8 },                    // frisbee tranchant : 40 m/s à plat, rebondit jusqu'à 5 fois sur les troncs, rochers, murs et le bord de la carte ; tête = mort, corps = 100 HP
   snowgun: { kind: 'snowball', aimT: 0.15, zoomX: null, auto: true, rate: 0.3 },      // lance-boules de neige : tir continu, une boule toutes les 0,3 s, 70 m/s, retombe (gravité du jeu), éclate en neige ; tête = 100 HP, corps = 40 HP
@@ -735,7 +745,7 @@ const CATS = [
   ['prec', 'Précision', ['rifle', 'barrett', 'psniper', 'lasergun', 'railgun']],
   ['expl', 'Explosifs', ['grenade', 'rocket']],
   ['archer', 'Armes d’archer', ['bow', 'crossbow']],
-  ['special', 'Armes spéciales', ['blowgun', 'sling', 'boomerang', 'shuriken', 'axe', 'javelin', 'bolas', 'frisbee', 'flamer', 'telegun', 'netgun']],
+  ['special', 'Armes spéciales', ['blowgun', 'sling', 'boomerang', 'shuriken', 'axe', 'javelin', 'bolas', 'frisbee', 'flamer', 'telegun', 'netgun', 'harpoongun', 'grapplegun']],
   ['melee', 'Mêlée', ['bat', 'shotgun']],
   ['fun', 'Fun', ['beer', 'kebab', 'snowgun', 'watergun', 'gluegun', 'pielauncher', 'pinecone']],
 ];
@@ -759,6 +769,7 @@ const WATER_V = 32, WATER_COL = 0x5ec8ff, TASER_V = 60, TASER_R = 10, STUN_T = 2
 const RAIL_V = 600, FLAME_V = 22, FLAME_R = 8, BURN_T = 3, BURN_TICK = 0.5, BURN_DMG = 0.05, GLUE_V = 45, GLUE_T = 3, GLUE_COL = 0xb8e83a; // railgun ; flammes : vitesse, portée, brûlure (durée, rythme, dégâts) ; colle : vitesse, durée, couleur
 const NAIL_V = 120, PIE_V = 38, CREAM_COL = 0xfff4e0, CREAM_T = 3, TELE_V = 50, TELE_COL = 0xb05cff; // clous ; tarte : vitesse, couleur, durée de la crème ; téléportation : vitesse, couleur
 const NET_V = 30, NET_T = 3, NET_R = 0.9, CONE_V = 30; // filet : vitesse, durée de l'emprisonnement, demi-largeur ouverte ; pomme de pin : vitesse
+const HARPOON_V = 60, GRAPPLE_V = 55, ROPE_MAX = 35, PULL_V = 16, PULL_GAP = 1.3, PULL_MAX = 3, HARPOON_LEN = 0.95; // harpon et grappin : vitesses, longueur de corde, vitesse de traction, écart final (corps à corps), durée max
 const thrown = k => k === 'boomerang' || k === 'shuriken' || k === 'axe' || k === 'javelin' || k === 'bolas' || k === 'frisbee' || k === 'pinecone'; // armes lancées à la main
 const isArrow = k => k === 'arrow' || k === 'xarrow'; // flèches d'arc, explosives ou non
 const shotG = k => isBullet(k) || k === 'beam' || k === 'taser' || k === 'rail' ? 0 : k === 'flame' ? -1.5 : k === 'glue' || k === 'pie' || k === 'tele' || k === 'net' || k === 'pinecone' ? G : k === 'water' ? G * 2 : k === 'minigun' ? MINI_G : k === 'axe' ? G / 2 : k === 'javelin' ? JAV_G : k === 'bolas' || k === 'snowball' ? G : isPaint(k) || beerLike(k) || k === 'dart' || k === 'stone' || k === 'rocket' || thrown(k) ? 0 : k === 'grenade' ? G / 2 : G / 3; // billes de peinture, bière, fléchette et armes lancées : en ligne droite, sans chute ; grenade : chute /2 ; arc et arbalète : chute /3
@@ -775,7 +786,7 @@ const hasLaser = w => w === 'vector' || w === 'm4';
 const bigGun = k => k === 'revolver' || k === 'deagle'; // armes de poing à gros recul (visuel)
 // armes à feu qui acceptent un silencieux, et leur son de tir silencieux (un par arme)
 const SIL_SFX = { bullet: 'bsil', pistol: 'psil', revolver: 'rsil', deagle: 'dsil', vector: 'vsil', m4: 'msil', scar: 'hsil', barrett: 'fsil', shotgun: 'ssil', minigun: 'zsil', grenade: 'gsil' };
-const kicks = k => k === 'net' || k === 'nail' || k === 'pie' || k === 'tele' || k === 'taser' || k === 'beam' || k === 'rail' || k === 'glue' || k === 'pistol' || k === 'vector' || k === 'm4' || k === 'scar' || k === 'barrett' || k === 'shotgun' || beerLike(k) || k === 'grenade' || k === 'rocket' || k === 'minigun' || k === 'dart' || isPaint(k) || bigGun(k); // (bière : le geste du lancer) // l'arme bouge au tir
+const kicks = k => k === 'harpoon' || k === 'grapple' || k === 'net' || k === 'nail' || k === 'pie' || k === 'tele' || k === 'taser' || k === 'beam' || k === 'rail' || k === 'glue' || k === 'pistol' || k === 'vector' || k === 'm4' || k === 'scar' || k === 'barrett' || k === 'shotgun' || beerLike(k) || k === 'grenade' || k === 'rocket' || k === 'minigun' || k === 'dart' || isPaint(k) || bigGun(k); // (bière : le geste du lancer) // l'arme bouge au tir
 // dégâts en « touches » (1 touche = 100 HP, WIN touches = mort)
 function hitDamage(a, head) {
   if (a.kind === 'kebab') return 0.5; // 6 kebabs pour tuer (-50 HP chacun), même dans la tête
@@ -790,6 +801,8 @@ function hitDamage(a, head) {
   if (a.kind === 'pie') return head ? 0.3 : 0.1;
   if (a.kind === 'tele') return 0;
   if (a.kind === 'net') return 0.1;
+  if (a.kind === 'harpoon') return head ? 1 : 0.5;
+  if (a.kind === 'grapple') return 0.1;
   if (a.kind === 'pinecone') return head ? 1 : 0.35;
   if (a.kind === 'taser') return head ? 0.5 : 0.25;
   if (a.kind === 'beam') return head ? WIN : 1;
@@ -1757,7 +1770,7 @@ function applySlow(e) {
 }
 const tmpC = new T.Vector3();
 function tickSlow() { for (const e of [ME, ...foes]) if (e.s.bolasM && !(e.s.slowT > t && !isDead(e))) { e.A.root.remove(e.s.bolasM); e.s.bolasM = null; } }
-const slowF = s => s.stunT > t || s.glueT > t ? 0 : s.slowT > t ? BOLAS_SLOW : 1;
+const slowF = s => s.stunT > t || s.glueT > t || s.pullOn ? 0 : s.slowT > t ? BOLAS_SLOW : 1;
 // taser : la victime est paralysée (ni bouger ni tirer) et des arcs électriques crépitent autour d'elle
 const zapGeo = new T.BoxGeometry(0.012, 0.012, 0.3), zapMat = new T.MeshBasicMaterial({ color: 0xa8ecff, transparent: true, opacity: 0.95, blending: T.AdditiveBlending, depthWrite: false });
 function applyStun(e) {
@@ -1892,6 +1905,39 @@ function makePinecone() {
   for (let r = 0; r < 4; r++) { const y = -0.04 + r * 0.027, rad = 0.03 - Math.abs(r - 1.3) * 0.006; for (let i = 0; i < 7; i++) { const a = i / 7 * Math.PI * 2 + r * 0.45, sc = new T.Mesh(coneScale, r % 2 ? coneTip : coneMat); sc.position.set(Math.cos(a) * rad, y, Math.sin(a) * rad); sc.rotation.set(0, -a, -Math.PI / 2 - 0.6); g.add(sc); } }
   return g;
 }
+// harpon, pointe à l'origine vers -Z : fer barbelé, long fût sombre, anneau où s'attache la corde
+const hpTip = new T.ConeGeometry(0.018, 0.12, 8).rotateX(-Math.PI / 2).translate(0, 0, 0.06), hpBarb = new T.BoxGeometry(0.006, 0.05, 0.006), hpShaft = new T.CylinderGeometry(0.008, 0.008, HARPOON_LEN - 0.12, 8).rotateX(-Math.PI / 2).translate(0, 0, 0.12 + (HARPOON_LEN - 0.12) / 2), hpRing = new T.TorusGeometry(0.016, 0.004, 6, 12), hpSteel = std(0xb9c1c9, { metalness: .6, roughness: .3 }), hpDark = std(0x2b2e33, { metalness: .4, roughness: .45 });
+function makeHarpoon() { const g = new T.Group(); g.add(new T.Mesh(hpTip, hpSteel), new T.Mesh(hpShaft, hpDark)); for (const sg of [-1, 1]) { const b = new T.Mesh(hpBarb, hpSteel); b.position.set(sg * 0.016, 0, 0.11); b.rotation.set(Math.PI / 2, 0, sg * 0.5); g.add(b); } const r = new T.Mesh(hpRing, hpSteel); r.position.z = HARPOON_LEN; g.add(r); return g; }
+// grappin, griffes vers l'avant (-Z) : tige d'acier et trois crochets recourbés
+const gpShank = new T.CylinderGeometry(0.01, 0.01, 0.2, 8).rotateX(-Math.PI / 2).translate(0, 0, 0.1), gpClaw = new T.TorusGeometry(0.045, 0.007, 6, 12, Math.PI * 0.9);
+function makeGrapple() { const g = new T.Group(); g.add(new T.Mesh(gpShank, hpDark)); for (let i = 0; i < 3; i++) { const c = new T.Mesh(gpClaw, hpSteel); c.rotation.set(0, Math.PI / 2, 0); c.rotateX(i * 2.094); const w = new T.Group(); w.rotation.z = i * 2.094; c.position.set(0, 0.045, 0.02); c.rotation.set(0, -Math.PI / 2, 0); w.add(c); g.add(w); } const r = new T.Mesh(hpRing, hpSteel); r.position.z = 0.2; g.add(r); return g; }
+// corde entre deux points (tube fin, mis à jour à chaque image)
+const ropeGeo = new T.CylinderGeometry(1, 1, 1, 5, 1, true).rotateX(Math.PI / 2), ropeMat = std(0x8a6a3a, { roughness: .9 });
+function makeRope() { const m = new T.Mesh(ropeGeo, ropeMat); m.scale.set(0.008, 0.008, 1); scene.add(m); return m; }
+function setRope(m, a, b) { m.position.lerpVectors(a, b, 0.5); m.lookAt(b); m.scale.z = Math.max(0.01, a.distanceTo(b)); }
+// traction : le harpon ramène l'ennemi à soi, le grappin nous tire jusqu'à lui ; on ne déplace que soi (ou un bot) : en ligne, chacun se tire lui-même
+const pulls = [], ropeA = new T.Vector3(), ropeB = new T.Vector3();
+function startPull(mover, target) {
+  if (!mover || !target || mover === target || !mover.s || !target.s) return;
+  for (let i = pulls.length - 1; i >= 0; i--) if (pulls[i].mover === mover) endPull(i);
+  const move = mover === ME || (mode !== 'online' && mover !== ME);
+  pulls.push({ mover, target, rope: makeRope(), until: t + PULL_MAX, move });
+  if (move) mover.s.pullOn = true;
+  sfx('reel', mover === ME || target === ME ? 1 : 0.5);
+  if (mover === ME) toast(target === ME ? '' : 'Tu es tiré au corps à corps !', 1.2, 'var(--bone)');
+}
+function endPull(i) { const P = pulls[i]; scene.remove(P.rope); if (P.move) P.mover.s.pullOn = false; pulls.splice(i, 1); }
+function tickPulls(dt) {
+  for (let i = pulls.length - 1; i >= 0; i--) {
+    const P = pulls[i], M = P.mover.s, G2 = P.target.s;
+    if (t > P.until || isDead(P.mover) || isDead(P.target) || !(phase === 'fight' || phase === 'ending')) { endPull(i); continue; }
+    const dx = G2.x - M.x, dz = G2.z - M.z, d = Math.hypot(dx, dz);
+    if (d <= PULL_GAP + 0.03 || map.lateral && t > P.until - PULL_MAX + 0.6) { endPull(i); continue; }
+    if (P.move && !map.lateral) { const st = Math.min(PULL_V * dt, d - PULL_GAP); M.x += dx / d * st; M.z += dz / d * st; M.vx = M.vz = 0; resolveMove(M); }
+    setRope(P.rope, ropeA.set(M.x, 1.25, M.z), ropeB.set(G2.x, 1.3, G2.z));
+  }
+}
+function clearPulls() { for (let i = pulls.length - 1; i >= 0; i--) endPull(i); }
 // rayon laser et fils du taser : traits lumineux entre deux points, qui s'effacent
 const rayGeo = new T.CylinderGeometry(1, 1, 1, 6, 1, true).rotateX(Math.PI / 2), beams = [];
 function addBeam(a, b, col, r, life) {
@@ -2653,6 +2699,26 @@ function makeArcher(cloth, hoodCol, owner, fpv = false) { // fpv : seulement les
   nlp(new T.BoxGeometry(0.03, 0.09, 0.04), nlK, 0, -0.06, 0.01).rotation.x = -0.25;                    // poignée
   nlp(new T.BoxGeometry(0.045, 0.07, 0.16), nlO, 0, -0.01, 0.13);                                       // crosse
   const nlMuzzle = new T.Vector3(0, 0.03, -0.5);
+  // fusil-harpon : long canon noir et jaune, le harpon posé dessus quand il est chargé, moulinet de corde sous la poignée
+  const hgG = new T.Group(); hgG.position.copy(rifle.position); hgG.visible = false; upper.add(hgG);
+  const hgK = std(0x1c1d20, { roughness: .55 }), hgY = std(0xf2c81a, { roughness: .45 });
+  const hgp = (geo, mat, x, y, z) => { const m = new T.Mesh(geo, mat); m.position.set(x, y, z); hgG.add(m); return m; };
+  hgp(new T.CylinderGeometry(0.022, 0.022, 0.56, 12), hgK, 0, 0.01, -0.25).rotation.x = Math.PI / 2;    // canon
+  hgp(new T.BoxGeometry(0.05, 0.06, 0.16), hgY, 0, 0.0, 0.02);                                          // corps
+  hgp(new T.CylinderGeometry(0.035, 0.035, 0.03, 14), hgY, 0, -0.08, -0.06).rotation.z = Math.PI / 2;   // moulinet
+  hgp(new T.BoxGeometry(0.03, 0.09, 0.04), hgK, 0, -0.06, 0.05).rotation.x = -0.25;                    // poignée
+  const hgSpear = makeHarpoon(); hgSpear.position.set(0, 0.04, -0.62); hgSpear.scale.setScalar(0.8); hgG.add(hgSpear); // harpon prêt
+  const hgMuzzle = new T.Vector3(0, 0.04, -0.62);
+  // lance-grappin : boîtier gris et orange, le grappin dans la bouche quand il est chargé
+  const gpG = new T.Group(); gpG.position.copy(rifle.position); gpG.visible = false; upper.add(gpG);
+  const gpGrey = std(0x5d636b, { roughness: .45, metalness: .3 }), gpOr = std(0xe8742a, { roughness: .45 });
+  const gpp = (geo, mat, x, y, z) => { const m = new T.Mesh(geo, mat); m.position.set(x, y, z); gpG.add(m); return m; };
+  gpp(new T.BoxGeometry(0.06, 0.09, 0.26), gpGrey, 0, 0.01, -0.08);                                    // boîtier
+  gpp(new T.CylinderGeometry(0.03, 0.034, 0.14, 12), gpOr, 0, 0.03, -0.27).rotation.x = Math.PI / 2;   // bouche
+  gpp(new T.CylinderGeometry(0.045, 0.045, 0.04, 14), gpOr, 0.045, 0.0, -0.06).rotation.z = Math.PI / 2; // treuil
+  gpp(new T.BoxGeometry(0.03, 0.09, 0.04), gpGrey, 0, -0.07, 0.03).rotation.x = -0.25;                 // poignée
+  const gpHook = makeGrapple(); gpHook.position.set(0, 0.03, -0.4); gpG.add(gpHook);                    // grappin prêt
+  const gpMuzzle = new T.Vector3(0, 0.03, -0.42);
   // fusil laser : coque blanche, pièces noires, bandes et canon lumineux roses
   const lgG = new T.Group(); lgG.position.copy(rifle.position); lgG.visible = false; upper.add(lgG);
   const lgWhite = std(0xeef0f4, { roughness: .35, metalness: .1 }), lgBlack = std(0x1a1c22, { roughness: .5 }), lgGlow = new T.MeshStandardMaterial({ color: 0xff3d78, emissive: 0xff2a6a, emissiveIntensity: 1.4, roughness: .4 });
@@ -2823,7 +2889,7 @@ function makeArcher(cloth, hoodCol, owner, fpv = false) { // fpv : seulement les
     wpn = w; const bowOn = w === 'bow'; nockCharge.visible = xbow0;
     bow.visible = quiver.visible = bowOn; quiverArrows.forEach(f => { f.visible = bowOn; });
     if (fpv) { quiver.visible = false; quiverArrows.forEach(f => { f.visible = false; }); }
-    blG.visible = w === 'blowgun'; slG.visible = w === 'sling'; brG.visible = w === 'boomerang'; suG.visible = w === 'shuriken'; axG.visible = w === 'axe'; jvG.visible = w === 'javelin'; boG.visible = w === 'bolas'; frG.visible = w === 'frisbee'; sbG.visible = w === 'snowgun'; wgG.visible = w === 'watergun'; lgG.visible = w === 'lasergun'; taG.visible = w === 'taser'; rgG.visible = w === 'railgun'; ftG.visible = w === 'flamer'; cgG.visible = w === 'gluegun'; ngG.visible = w === 'nailgun'; piG.visible = w === 'pielauncher'; tpG.visible = w === 'telegun'; nlG.visible = w === 'netgun'; pcG.visible = w === 'pinecone'; rifle.visible = w === 'rifle'; xbow.visible = w === 'crossbow'; batSwing.visible = w === 'bat'; pistolG.visible = w === 'pistol'; revG.visible = w === 'revolver'; dgG.visible = w === 'deagle'; vecG.visible = w === 'vector'; m4G.visible = w === 'm4'; scarG.visible = w === 'scar'; bwG.visible = w === 'barrett'; sgG.visible = w === 'shotgun'; bottle.visible = w === 'beer'; kebabH.visible = w === 'kebab'; glG.visible = w === 'grenade'; rlG.visible = w === 'rocket'; mgG.visible = w === 'minigun'; pbG.visible = w === 'paintball'; psG.visible = w === 'psniper'; if (!hasLaser(w)) laser(null);
+    blG.visible = w === 'blowgun'; slG.visible = w === 'sling'; brG.visible = w === 'boomerang'; suG.visible = w === 'shuriken'; axG.visible = w === 'axe'; jvG.visible = w === 'javelin'; boG.visible = w === 'bolas'; frG.visible = w === 'frisbee'; sbG.visible = w === 'snowgun'; wgG.visible = w === 'watergun'; lgG.visible = w === 'lasergun'; taG.visible = w === 'taser'; rgG.visible = w === 'railgun'; ftG.visible = w === 'flamer'; cgG.visible = w === 'gluegun'; ngG.visible = w === 'nailgun'; piG.visible = w === 'pielauncher'; tpG.visible = w === 'telegun'; nlG.visible = w === 'netgun'; hgG.visible = w === 'harpoongun'; gpG.visible = w === 'grapplegun'; pcG.visible = w === 'pinecone'; rifle.visible = w === 'rifle'; xbow.visible = w === 'crossbow'; batSwing.visible = w === 'bat'; pistolG.visible = w === 'pistol'; revG.visible = w === 'revolver'; dgG.visible = w === 'deagle'; vecG.visible = w === 'vector'; m4G.visible = w === 'm4'; scarG.visible = w === 'scar'; bwG.visible = w === 'barrett'; sgG.visible = w === 'shotgun'; bottle.visible = w === 'beer'; kebabH.visible = w === 'kebab'; glG.visible = w === 'grenade'; rlG.visible = w === 'rocket'; mgG.visible = w === 'minigun'; pbG.visible = w === 'paintball'; psG.visible = w === 'psniper'; if (!hasLaser(w)) laser(null);
     if (bowOn) armL.set(shL, grip);
     else if (w === 'pistol' || bigGun(w) || w === 'taser' || w === 'gluegun') { armL.set(shL, tmpA.copy(handP).add(tmpB.set(0, -0.03, 0.03))); armR.set(shR, handP); }
     else if (w === 'vector') { armL.set(shL, handVL); armR.set(shR, handVR); }
@@ -2832,7 +2898,7 @@ function makeArcher(cloth, hoodCol, owner, fpv = false) { // fpv : seulement les
     else if (w === 'shotgun') { armL.set(shL, handSL); armR.set(shR, handSR); }
     else if (w === 'grenade') { armL.set(shL, handGL); armR.set(shR, handGR); }
     else if (w === 'rocket') { armL.set(shL, handRL); armR.set(shR, handRR); }
-    else if (w === 'paintball' || w === 'snowgun' || w === 'watergun' || w === 'lasergun' || w === 'railgun' || w === 'flamer' || w === 'nailgun' || w === 'pielauncher' || w === 'telegun' || w === 'netgun') { armL.set(shL, handPbL); armR.set(shR, handPbR); }
+    else if (w === 'paintball' || w === 'snowgun' || w === 'watergun' || w === 'lasergun' || w === 'railgun' || w === 'flamer' || w === 'nailgun' || w === 'pielauncher' || w === 'telegun' || w === 'netgun' || w === 'harpoongun' || w === 'grapplegun') { armL.set(shL, handPbL); armR.set(shR, handPbR); }
     else if (w === 'psniper') { armL.set(shL, handPsL); armR.set(shR, handPsR); }
     else if (w === 'minigun') { armL.set(shL, handMgL); armR.set(shR, handMgR); }
     else if (w === 'blowgun') { armL.set(shL, handDL); armR.set(shR, handDR); }
@@ -2862,6 +2928,8 @@ function makeArcher(cloth, hoodCol, owner, fpv = false) { // fpv : seulement les
     if (wpn === 'crossbow') { xbow.position.z = -0.3 + draw * 0.04; xBolt.visible = isNocked; return; }
     // revolver : gros relevé du canon et le buste qui encaisse, retour en 0,45 s (purement visuel)
     if (wpn === 'psniper') { const k = clamp((t - pKick) / 0.14, 0, 1); psG.rotation.x = (1 - k) * 0.06; psG.position.z = rifle.position.z + draw * 0.04 + (1 - k) * 0.02; return; }
+    if (wpn === 'harpoongun') { const k = clamp((t - pKick) / 0.2, 0, 1); hgSpear.visible = isNocked; hgG.rotation.x = (1 - k) * 0.07; hgG.position.z = rifle.position.z + (1 - k) * 0.03; return; }
+    if (wpn === 'grapplegun') { const k = clamp((t - pKick) / 0.2, 0, 1); gpHook.visible = isNocked; gpG.rotation.x = (1 - k) * 0.07; gpG.position.z = rifle.position.z + (1 - k) * 0.03; return; }
     if (wpn === 'netgun') { const k = clamp((t - pKick) / 0.2, 0, 1); nlW.forEach(w => { w.visible = isNocked; }); nlG.rotation.x = (1 - k) * 0.08; nlG.position.z = rifle.position.z + (1 - k) * 0.025; return; } // les poids reparaissent une fois rechargé
     if (wpn === 'nailgun') { const k = clamp((t - pKick) / 0.06, 0, 1); ngG.rotation.x = (1 - k) * 0.05; ngG.position.z = rifle.position.z + (1 - k) * 0.012; return; }
     if (wpn === 'pielauncher') { const k = clamp((t - pKick) / 0.2, 0, 1); piPie.visible = isNocked; piG.rotation.x = (1 - k) * 0.06; piG.position.z = rifle.position.z + (1 - k) * 0.02; return; } // la tarte reparaît une fois rechargée
@@ -2964,6 +3032,8 @@ function makeArcher(cloth, hoodCol, owner, fpv = false) { // fpv : seulement les
     if (wpn === 'pielauncher') return piG.localToWorld(out.copy(piMuzzle));
     if (wpn === 'telegun') return tpG.localToWorld(out.copy(tpMuzzle));
     if (wpn === 'netgun') return nlG.localToWorld(out.copy(nlMuzzle));
+    if (wpn === 'harpoongun') return hgG.localToWorld(out.copy(hgMuzzle));
+    if (wpn === 'grapplegun') return gpG.localToWorld(out.copy(gpMuzzle));
     if (wpn === 'flamer') return ftG.localToWorld(out.copy(ftMuzzle));
     if (wpn === 'gluegun') return cgG.localToWorld(out.set(0, 0.035, -0.18));
     if (wpn === 'taser') return taG.localToWorld(out.set(0, 0.035, -0.18));
@@ -3151,6 +3221,7 @@ function sfx(k, v = 1) {
     if (k === 'twang') { tone('triangle', 240, 90, 0.22, 0.28 * v); hiss('highpass', 3000, 1500, 0.06, 0.12 * v); }
     else if (k === 'whoosh') hiss('bandpass', 700, 2600, 0.45, 0.22 * v);
     else if (k === 'pbang') { hiss('highpass', 4200, 1400, 0.14, 0.5 * v); tone('square', 240, 70, 0.09, 0.22 * v); hiss('lowpass', 2500, 300, 0.12, 0.35 * v); }
+    else if (k === 'reel') { for (let i = 0; i < 9; i++) tone('square', 950, 700, 0.025, 0.04 * v, i * 0.055); } // moulinet qui ramène la corde
     else if (k === 'nailt') { tone('square', 1300, 500, 0.04, 0.06 * v); hiss('highpass', 3000, 7000, 0.04, 0.15 * v); } // « tchac » de la cloueuse
     else if (k === 'telet') { tone('sine', 500, 1400, 0.18, 0.1 * v); } // départ de l'orbe
     else if (k === 'tele') { tone('sine', 1800, 300, 0.3, 0.12 * v); tone('triangle', 300, 1600, 0.3, 0.08 * v); } // téléportation
@@ -3319,7 +3390,7 @@ function clearArrows() {
   stains.length = 0;
 }
 function resetMatch(k) {
-  clearCream(); // pas de crème au début d'une manche
+  clearCream(); clearPulls(); // pas de crème ni de corde au début d'une manche
   applyMap(k || mapKey);
   clearArrows();
   Object.assign(me, { x: 0, z: map.spawnZ, vx: 0, vz: 0, yaw: 0, pitch: 0.04, draw: 0, drawing: false, reload: 0, taken: 0 });
@@ -3474,7 +3545,7 @@ function fpCamera(dt, V = me) {
   forward(V.yaw, V.pitch, camF); camera.lookAt(look.copy(camera.position).add(camF)); camera.rotateZ(-fpRoll * 0.022);
 }
 // quand on vise, l'arme s'arrête juste sous le cercle du viseur : baisse propre à chacune, selon la hauteur de sa hausse ou de sa lunette
-const FP_LOW = { arrow: 0, pistol: 0.007, revolver: 0.021, deagle: 0.033, vector: 0.073, m4: 0.073, shotgun: 0.124, grenade: 0.094, paintball: 0.19, snowball: 0.19, water: 0.19, beam: 0.19, taser: 0.007, rail: 0.19, flame: 0.19, glue: 0.007, nail: 0.19, pie: 0.19, tele: 0.19, net: 0.19, bolt: 0.08, bullet: 0.098, barrett: 0.185, psniper: 0.162, scar: 0.095, stone: 0.063, rocket: 0.143 };
+const FP_LOW = { arrow: 0, pistol: 0.007, revolver: 0.021, deagle: 0.033, vector: 0.073, m4: 0.073, shotgun: 0.124, grenade: 0.094, paintball: 0.19, snowball: 0.19, water: 0.19, beam: 0.19, taser: 0.007, rail: 0.19, flame: 0.19, glue: 0.007, nail: 0.19, pie: 0.19, tele: 0.19, net: 0.19, harpoon: 0.19, grapple: 0.19, bolt: 0.08, bullet: 0.098, barrett: 0.185, psniper: 0.162, scar: 0.095, stone: 0.063, rocket: 0.143 };
 const IRON_LOW = -0.0114, ACOG_LOW = 0.089, RD_LOW = 0.0231; // ACOG : sous le viseur avant d'entrer dans la lunette ; point rouge : le centre du tube pile au centre de l'écran // carabine à mire : réglé pour que la pointe du guidon arrive pile au centre de l'écran
 // les bras et l'arme : ils suivent le regard avec un peu de retard, balancent, respirent, reculent au tir et remontent quand on vise
 function updateViewmodel(dt, V = me) {
@@ -3546,8 +3617,8 @@ function flightEnd(o, v, g = G) {
   return simP;
 }
 // vitesse et gravité d'un projectile : la balle file droit, le carreau vole comme une flèche tirée à fond
-function shotSpeed(kind, draw) { return isBullet(kind) ? BULLET_V : kind === 'bolt' ? BOW_V : beerLike(kind) ? BEER_V : kind === 'grenade' ? GREN_V : kind === 'rocket' ? ROCKET_V : kind === 'dart' ? DART_V : kind === 'stone' ? STONE_V : kind === 'shuriken' ? SHUR_V : kind === 'axe' ? AXE_V : kind === 'javelin' ? JAV_V : kind === 'bolas' ? BOLAS_V : kind === 'frisbee' ? FRIS_V : kind === 'snowball' ? SNOW_V : kind === 'water' ? WATER_V : kind === 'taser' ? TASER_V : kind === 'beam' ? BEAM_V : kind === 'rail' ? RAIL_V : kind === 'flame' ? FLAME_V : kind === 'glue' ? GLUE_V : kind === 'nail' ? NAIL_V : kind === 'pie' ? PIE_V : kind === 'tele' ? TELE_V : kind === 'net' ? NET_V : kind === 'pinecone' ? CONE_V : kind === 'boomerang' ? BOOM_V : kind === 'minigun' ? MINI_V : kind === 'psniper' ? PSNIPER_V : isPaint(kind) ? PAINT_V : VMIN + (BOW_V - VMIN) * draw; }
-function shotSfx(kind, sil, v = 1) { sfx(sil && SIL_SFX[kind] ? SIL_SFX[kind] : kind === 'pistol' ? 'pbang' : kind === 'revolver' ? 'rbang' : kind === 'deagle' ? 'dbang' : kind === 'vector' ? 'vbang' : kind === 'm4' ? 'mbang' : kind === 'scar' ? 'hbang' : kind === 'barrett' ? 'fbang' : kind === 'shotgun' ? 'sbang' : beerLike(kind) ? 'whoosh' : kind === 'grenade' ? 'thoomp' : kind === 'rocket' ? 'rkt' : kind === 'minigun' ? 'mini' : kind === 'paintball' ? 'paint' : kind === 'psniper' ? 'psnip' : kind === 'bullet' ? 'bang' : kind === 'dart' ? 'dart' : kind === 'stone' ? 'sling' : kind === 'shuriken' ? 'shur' : kind === 'axe' || kind === 'javelin' || kind === 'bolas' ? 'whoosh' : kind === 'snowball' ? 'paint' : kind === 'water' ? 'squirt' : kind === 'taser' ? 'tzap' : kind === 'beam' ? 'zap' : kind === 'rail' ? 'rail' : kind === 'flame' ? 'fwoosh' : kind === 'glue' ? 'gloop' : kind === 'nail' ? 'nailt' : kind === 'pie' ? 'thoomp' : kind === 'tele' ? 'telet' : kind === 'net' ? 'thoomp' : kind === 'pinecone' ? 'whoosh' : kind === 'boomerang' || kind === 'frisbee' ? 'boomt' : 'twang', v); }
+function shotSpeed(kind, draw) { return isBullet(kind) ? BULLET_V : kind === 'bolt' ? BOW_V : beerLike(kind) ? BEER_V : kind === 'grenade' ? GREN_V : kind === 'rocket' ? ROCKET_V : kind === 'dart' ? DART_V : kind === 'stone' ? STONE_V : kind === 'shuriken' ? SHUR_V : kind === 'axe' ? AXE_V : kind === 'javelin' ? JAV_V : kind === 'bolas' ? BOLAS_V : kind === 'frisbee' ? FRIS_V : kind === 'snowball' ? SNOW_V : kind === 'water' ? WATER_V : kind === 'taser' ? TASER_V : kind === 'beam' ? BEAM_V : kind === 'rail' ? RAIL_V : kind === 'flame' ? FLAME_V : kind === 'glue' ? GLUE_V : kind === 'nail' ? NAIL_V : kind === 'pie' ? PIE_V : kind === 'tele' ? TELE_V : kind === 'net' ? NET_V : kind === 'harpoon' ? HARPOON_V : kind === 'grapple' ? GRAPPLE_V : kind === 'pinecone' ? CONE_V : kind === 'boomerang' ? BOOM_V : kind === 'minigun' ? MINI_V : kind === 'psniper' ? PSNIPER_V : isPaint(kind) ? PAINT_V : VMIN + (BOW_V - VMIN) * draw; }
+function shotSfx(kind, sil, v = 1) { sfx(sil && SIL_SFX[kind] ? SIL_SFX[kind] : kind === 'pistol' ? 'pbang' : kind === 'revolver' ? 'rbang' : kind === 'deagle' ? 'dbang' : kind === 'vector' ? 'vbang' : kind === 'm4' ? 'mbang' : kind === 'scar' ? 'hbang' : kind === 'barrett' ? 'fbang' : kind === 'shotgun' ? 'sbang' : beerLike(kind) ? 'whoosh' : kind === 'grenade' ? 'thoomp' : kind === 'rocket' ? 'rkt' : kind === 'minigun' ? 'mini' : kind === 'paintball' ? 'paint' : kind === 'psniper' ? 'psnip' : kind === 'bullet' ? 'bang' : kind === 'dart' ? 'dart' : kind === 'stone' ? 'sling' : kind === 'shuriken' ? 'shur' : kind === 'axe' || kind === 'javelin' || kind === 'bolas' ? 'whoosh' : kind === 'snowball' ? 'paint' : kind === 'water' ? 'squirt' : kind === 'taser' ? 'tzap' : kind === 'beam' ? 'zap' : kind === 'rail' ? 'rail' : kind === 'flame' ? 'fwoosh' : kind === 'glue' ? 'gloop' : kind === 'nail' ? 'nailt' : kind === 'pie' ? 'thoomp' : kind === 'tele' ? 'telet' : kind === 'net' ? 'thoomp' : kind === 'harpoon' || kind === 'grapple' ? 'thoomp' : kind === 'pinecone' ? 'whoosh' : kind === 'boomerang' || kind === 'frisbee' ? 'boomt' : 'twang', v); }
 function fire() {
   const kind = curWpn().kind, g = shotG(kind);
   const speed = shotSpeed(kind, me.draw);
@@ -3813,7 +3884,7 @@ function updateOpp(dt) {
 
 // ---------- arrow physics
 function orient(a) { a.m.quaternion.setFromUnitVectors(NEG_Z, tmpV.copy(a.v).normalize()); }
-const KIND_CODE = { arrow: 'a', bolt: 'x', bullet: 'b', pistol: 'p', revolver: 'r', deagle: 'd', vector: 'v', m4: 'q', scar: 'h', barrett: 'f', shotgun: 'g', beer: 'e', kebab: 'j', grenade: 'n', rocket: 'l', minigun: 'z', paintball: 'k', psniper: 'y', dart: 'w', stone: 'o', xarrow: 'c', boomerang: 'u', shuriken: 's', axe: 't', javelin: 'i', bolas: 'B', frisbee: 'F', snowball: 'N', water: 'W', taser: 'T', beam: 'L', rail: 'R', flame: 'H', glue: 'G', nail: 'K', pie: 'Q', tele: 'P', net: 'X', pinecone: 'Y' }, CODE_KIND = { X: 'net', Y: 'pinecone', K: 'nail', Q: 'pie', P: 'tele', R: 'rail', H: 'flame', G: 'glue', W: 'water', T: 'taser', L: 'beam', B: 'bolas', F: 'frisbee', N: 'snowball', i: 'javelin', t: 'axe', l: 'rocket', o: 'stone', c: 'xarrow', h: 'scar', w: 'dart', u: 'boomerang', s: 'shuriken', a: 'arrow', x: 'bolt', b: 'bullet', p: 'pistol', r: 'revolver', d: 'deagle', v: 'vector', q: 'm4', f: 'barrett', g: 'shotgun', e: 'beer', j: 'kebab', n: 'grenade', z: 'minigun', k: 'paintball', y: 'psniper' };
+const KIND_CODE = { arrow: 'a', bolt: 'x', bullet: 'b', pistol: 'p', revolver: 'r', deagle: 'd', vector: 'v', m4: 'q', scar: 'h', barrett: 'f', shotgun: 'g', beer: 'e', kebab: 'j', grenade: 'n', rocket: 'l', minigun: 'z', paintball: 'k', psniper: 'y', dart: 'w', stone: 'o', xarrow: 'c', boomerang: 'u', shuriken: 's', axe: 't', javelin: 'i', bolas: 'B', frisbee: 'F', snowball: 'N', water: 'W', taser: 'T', beam: 'L', rail: 'R', flame: 'H', glue: 'G', nail: 'K', pie: 'Q', tele: 'P', net: 'X', pinecone: 'Y', harpoon: 'O', grapple: 'J' }, CODE_KIND = { O: 'harpoon', J: 'grapple', X: 'net', Y: 'pinecone', K: 'nail', Q: 'pie', P: 'tele', R: 'rail', H: 'flame', G: 'glue', W: 'water', T: 'taser', L: 'beam', B: 'bolas', F: 'frisbee', N: 'snowball', i: 'javelin', t: 'axe', l: 'rocket', o: 'stone', c: 'xarrow', h: 'scar', w: 'dart', u: 'boomerang', s: 'shuriken', a: 'arrow', x: 'bolt', b: 'bullet', p: 'pistol', r: 'revolver', d: 'deagle', v: 'vector', q: 'm4', f: 'barrett', g: 'shotgun', e: 'beer', j: 'kebab', n: 'grenade', z: 'minigun', k: 'paintball', y: 'psniper' };
 const BOLT_LEN = 0.45; // un carreau est une flèche raccourcie
 function makeProjectile(owner, kind, streak) {
   if (isBullet(kind) || kind === 'minigun' || kind === 'beam' || kind === 'taser' || kind === 'rail') return makeBullet(owner);
@@ -3822,6 +3893,8 @@ function makeProjectile(owner, kind, streak) {
   if (kind === 'pie') return makePie();
   if (kind === 'tele') return makeTele();
   if (kind === 'net') return makeNet();
+  if (kind === 'harpoon') return makeHarpoon();
+  if (kind === 'grapple') return makeGrapple();
   if (kind === 'pinecone') return makePinecone();
   if (kind === 'beer') return makeBeerProjectile();
   if (kind === 'kebab') return makeKebabProjectile();
@@ -3844,8 +3917,9 @@ function spawnArrow(owner, p, v, id = 0, kind = 'arrow', noSmoke = false) {
   const m = makeProjectile(owner, kind, true); m.position.copy(p); scene.add(m);
   // g : gravité propre au projectile (la balle n'en a pas) ; tail : distance de la pointe à l'arrière, d'où sort la fumée
   // kill : le carreau d'arbalète tue d'un coup, où qu'il touche
-  const a = { owner, id, kind, g: shotG(kind), tail: kind === 'rocket' ? 0.38 : bullet || kind === 'grenade' || kind === 'minigun' || thrown(kind) || isPaint(kind) ? 0.05 : kind === 'bolt' ? 0.9 * BOLT_LEN : kind === 'dart' ? DART_LEN : 0.9, kill: kind === 'bolt' || kind === 'barrett' || kind === 'beer' || kind === 'boomerang', sid: ++arrowSerial, p, v, m, flying: true, pending: 0, life: 0, botSeen: false, o0: p.clone(), noSmoke: noSmoke || kind === 'beer' || kind === 'minigun' || kind === 'shuriken' || kind === 'axe' || kind === 'javelin' || kind === 'bolas' || kind === 'frisbee' || kind === 'beam' || kind === 'taser' || kind === 'rail' || kind === 'flame' || kind === 'nail' || kind === 'pie' || kind === 'tele' || kind === 'net' || kind === 'pinecone' || isPaint(kind), maxD: kind === 'shotgun' ? SG_RANGE : kind === 'taser' ? TASER_R : 0 };
+  const a = { owner, id, kind, g: shotG(kind), tail: kind === 'rocket' ? 0.38 : bullet || kind === 'grenade' || kind === 'minigun' || thrown(kind) || isPaint(kind) ? 0.05 : kind === 'bolt' ? 0.9 * BOLT_LEN : kind === 'dart' ? DART_LEN : 0.9, kill: kind === 'bolt' || kind === 'barrett' || kind === 'beer' || kind === 'boomerang', sid: ++arrowSerial, p, v, m, flying: true, pending: 0, life: 0, botSeen: false, o0: p.clone(), noSmoke: noSmoke || kind === 'beer' || kind === 'minigun' || kind === 'shuriken' || kind === 'axe' || kind === 'javelin' || kind === 'bolas' || kind === 'frisbee' || kind === 'beam' || kind === 'taser' || kind === 'rail' || kind === 'flame' || kind === 'nail' || kind === 'pie' || kind === 'tele' || kind === 'net' || kind === 'pinecone' || kind === 'harpoon' || kind === 'grapple' || isPaint(kind), maxD: kind === 'shotgun' ? SG_RANGE : kind === 'taser' ? TASER_R : 0 };
   orient(a); arrows.push(a);
+  if (kind === 'harpoon' || kind === 'grapple') a.rope = makeRope(); // la corde suit le harpon (ou le grappin) en vol
   if (isPaint(kind)) { a.col = PAINT_COLS[id ? id % PAINT_COLS.length : Math.floor(Math.random() * PAINT_COLS.length)]; m.material.color.setHex(a.col); if (kind === 'snowball') { a.col = SNOW_COL; m.material.color.setHex(SNOW_COL); m.material.roughness = 0.9; } if (kind === 'glue') { a.col = GLUE_COL; m.material.color.setHex(GLUE_COL); m.material.roughness = 0.15; } if (kind === 'water') { a.col = WATER_COL; m.material.color.setHex(WATER_COL); m.material.transparent = true; m.material.opacity = 0.7; m.material.roughness = 0.05; } }
   // sniper paintball : la bille brille légèrement de sa couleur, avec un petit halo, pour mieux la voir en l'air
   if (kind === 'psniper') { m.material.emissive.setHex(a.col); m.material.emissiveIntensity = 0.6; a.glow = new T.Sprite(glowMat(a.col)); a.glow.scale.setScalar(0.075); m.add(a.glow); }
@@ -3946,9 +4020,10 @@ function plantInArcher(a, model, head) {
   a.m.visible = true;
   orient(a); tmpV.copy(a.v).normalize();
   if (a.kind === 'shuriken' || a.kind === 'frisbee') plantStar(a);
-  else if (a.kind === 'nail') a.m.position.copy(a.p).addScaledVector(tmpV, 0.05); // le clou s'enfonce, la tête dépasse
+  else if (a.kind === 'nail') a.m.position.copy(a.p).addScaledVector(tmpV, 0.05);
+  else if (a.kind === 'grapple') a.m.position.copy(a.p).addScaledVector(tmpV, -0.03); // les griffes accrochées // le clou s'enfonce, la tête dépasse
   else if (a.kind === 'axe') plantAxe(a);
-  else a.m.position.copy(a.p).addScaledVector(tmpV, pierceDepth(a.p, tmpV, model, head, a.kind === 'bolt' ? 0.9 * BOLT_LEN : a.kind === 'dart' ? DART_LEN : a.kind === 'javelin' ? JAV_LEN : 0.9));
+  else a.m.position.copy(a.p).addScaledVector(tmpV, pierceDepth(a.p, tmpV, model, head, a.kind === 'bolt' ? 0.9 * BOLT_LEN : a.kind === 'dart' ? DART_LEN : a.kind === 'javelin' ? JAV_LEN : a.kind === 'harpoon' ? HARPOON_LEN : 0.9));
   model.root.updateMatrixWorld(true);
   const part = head || model.root.worldToLocal(tmpA.copy(a.p)).y > 1.15 ? model.upper : model.root;
   part.attach(a.m); a.part = part === model.upper ? 'u' : 'r';
@@ -3974,6 +4049,8 @@ function hitArcher(a, tgt, head) {
   if (a.kind === 'glue') applyGlue(tgt); // la cible est collée au sol
   if (a.kind === 'pie') creamFace(tgt); // crème plein la figure
   if (a.kind === 'net') applyNet(tgt); // emprisonné dans le filet
+  if (a.kind === 'harpoon') startPull(tgt, a.owner === 'me' ? ME : FOES[a.owner]); // le harpon ramène l'ennemi
+  if (a.kind === 'grapple') startPull(a.owner === 'me' ? ME : FOES[a.owner], tgt); // le grappin nous tire jusqu'à lui
   if (a.kind === 'bolas') applySlow(tgt); // les bolas s'enroulent autour des jambes
   if (a.kind === 'taser') applyStun(tgt); // le taser paralyse
   if (!(mode === 'online' && nroom)) { registerTaken(tgt, tgt.s.taken + dmg, head, a.owner, quiet); return; }
@@ -4120,10 +4197,11 @@ function flyNow(a) {
   if (a.flying) { stopArrow(a); a.gone = true; a.m.visible = false; }
 }
 function updateArrows(dt) {
-  tickSlow(); tickStun(); tickBeams(); tickBurn(); tickGlue(); tickNet();
+  tickSlow(); tickStun(); tickBeams(); tickBurn(); tickGlue(); tickNet(); tickPulls(dt);
   for (let i = arrows.length - 1; i >= 0; i--) {
     const a = arrows[i];
     if (!a.flying) {
+      if (a.rope) { scene.remove(a.rope); a.rope = null; }
       if (a.pending > 0) { a.pending -= dt; if (a.pending <= 0) { if (a.m.parent) a.m.parent.remove(a.m); arrows.splice(i, 1); } }
       else if (a.boomAt && !a.gone) { // flèche explosive plantée : la charge clignote de plus en plus vite, puis la pointe explose
         const left = a.boomAt - t, ch = a.m.getObjectByName('charge'), on = Math.sin(t * Math.PI * 2 * (1.5 + 4 * (1 - left / XARROW_FUSE))) > 0;
@@ -4144,6 +4222,7 @@ function updateArrows(dt) {
       if (a.kind === 'stone') a.m.getObjectByName('stone').rotation.set(a.life * 40, a.life * 27, 0); // la pierre roule sur elle-même
       if (a.kind === 'shuriken') a.m.rotateX(0.2).rotateY(a.life * 60); // le shuriken tourne à plat, un peu incliné
       if (a.kind === 'flame') { a.m.scale.setScalar(0.22 + a.life * 2.4); if (a.p.distanceToSquared(a.o0) > FLAME_R * FLAME_R) { scene.remove(a.m); arrows.splice(i, 1); continue; } } // la flamme grossit puis s'éteint
+      if (a.rope) { const OA = a.owner === 'me' ? meA : FOES[a.owner] && FOES[a.owner].A; if (OA) setRope(a.rope, OA.bowWorld(tmpC), a.p); if (a.p.distanceToSquared(a.o0) > ROPE_MAX * ROPE_MAX) { scene.remove(a.rope); a.rope = null; scene.remove(a.m); arrows.splice(i, 1); continue; } } // bout de la corde : il retombe
       if (a.kind === 'net') { a.m.scale.setScalar(Math.min(NET_R * 2, 0.3 + a.life * 4.4)); a.m.rotateZ(a.life * 3); } // le filet s'ouvre en tournant
       if (a.kind === 'pinecone') a.m.rotateX(a.life * 15).rotateZ(a.life * 6); // elle tournoie
       if (a.kind === 'bolas') a.m.rotateX(0.15).rotateY(a.life * 24); // les bolas tournent à plat, cordes tendues
@@ -4153,7 +4232,7 @@ function updateArrows(dt) {
         a.m.rotation.set(0.22, a.life * 34, 0);
         if ((a.whir = (a.whir || 0) - dt) <= 0) { a.whir = 0.09; const d = a.p.distanceTo(camera.position); if (d < 45) sfx('whir', 1 - d / 45); }
       }
-      if (a.p.y < -85 || a.life > 6) { scene.remove(a.m); arrows.splice(i, 1); }
+      if (a.p.y < -85 || a.life > 6) { scene.remove(a.m); if (a.rope) scene.remove(a.rope); arrows.splice(i, 1); }
     }
   }
 }
@@ -4550,6 +4629,8 @@ function onHit(msg) {
   if (CODE_KIND[d.k] === 'glue') applyGlue(victim);
   if (CODE_KIND[d.k] === 'pie') creamFace(victim);
   if (CODE_KIND[d.k] === 'net') applyNet(victim);
+  if (CODE_KIND[d.k] === 'harpoon') startPull(victim, f);
+  if (CODE_KIND[d.k] === 'grapple') startPull(f, victim);
   if (CODE_KIND[d.k] === 'tele') { telePuff(victim.s.x, victim.s.z); sfx('tele', 1); if (victim === ME && Number.isFinite(d.tx) && Number.isFinite(d.tz)) { me.x = d.tx; me.z = d.tz; me.vx = me.vz = 0; } } // on m'a échangé de place
   const burnQuiet = CODE_KIND[d.k] === 'flame' && (!d.id || victim.s.burnT > t); // brûlure (id 0) ou déjà en feu : sans message
   if (CODE_KIND[d.k] === 'flame' && d.id) applyBurn(victim, f.key);
