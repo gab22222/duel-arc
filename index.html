@@ -348,6 +348,7 @@ p{margin:0}
         <button data-wpn="boomerang" aria-pressed="false">Boomerang</button>
         <button data-wpn="shuriken" aria-pressed="false">Shuriken</button>
         <button data-wpn="axe" aria-pressed="false">Hache</button>
+        <button data-wpn="javelin" aria-pressed="false">Javelot</button>
       </div>
       </div>
       <div class="opt"><span>Bots</span>
@@ -412,6 +413,7 @@ p{margin:0}
         <button data-wpn="boomerang" aria-pressed="false">Boomerang</button>
         <button data-wpn="shuriken" aria-pressed="false">Shuriken</button>
         <button data-wpn="axe" aria-pressed="false">Hache</button>
+        <button data-wpn="javelin" aria-pressed="false">Javelot</button>
       </div>
       </div>
       <button class="btn primary" id="btnPractice">Commencer</button>
@@ -487,6 +489,7 @@ p{margin:0}
         <button data-wpn="boomerang" aria-pressed="false">Boomerang</button>
         <button data-wpn="shuriken" aria-pressed="false">Shuriken</button>
         <button data-wpn="axe" aria-pressed="false">Hache</button>
+        <button data-wpn="javelin" aria-pressed="false">Javelot</button>
       </div>
     </div>
     <div class="roster" aria-live="polite">
@@ -562,6 +565,7 @@ p{margin:0}
         <button data-wpn="boomerang" aria-pressed="false">Boomerang</button>
         <button data-wpn="shuriken" aria-pressed="false">Shuriken</button>
         <button data-wpn="axe" aria-pressed="false">Hache</button>
+        <button data-wpn="javelin" aria-pressed="false">Javelot</button>
       </div>
     </div>
     <p class="sub" id="overStatus"></p>
@@ -641,6 +645,7 @@ const WPN = {
   boomerang: { kind: 'boomerang', aimT: 0.2, zoomX: null, rate: 0.25 },               // boomerang : part tout droit, repart du premier obstacle ou du bout de la carte, revient dans la main ; tue d'un coup au passage
   sling: { kind: 'stone', aimT: 0.3, zoomX: null, rate: 0.8 },                         // lance-pierre : une pierre toutes les 0,8 s, 200 m/s, sans chute, tête = mort, corps = 100 HP
   blowgun: { kind: 'dart', aimT: 0.25, zoomX: null, rate: 0.8 },                     // sarbacane : fléchette silencieuse à 300 m/s, sans chute, tête = mort, corps = 100 HP
+  javelin: { kind: 'javelin', aimT: 0.4, zoomX: null, rate: 1.2 },                  // javelot : un toutes les 1,2 s, 30 m/s, vraie gravité (9,81 m/s²) : il faut viser haut ; pointe dans le sens du vol, reste planté ; tête = mort, corps = 200 HP
   axe: { kind: 'axe', aimT: 0.3, zoomX: null, rate: 1 },                              // hache de lancer : une par seconde, 45 m/s, elle tournoie et retombe (chute /2), reste plantée ; tête = mort, corps = 150 HP
   shuriken: { kind: 'shuriken', aimT: 0.15, zoomX: null, rate: 0.8 },                   // shuriken : un toutes les 0,8 s, 300 m/s, sans chute, tête = mort, corps = 100 HP
   psniper: { kind: 'psniper', aimT: 0.3, zoomX: 4, rate: 0.8 },                        // sniper paintball : lunette x4, une bille toutes les 0,8 s (336 m/s, sans chute), tête = mort, corps = 75 HP
@@ -658,7 +663,7 @@ const CATS = [
   ['prec', 'Précision', ['rifle', 'barrett', 'psniper']],
   ['expl', 'Explosifs', ['grenade', 'rocket']],
   ['archer', 'Armes d’archer', ['bow', 'crossbow']],
-  ['special', 'Armes spéciales', ['blowgun', 'sling', 'boomerang', 'shuriken', 'axe']],
+  ['special', 'Armes spéciales', ['blowgun', 'sling', 'boomerang', 'shuriken', 'axe', 'javelin']],
   ['melee', 'Mêlée', ['bat', 'shotgun']],
   ['fun', 'Fun', ['beer', 'kebab']],
 ];
@@ -676,9 +681,10 @@ const STAR_ROLL = 0.9, SHUR_V = 300, BEER_V = 80, STONE_V = 200, XARROW_FUSE = 5
 const beerLike = k => k === 'beer' || k === 'kebab'; // lancés à la main au-dessus de la tête, en ligne droite
 const KEBAB_FAT = 1.8; // largeur multipliée à chaque kebab reçu
 const AXE_V = 45, AXE_PLANT = -0.55; // hache : vitesse, et angle du manche une fois plantée (fer en avant, manche relevé vers le lanceur)
-const thrown = k => k === 'boomerang' || k === 'shuriken' || k === 'axe'; // armes lancées à la main
+const JAV_V = 30, JAV_G = 9.81, JAV_LEN = 2.6, JAV_GRIP = 1.05; // javelot : vitesse d'un lancer d'athlète, gravité réelle, longueur, et prise (centre de gravité) depuis la pointe
+const thrown = k => k === 'boomerang' || k === 'shuriken' || k === 'axe' || k === 'javelin'; // armes lancées à la main
 const isArrow = k => k === 'arrow' || k === 'xarrow'; // flèches d'arc, explosives ou non
-const shotG = k => isBullet(k) ? 0 : k === 'minigun' ? MINI_G : k === 'axe' ? G / 2 : isPaint(k) || beerLike(k) || k === 'dart' || k === 'stone' || k === 'rocket' || thrown(k) ? 0 : k === 'grenade' ? G / 2 : G / 3; // billes de peinture, bière, fléchette et armes lancées : en ligne droite, sans chute ; grenade : chute /2 ; arc et arbalète : chute /3
+const shotG = k => isBullet(k) ? 0 : k === 'minigun' ? MINI_G : k === 'axe' ? G / 2 : k === 'javelin' ? JAV_G : isPaint(k) || beerLike(k) || k === 'dart' || k === 'stone' || k === 'rocket' || thrown(k) ? 0 : k === 'grenade' ? G / 2 : G / 3; // billes de peinture, bière, fléchette et armes lancées : en ligne droite, sans chute ; grenade : chute /2 ; arc et arbalète : chute /3
 // grenade : 40 m/s, tombe deux fois moins vite que la gravité normale ; à l'explosion, 300 HP jusqu'à 0,6 m du corps, puis de moins en moins jusqu'à 0 à 5 m
 const GREN_V = 40, GREN_R = 5, ROCKET_V = 55;
 function grenadeDamage(d) { return d <= 0.6 ? WIN : Math.max(0, WIN * (1 - (d - 0.6) / (GREN_R - 0.6))); }
@@ -697,6 +703,7 @@ const kicks = k => k === 'pistol' || k === 'vector' || k === 'm4' || k === 'scar
 function hitDamage(a, head) {
   if (a.kind === 'kebab') return 0.5; // 6 kebabs pour tuer (-50 HP chacun), même dans la tête
   if (a.kind === 'axe') return head ? WIN : 1.5;
+  if (a.kind === 'javelin') return head ? WIN : 2;
   if (a.kind === 'pistol') return head ? 1 : 0.5;
   if (a.kind === 'deagle') return head ? WIN : 1.5;
   if (a.kind === 'vector') return head ? 1 : 0.25;
@@ -1646,6 +1653,9 @@ const shurBlade = new T.ExtrudeGeometry(shurShape, { depth: 0.006, bevelEnabled:
 // hache de lancer (tomahawk) : manche en bois le long de +Y, tenu au quart bas (origine), fer d'acier tourné vers l'avant (-Z), bague à la couleur du joueur
 const axeHead = (() => { const sh = new T.Shape(); [[0, 0.024], [0.045, 0.036], [0.092, 0.07], [0.104, 0.03], [0.106, -0.02], [0.094, -0.066], [0.045, -0.03], [0, -0.024]].forEach(([x, y], i) => i ? sh.lineTo(x, y) : sh.moveTo(x, y)); return new T.ExtrudeGeometry(sh, { depth: 0.012, bevelEnabled: false }).translate(-0.012, 0.245, -0.006).rotateY(Math.PI / 2); })();
 const axeHandle = new T.CylinderGeometry(0.012, 0.015, 0.37, 6).translate(0, 0.095, 0), axeRing = new T.CylinderGeometry(0.0165, 0.0165, 0.03, 8).translate(0, 0.02, 0), axeWood = std(0x7a4a22, { roughness: .8 }), axeSteel = std(0xb9c1c9, { metalness: .45, roughness: .32 });
+// javelot, pointe à l'origine vers -Z : fer d'acier, long fût clair, prise en corde à la couleur du joueur au centre de gravité
+const javTip = new T.ConeGeometry(0.014, 0.26, 8).rotateX(-Math.PI / 2).translate(0, 0, 0.13), javShaft = new T.CylinderGeometry(0.0145, 0.009, JAV_LEN - 0.26, 8).rotateX(-Math.PI / 2).translate(0, 0, 0.26 + (JAV_LEN - 0.26) / 2), javCord = new T.CylinderGeometry(0.018, 0.018, 0.16, 8).rotateX(-Math.PI / 2).translate(0, 0, JAV_GRIP), javWood = std(0xd8c49a, { roughness: .55 });
+function makeJavelin(owner) { const g = new T.Group(); g.add(new T.Mesh(javTip, axeSteel), new T.Mesh(javShaft, javWood), new T.Mesh(javCord, fletchMat[owner])); return g; }
 function makeAxe(owner) { const g = new T.Group(); g.add(new T.Mesh(axeHandle, axeWood), new T.Mesh(axeHead, axeSteel), new T.Mesh(axeRing, fletchMat[owner])); return g; }
 // hache plantée : le fer enfoncé, le manche qui dépasse vers le lanceur
 function plantAxe(a) { orient(a); a.m.rotateX(AXE_PLANT); a.m.position.copy(a.p).addScaledVector(tmpV.copy(a.v).normalize(), -0.07); a.m.translateY(-0.24); }
@@ -2411,6 +2421,9 @@ function makeArcher(cloth, hoodCol, owner, fpv = false) { // fpv : seulement les
   // shuriken : tenu et lancé du même geste que le boomerang
   const suG = makeShuriken(owner); suG.visible = false; if (fpv) suG.scale.setScalar(1.5); upper.add(suG);
   // hache de lancer : même geste, tenue par le manche, elle part derrière la tête quand on arme
+  // javelot : tenu au-dessus de l'épaule droite, pointe vers l'avant ; on le recule le long de son axe pour armer
+  const jvG = makeJavelin(owner); jvG.visible = false; upper.add(jvG);
+  const jvFront = fpv ? new T.Vector3(0.24, 0.1, -0.4) : new T.Vector3(0.2, 0.36, -0.22), jvBack = fpv ? new T.Vector3(0.27, 0.14, -0.08) : new T.Vector3(0.22, 0.4, 0.3);
   const axG = makeAxe(owner); axG.visible = false; if (fpv) axG.scale.setScalar(1.25); upper.add(axG); // (à la première personne : un peu plus grande, fer vu de profil)
   // lance-pierre en bois tenu devant soi, dans l'axe : manche et fourche en Y, deux élastiques jusqu'à la poche en cuir où attend la pierre
   const slG = new T.Group(); slG.visible = false; upper.add(slG);
@@ -2444,7 +2457,7 @@ function makeArcher(cloth, hoodCol, owner, fpv = false) { // fpv : seulement les
     wpn = w; const bowOn = w === 'bow'; nockCharge.visible = xbow0;
     bow.visible = quiver.visible = bowOn; quiverArrows.forEach(f => { f.visible = bowOn; });
     if (fpv) { quiver.visible = false; quiverArrows.forEach(f => { f.visible = false; }); }
-    blG.visible = w === 'blowgun'; slG.visible = w === 'sling'; brG.visible = w === 'boomerang'; suG.visible = w === 'shuriken'; axG.visible = w === 'axe'; rifle.visible = w === 'rifle'; xbow.visible = w === 'crossbow'; batSwing.visible = w === 'bat'; pistolG.visible = w === 'pistol'; revG.visible = w === 'revolver'; dgG.visible = w === 'deagle'; vecG.visible = w === 'vector'; m4G.visible = w === 'm4'; scarG.visible = w === 'scar'; bwG.visible = w === 'barrett'; sgG.visible = w === 'shotgun'; bottle.visible = w === 'beer'; kebabH.visible = w === 'kebab'; glG.visible = w === 'grenade'; rlG.visible = w === 'rocket'; mgG.visible = w === 'minigun'; pbG.visible = w === 'paintball'; psG.visible = w === 'psniper'; if (!hasLaser(w)) laser(null);
+    blG.visible = w === 'blowgun'; slG.visible = w === 'sling'; brG.visible = w === 'boomerang'; suG.visible = w === 'shuriken'; axG.visible = w === 'axe'; jvG.visible = w === 'javelin'; rifle.visible = w === 'rifle'; xbow.visible = w === 'crossbow'; batSwing.visible = w === 'bat'; pistolG.visible = w === 'pistol'; revG.visible = w === 'revolver'; dgG.visible = w === 'deagle'; vecG.visible = w === 'vector'; m4G.visible = w === 'm4'; scarG.visible = w === 'scar'; bwG.visible = w === 'barrett'; sgG.visible = w === 'shotgun'; bottle.visible = w === 'beer'; kebabH.visible = w === 'kebab'; glG.visible = w === 'grenade'; rlG.visible = w === 'rocket'; mgG.visible = w === 'minigun'; pbG.visible = w === 'paintball'; psG.visible = w === 'psniper'; if (!hasLaser(w)) laser(null);
     if (bowOn) armL.set(shL, grip);
     else if (w === 'pistol' || bigGun(w)) { armL.set(shL, tmpA.copy(handP).add(tmpB.set(0, -0.03, 0.03))); armR.set(shR, handP); }
     else if (w === 'vector') { armL.set(shL, handVL); armR.set(shR, handVR); }
@@ -2468,6 +2481,7 @@ function makeArcher(cloth, hoodCol, owner, fpv = false) { // fpv : seulement les
     if (wpn === 'rifle') { rifle.position.z = -0.3 + draw * 0.04; return; }
     if (thrown(wpn)) {
       const k = Math.sin(draw * Math.PI / 2), G = wpn === 'boomerang' ? brG : wpn === 'axe' ? axG : suG; brHand.lerpVectors(brFront, brBack, k); armR.set(shR, brHand);
+      if (wpn === 'javelin') { brHand.lerpVectors(jvFront, jvBack, k); armR.set(shR, brHand); jvG.visible = isNocked; jvG.position.copy(brHand); jvG.rotation.set(0.12 + k * 0.1, fpv ? 0.07 : 0, 0); jvG.translateZ(-JAV_GRIP); return; } // pointe légèrement levée
       if (wpn === 'axe') { G.visible = isNocked; G.position.copy(brHand); G.rotation.set((fpv ? 0.1 : 0.25) + k * (fpv ? 0.9 : 1.7), fpv ? -1.05 : 0, 0); return; } // le fer bascule vers l'arrière quand on arme
       const su = fpv && wpn === 'shuriken'; // à la première personne, il dépasse du poing et se montre de face
       G.visible = isNocked; G.position.copy(brHand).add(su ? tmpB.set(-0.05, 0.09, -0.1) : tmpB.set(0, 0.02, -0.04)); G.rotation.set(su ? 1.2 : fpv ? 0.75 : 0.5 - k * 1.6, 0.35, 0);
@@ -3132,8 +3146,8 @@ function flightEnd(o, v, g = G) {
   return simP;
 }
 // vitesse et gravité d'un projectile : la balle file droit, le carreau vole comme une flèche tirée à fond
-function shotSpeed(kind, draw) { return isBullet(kind) ? BULLET_V : kind === 'bolt' ? BOW_V : beerLike(kind) ? BEER_V : kind === 'grenade' ? GREN_V : kind === 'rocket' ? ROCKET_V : kind === 'dart' ? DART_V : kind === 'stone' ? STONE_V : kind === 'shuriken' ? SHUR_V : kind === 'axe' ? AXE_V : kind === 'boomerang' ? BOOM_V : kind === 'minigun' ? MINI_V : kind === 'psniper' ? PSNIPER_V : isPaint(kind) ? PAINT_V : VMIN + (BOW_V - VMIN) * draw; }
-function shotSfx(kind, sil, v = 1) { sfx(sil && SIL_SFX[kind] ? SIL_SFX[kind] : kind === 'pistol' ? 'pbang' : kind === 'revolver' ? 'rbang' : kind === 'deagle' ? 'dbang' : kind === 'vector' ? 'vbang' : kind === 'm4' ? 'mbang' : kind === 'scar' ? 'hbang' : kind === 'barrett' ? 'fbang' : kind === 'shotgun' ? 'sbang' : beerLike(kind) ? 'whoosh' : kind === 'grenade' ? 'thoomp' : kind === 'rocket' ? 'rkt' : kind === 'minigun' ? 'mini' : kind === 'paintball' ? 'paint' : kind === 'psniper' ? 'psnip' : kind === 'bullet' ? 'bang' : kind === 'dart' ? 'dart' : kind === 'stone' ? 'sling' : kind === 'shuriken' ? 'shur' : kind === 'axe' ? 'whoosh' : kind === 'boomerang' ? 'boomt' : 'twang', v); }
+function shotSpeed(kind, draw) { return isBullet(kind) ? BULLET_V : kind === 'bolt' ? BOW_V : beerLike(kind) ? BEER_V : kind === 'grenade' ? GREN_V : kind === 'rocket' ? ROCKET_V : kind === 'dart' ? DART_V : kind === 'stone' ? STONE_V : kind === 'shuriken' ? SHUR_V : kind === 'axe' ? AXE_V : kind === 'javelin' ? JAV_V : kind === 'boomerang' ? BOOM_V : kind === 'minigun' ? MINI_V : kind === 'psniper' ? PSNIPER_V : isPaint(kind) ? PAINT_V : VMIN + (BOW_V - VMIN) * draw; }
+function shotSfx(kind, sil, v = 1) { sfx(sil && SIL_SFX[kind] ? SIL_SFX[kind] : kind === 'pistol' ? 'pbang' : kind === 'revolver' ? 'rbang' : kind === 'deagle' ? 'dbang' : kind === 'vector' ? 'vbang' : kind === 'm4' ? 'mbang' : kind === 'scar' ? 'hbang' : kind === 'barrett' ? 'fbang' : kind === 'shotgun' ? 'sbang' : beerLike(kind) ? 'whoosh' : kind === 'grenade' ? 'thoomp' : kind === 'rocket' ? 'rkt' : kind === 'minigun' ? 'mini' : kind === 'paintball' ? 'paint' : kind === 'psniper' ? 'psnip' : kind === 'bullet' ? 'bang' : kind === 'dart' ? 'dart' : kind === 'stone' ? 'sling' : kind === 'shuriken' ? 'shur' : kind === 'axe' || kind === 'javelin' ? 'whoosh' : kind === 'boomerang' ? 'boomt' : 'twang', v); }
 function fire() {
   const kind = curWpn().kind, g = shotG(kind);
   const speed = shotSpeed(kind, me.draw);
@@ -3398,7 +3412,7 @@ function updateOpp(dt) {
 
 // ---------- arrow physics
 function orient(a) { a.m.quaternion.setFromUnitVectors(NEG_Z, tmpV.copy(a.v).normalize()); }
-const KIND_CODE = { arrow: 'a', bolt: 'x', bullet: 'b', pistol: 'p', revolver: 'r', deagle: 'd', vector: 'v', m4: 'q', scar: 'h', barrett: 'f', shotgun: 'g', beer: 'e', kebab: 'j', grenade: 'n', rocket: 'l', minigun: 'z', paintball: 'k', psniper: 'y', dart: 'w', stone: 'o', xarrow: 'c', boomerang: 'u', shuriken: 's', axe: 't' }, CODE_KIND = { t: 'axe', l: 'rocket', o: 'stone', c: 'xarrow', h: 'scar', w: 'dart', u: 'boomerang', s: 'shuriken', a: 'arrow', x: 'bolt', b: 'bullet', p: 'pistol', r: 'revolver', d: 'deagle', v: 'vector', q: 'm4', f: 'barrett', g: 'shotgun', e: 'beer', j: 'kebab', n: 'grenade', z: 'minigun', k: 'paintball', y: 'psniper' };
+const KIND_CODE = { arrow: 'a', bolt: 'x', bullet: 'b', pistol: 'p', revolver: 'r', deagle: 'd', vector: 'v', m4: 'q', scar: 'h', barrett: 'f', shotgun: 'g', beer: 'e', kebab: 'j', grenade: 'n', rocket: 'l', minigun: 'z', paintball: 'k', psniper: 'y', dart: 'w', stone: 'o', xarrow: 'c', boomerang: 'u', shuriken: 's', axe: 't', javelin: 'i' }, CODE_KIND = { i: 'javelin', t: 'axe', l: 'rocket', o: 'stone', c: 'xarrow', h: 'scar', w: 'dart', u: 'boomerang', s: 'shuriken', a: 'arrow', x: 'bolt', b: 'bullet', p: 'pistol', r: 'revolver', d: 'deagle', v: 'vector', q: 'm4', f: 'barrett', g: 'shotgun', e: 'beer', j: 'kebab', n: 'grenade', z: 'minigun', k: 'paintball', y: 'psniper' };
 const BOLT_LEN = 0.45; // un carreau est une flèche raccourcie
 function makeProjectile(owner, kind, streak) {
   if (isBullet(kind) || kind === 'minigun') return makeBullet(owner);
@@ -3410,6 +3424,7 @@ function makeProjectile(owner, kind, streak) {
   if (kind === 'boomerang') return makeBoomerang();
   if (kind === 'shuriken') return makeShuriken(owner);
   if (kind === 'axe') return makeAxe(owner);
+  if (kind === 'javelin') return makeJavelin(owner);
   if (kind === 'stone') return makeStone(streak);
   if (kind === 'xarrow') { const m = makeArrow(owner, streak); addCharge(m); return m; }
   if (isPaint(kind)) { const m = new T.Mesh(paintGeo, new T.MeshStandardMaterial({ color: PAINT_COLS[0], roughness: .3 })); m.scale.setScalar(PAINT_BALL[kind]); return m; } // grosses billes tirées
@@ -3420,7 +3435,7 @@ function spawnArrow(owner, p, v, id = 0, kind = 'arrow', noSmoke = false) {
   const m = makeProjectile(owner, kind, true); m.position.copy(p); scene.add(m);
   // g : gravité propre au projectile (la balle n'en a pas) ; tail : distance de la pointe à l'arrière, d'où sort la fumée
   // kill : le carreau d'arbalète tue d'un coup, où qu'il touche
-  const a = { owner, id, kind, g: shotG(kind), tail: kind === 'rocket' ? 0.38 : bullet || kind === 'grenade' || kind === 'minigun' || thrown(kind) || isPaint(kind) ? 0.05 : kind === 'bolt' ? 0.9 * BOLT_LEN : kind === 'dart' ? DART_LEN : 0.9, kill: kind === 'bolt' || kind === 'barrett' || kind === 'beer' || kind === 'boomerang', sid: ++arrowSerial, p, v, m, flying: true, pending: 0, life: 0, botSeen: false, o0: p.clone(), noSmoke: noSmoke || kind === 'beer' || kind === 'minigun' || kind === 'shuriken' || kind === 'axe' || isPaint(kind), maxD: kind === 'shotgun' ? SG_RANGE : 0 };
+  const a = { owner, id, kind, g: shotG(kind), tail: kind === 'rocket' ? 0.38 : bullet || kind === 'grenade' || kind === 'minigun' || thrown(kind) || isPaint(kind) ? 0.05 : kind === 'bolt' ? 0.9 * BOLT_LEN : kind === 'dart' ? DART_LEN : 0.9, kill: kind === 'bolt' || kind === 'barrett' || kind === 'beer' || kind === 'boomerang', sid: ++arrowSerial, p, v, m, flying: true, pending: 0, life: 0, botSeen: false, o0: p.clone(), noSmoke: noSmoke || kind === 'beer' || kind === 'minigun' || kind === 'shuriken' || kind === 'axe' || kind === 'javelin' || isPaint(kind), maxD: kind === 'shotgun' ? SG_RANGE : 0 };
   orient(a); arrows.push(a);
   if (isPaint(kind)) { a.col = PAINT_COLS[id ? id % PAINT_COLS.length : Math.floor(Math.random() * PAINT_COLS.length)]; m.material.color.setHex(a.col); }
   // sniper paintball : la bille brille légèrement de sa couleur, avec un petit halo, pour mieux la voir en l'air
@@ -3520,7 +3535,7 @@ function plantInArcher(a, model, head) {
   orient(a); tmpV.copy(a.v).normalize();
   if (a.kind === 'shuriken') plantStar(a);
   else if (a.kind === 'axe') plantAxe(a);
-  else a.m.position.copy(a.p).addScaledVector(tmpV, pierceDepth(a.p, tmpV, model, head, a.kind === 'bolt' ? 0.9 * BOLT_LEN : a.kind === 'dart' ? DART_LEN : 0.9));
+  else a.m.position.copy(a.p).addScaledVector(tmpV, pierceDepth(a.p, tmpV, model, head, a.kind === 'bolt' ? 0.9 * BOLT_LEN : a.kind === 'dart' ? DART_LEN : a.kind === 'javelin' ? JAV_LEN : 0.9));
   model.root.updateMatrixWorld(true);
   const part = head || model.root.worldToLocal(tmpA.copy(a.p)).y > 1.15 ? model.upper : model.root;
   part.attach(a.m); a.part = part === model.upper ? 'u' : 'r';
