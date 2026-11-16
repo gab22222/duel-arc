@@ -704,17 +704,17 @@ const WPN = {
   sling: { kind: 'stone', aimT: 0.3, zoomX: null, rate: 0.8 },                         // lance-pierre : une pierre toutes les 0,8 s, 200 m/s, sans chute, tête = mort, corps = 100 HP
   blowgun: { kind: 'dart', aimT: 0.25, zoomX: null, rate: 0.8 },                     // sarbacane : fléchette silencieuse à 300 m/s, sans chute, tête = mort, corps = 100 HP
   watergun: { kind: 'water', aimT: 0.12, zoomX: null, auto: true, rate: 0.08 },        // pistolet à eau : jet continu (une goutte toutes les 0,08 s), 32 m/s, retombe vite ; tête = 20 HP, corps = 10 HP
-  taser: { kind: 'taser', aimT: 0.15, zoomX: null, rate: 1.5 },                         // taser : deux dards à fil jusqu'à 10 m, sans temps de vol ; la victime est paralysée 2 s (ni bouger ni tirer) ; 25 HP corps, 50 HP tête
-  lasergun: { kind: 'beam', aimT: 0.25, zoomX: 2, rate: 0.6 },                          // fusil laser : rayon instantané, sans chute, visible ; viseur x2 ; tête = mort, corps = 100 HP
+  taser: { kind: 'taser', aimT: 0.15, zoomX: null, rate: 1.5 },                         // taser : deux dards à fil jusqu'à 10 m, sans temps de vol ; la victime est paralysée 2 s (ni bouger ni tirer) ; 150 HP corps, 50 HP tête
+  lasergun: { kind: 'beam', aimT: 0.25, zoomX: 2, rate: 0.6 },                          // fusil laser : rayon instantané, sans chute, visible ; viseur x2 ; tête = mort, corps = 150 HP
   railgun: { kind: 'rail', aimT: 2, zoomX: 3, rate: 1.2 },                               // railgun : 2 s de charge (il ne part que chargé à fond), rayon instantané qui traverse les arbres, rochers et murs ; viseur x3 ; tête = mort, corps = 200 HP
-  gluegun: { kind: 'glue', aimT: 0.2, zoomX: null, rate: 0.7 },                         // pistolet à colle : boule de colle à 45 m/s qui retombe ; la cible est collée au sol 3 s (elle peut tirer) ; 10 HP corps, 20 HP tête
+  gluegun: { kind: 'glue', aimT: 0.2, zoomX: null, rate: 0.7 },                         // pistolet à colle : boule de colle à 45 m/s qui retombe ; la cible est collée au sol 3 s (elle peut tirer) ; 150 HP corps, 20 HP tête
   nailgun: { kind: 'nail', aimT: 0.15, zoomX: null, auto: true, rate: 0.15 },          // fusil à clous : tir continu, un clou toutes les 0,15 s à 120 m/s, petite chute ; les clous restent plantés ; 25 HP corps, 75 HP tête
   pielauncher: { kind: 'pie', aimT: 0.25, zoomX: null, rate: 1 },                      // lance-tartes : une tarte à la crème par seconde, 38 m/s, retombe ; la victime a l'écran couvert de crème 3 s ; 10 HP corps, 30 HP tête
-  netgun: { kind: 'net', aimT: 0.25, zoomX: null, rate: 2 },                            // lance-filet : un filet toutes les 2 s, 30 m/s, retombe et s'ouvre en vol (jusqu'à 1,8 m) ; le joueur pris est emprisonné 3 s (ni bouger ni tirer) ; 10 HP
+  netgun: { kind: 'net', aimT: 0.25, zoomX: null, rate: 2 },                            // lance-filet : un filet toutes les 2 s, 30 m/s, retombe et s'ouvre en vol (jusqu'à 1,8 m) ; le joueur pris est emprisonné 3 s (ni bouger ni tirer) ; 150 HP corps, 10 HP tête
   pinecone: { kind: 'pinecone', aimT: 0.2, zoomX: null, rate: 0.6 },                   // pomme de pin : lancée à la main, 30 m/s, retombe en tournoyant ; 35 HP corps, 100 HP tête
-  harpoongun: { kind: 'harpoon', aimT: 0.3, zoomX: null, rate: 2 },                    // harpon : 60 m/s, corde de 35 m ; il se plante dans l'ennemi et le ramène au corps à corps ; 50 HP corps, 100 HP tête
-  grapplegun: { kind: 'grapple', aimT: 0.25, zoomX: null, rate: 2 },                    // grappin : 55 m/s, corde de 35 m ; il s'accroche à l'ennemi et on est tiré jusqu'à lui ; 10 HP
-  bolas: { kind: 'bolas', aimT: 0.3, zoomX: null, rate: 1 },                          // bolas : un par seconde, 35 m/s, retombe (gravité du jeu) ; la victime est ralentie (35 % de sa vitesse) pendant 3 s ; tête = 100 HP, corps = 50 HP
+  harpoongun: { kind: 'harpoon', aimT: 0.3, zoomX: null, rate: 2 },                    // harpon : 60 m/s, corde de 35 m ; il se plante dans l'ennemi et le ramène au corps à corps ; 150 HP corps, 100 HP tête
+  grapplegun: { kind: 'grapple', aimT: 0.25, zoomX: null, rate: 2 },                    // grappin : 55 m/s, corde de 35 m ; il s'accroche à l'ennemi et on est tiré jusqu'à lui ; 150 HP corps, 10 HP tête
+  bolas: { kind: 'bolas', aimT: 0.3, zoomX: null, rate: 1 },                          // bolas : un par seconde, 35 m/s, retombe (gravité du jeu) ; la victime est ralentie (35 % de sa vitesse) pendant 3 s ; tête = 100 HP, corps = 150 HP
   frisbee: { kind: 'frisbee', aimT: 0.2, zoomX: null, rate: 0.8 },                    // frisbee tranchant : 40 m/s à plat, rebondit jusqu'à 5 fois sur les troncs, rochers, murs et le bord de la carte ; tête = mort, corps = 100 HP
   snowgun: { kind: 'snowball', aimT: 0.15, zoomX: null, auto: true, rate: 0.3 },      // lance-boules de neige : tir continu, une boule toutes les 0,3 s, 70 m/s, retombe (gravité du jeu), éclate en neige ; tête = 100 HP, corps = 40 HP
   javelin: { kind: 'javelin', aimT: 0.4, zoomX: null, rate: 1.2 },                  // javelot : un toutes les 1,2 s, 30 m/s, vraie gravité (9,81 m/s²) : il faut viser haut ; pointe dans le sens du vol, reste planté ; tête = mort, corps = 200 HP
@@ -782,18 +782,18 @@ function hitDamage(a, head) {
   if (a.kind === 'kebab') return 0.5; // 6 kebabs pour tuer (-50 HP chacun), même dans la tête
   if (a.kind === 'axe') return head ? WIN : 1.5;
   if (a.kind === 'javelin') return head ? WIN : 2;
-  if (a.kind === 'bolas') return head ? 1 : 0.5;
+  if (a.kind === 'bolas') return head ? 1 : 1.5;
   if (a.kind === 'water') return head ? 0.2 : 0.1;
   if (a.kind === 'rail') return head ? WIN : 2;
-  if (a.kind === 'glue') return head ? 0.2 : 0.1;
+  if (a.kind === 'glue') return head ? 0.2 : 1.5;
   if (a.kind === 'nail') return head ? 0.75 : 0.25;
   if (a.kind === 'pie') return head ? 0.3 : 0.1;
-  if (a.kind === 'net') return 0.1;
-  if (a.kind === 'harpoon') return head ? 1 : 0.5;
-  if (a.kind === 'grapple') return 0.1;
+  if (a.kind === 'net') return head ? 0.1 : 1.5;
+  if (a.kind === 'harpoon') return head ? 1 : 1.5;
+  if (a.kind === 'grapple') return head ? 0.1 : 1.5;
   if (a.kind === 'pinecone') return head ? 1 : 0.35;
-  if (a.kind === 'taser') return head ? 0.5 : 0.25;
-  if (a.kind === 'beam') return head ? WIN : 1;
+  if (a.kind === 'taser') return head ? 0.5 : 1.5;
+  if (a.kind === 'beam') return head ? WIN : 1.5;
   if (a.kind === 'frisbee') return head ? WIN : 1;
   if (a.kind === 'snowball') return head ? 1 : 0.4;
   if (a.kind === 'pistol') return head ? 1 : 0.5;
