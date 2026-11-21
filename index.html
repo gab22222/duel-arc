@@ -135,6 +135,7 @@ body{position:fixed;inset:0;touch-action:none;-webkit-user-select:none;user-sele
 .lean{position:fixed;z-index:6;bottom:calc(env(safe-area-inset-bottom,0px) + 172px);width:52px;height:44px;border-radius:14px;border:1px solid var(--line);background:rgba(14,12,22,.55);color:var(--bone);font:700 22px/1 var(--body);cursor:pointer;touch-action:manipulation;-webkit-user-select:none;user-select:none}
 #leanL{left:calc(env(safe-area-inset-left,0px) + 24px)}
 #leanR{left:calc(env(safe-area-inset-left,0px) + 96px)}
+#vehBtn{position:fixed;z-index:6;left:calc(env(safe-area-inset-left,0px) + 160px);bottom:calc(env(safe-area-inset-bottom,0px) + 172px);height:44px;padding:0 14px;border-radius:14px;border:1px solid rgba(239,230,214,.5);background:rgba(14,12,22,.7);color:var(--bone);font:700 14px/1 var(--body);cursor:pointer;touch-action:manipulation;-webkit-user-select:none;user-select:none}
 .lean[aria-pressed="true"]{border-color:rgba(239,230,214,.6);background:rgba(239,230,214,.22)}
 #sil[aria-pressed="true"]{color:var(--bone);border-color:rgba(239,230,214,.5);background:rgba(239,230,214,.16)}
 #quit{position:fixed;z-index:6;top:calc(env(safe-area-inset-top,0px) + 8px);left:calc(env(safe-area-inset-left,0px) + 10px);width:40px;height:40px;border-radius:12px;border:1px solid var(--line);background:rgba(14,12,22,.55);color:var(--bone);font-size:18px;line-height:1;cursor:pointer}
@@ -282,6 +283,7 @@ p{margin:0}
 <div id="spec" hidden><span id="specTxt">Tu regardes</span><button class="btn" id="specBtn">Joueur suivant</button><button class="btn" id="specCam">Vue 3ᵉ personne</button></div>
 <button id="quit" aria-label="Quitter la partie" hidden>✕</button>
 <button id="sil" aria-pressed="false" hidden>Silencieux</button>
+<button id="vehBtn" hidden>Monter</button>
 <button class="lean" id="leanL" aria-label="Se pencher à gauche" aria-pressed="false" hidden>←</button>
 <button class="lean" id="leanR" aria-label="Se pencher à droite" aria-pressed="false" hidden>→</button>
 
@@ -3781,7 +3783,10 @@ function makeArcher(cloth, hoodCol, owner, fpv = false) { // fpv : seulement les
   }
   // marche : les jambes se balancent d'avant en arrière selon la distance vraiment parcourue (moi, bots, joueurs en ligne)
   let walkPh = 0, walkAmp = 0, walkX = null, walkZ = 0;
+  let rideOn = false;
+  function setRide(on) { rideOn = on; }
   function walk(dt) {
+    if (rideOn) { for (const hp of hips) hp.rotation.x = -1.2; for (const th of tungHips) th.rotation.x = -1.2; walkX = null; return; } // assis : jambes repliées vers l'avant
     const x = root.position.x, z = root.position.z, d = walkX === null ? 0 : Math.hypot(x - walkX, z - walkZ); walkX = x; walkZ = z;
     const v = dt > 0 && d < 3 ? d / dt : 0; // un saut de plus de 3 m (téléport, nouvelle manche) ne compte pas
     if (d < 3) walkPh += d * Math.PI * 2 / 1.4; // un pas de chaque jambe tous les 1,4 m
@@ -3792,7 +3797,7 @@ function makeArcher(cloth, hoodCol, owner, fpv = false) { // fpv : seulement les
   // penché : le haut du corps glisse et s'incline sur le côté (la tête arrive à ~45 cm)
   function setLean(l) { upper.position.x = l * 0.33; upper.rotation.z = -l * 0.3; }
   function placeHands() { for (const [m, h] of hands) { h.quaternion.copy(m.quaternion); h.position.set(0, 0, m.scale.z / 2).applyQuaternion(m.quaternion).add(m.position); } }
-  return { root, upper, walk, setLean, setPose, setWeapon, swing, setSilencer, recoil, bowWorld, updateHead, zoneAt, heatParts, placeHands, headPos, laser, laserFrom, setColors, wear, setSkin, clothM, hoodM, get wpn() { return wpn; }, get tung() { return tungOn; } };
+  return { root, upper, walk, setRide, setLean, setPose, setWeapon, swing, setSilencer, recoil, bowWorld, updateHead, zoneAt, heatParts, placeHands, headPos, laser, laserFrom, setColors, wear, setSkin, clothM, hoodM, get wpn() { return wpn; }, get tung() { return tungOn; } };
 }
 const meA = makeArcher(0x2f8f83, 0x1f5f58, 'me');
 const oppA = makeArcher(0xa8342a, 0x6e1f1a, 'opp');
@@ -4057,6 +4062,162 @@ const mates = (k1, k2) => !!teams && k1 !== k2 && teams[k1] === teams[k2];
 const foeByPeer = id => foes.find(f => f.peer === id);
 const entryByKey = k => k === 'me' ? ME : FOES[k];
 const isDead = e => e.s.taken >= WIN;
+// ---------- véhicules : une moto cross et un quad, tout noirs, posés près du centre de chaque carte (au même endroit pour tout le monde).
+// Monter / descendre : bouton (ou touche E) quand on est tout près. Joystick : haut = accélérer, bas = freiner puis reculer, gauche / droite = tourner.
+// Jusqu'à 3 fois la vitesse à pied ; foncer sur un adversaire le renverse et l'élimine d'un coup. Pas de tir en conduisant.
+function makeVehicle(kind) {
+  const g = new T.Group(), body = std(0x141518, { roughness: .45, metalness: .35 }), gloss = std(0x0c0d0f, { roughness: .2, metalness: .6 }), tire = std(0x08090a, { roughness: .95 }), metal = std(0x2c2f34, { roughness: .35, metalness: .75 }), seatM = std(0x1b1c1f, { roughness: .8 });
+  const add = (geo, mat, x, y, z, rx = 0, ry = 0, rz = 0) => { const m = new T.Mesh(geo, mat); m.position.set(x, y, z); m.rotation.set(rx, ry, rz); g.add(m); return m; };
+  const wheels = [];
+  const wheel = (x, y, z, r, w) => { const wg = new T.Group(); wg.position.set(x, y, z); g.add(wg); wheels.push(wg);
+    const t = new T.Mesh(new T.TorusGeometry(r * 0.78, r * 0.24 * (w > 0.2 ? 1.5 : 1), 8, 22).rotateY(Math.PI / 2), tire); t.scale.x = w > 0.2 ? w / 0.18 : 1; wg.add(t);
+    for (let i = 0; i < 10; i++) { const k = new T.Mesh(new T.BoxGeometry(w * 0.9, 0.05, 0.07), tire); const a = i / 10 * Math.PI * 2; k.position.set(0, Math.cos(a) * r, Math.sin(a) * r); k.rotation.x = -a; wg.add(k); } // crampons
+    const hub = new T.Mesh(new T.CylinderGeometry(r * 0.62, r * 0.62, w * 0.55, 14).rotateZ(Math.PI / 2), metal); wg.add(hub);
+    const cap = new T.Mesh(new T.CylinderGeometry(r * 0.18, r * 0.18, w * 0.7, 8).rotateZ(Math.PI / 2), gloss); wg.add(cap); };
+  if (kind === 'bike') { // moto cross : grandes roues à crampons, fourche haute, réservoir, selle longue, garde-boue relevés, plaque numéro, échappement
+    wheel(0, 0.36, -0.74, 0.36, 0.12); wheel(0, 0.36, 0.72, 0.36, 0.14);
+    for (const sx of [-0.09, 0.09]) add(new T.CylinderGeometry(0.03, 0.035, 0.78, 8), gloss, sx, 0.7, -0.62, -0.35); // fourche
+    add(new T.BoxGeometry(0.16, 0.03, 0.5), body, 0, 0.78, -0.82, -0.2);                                       // garde-boue avant
+    add(new T.BoxGeometry(0.3, 0.26, 0.03), metal, 0, 1.0, -0.6, -0.35);                                        // plaque numéro
+    add(new T.CylinderGeometry(0.015, 0.015, 0.78, 6).rotateZ(Math.PI / 2), metal, 0, 1.15, -0.5);             // guidon
+    for (const sx of [-0.36, 0.36]) add(new T.CylinderGeometry(0.03, 0.03, 0.12, 8).rotateZ(Math.PI / 2), seatM, sx, 1.15, -0.5); // poignées
+    add(new T.BoxGeometry(0.06, 0.08, 0.95), gloss, 0, 0.72, -0.12, 0.22);                                     // cadre
+    add(new T.BoxGeometry(0.3, 0.32, 0.42), body, 0, 0.5, -0.02);                                              // moteur
+    add(new T.CylinderGeometry(0.1, 0.1, 0.24, 10).rotateZ(Math.PI / 2), metal, 0, 0.46, -0.06);              // carter
+    add(new T.BoxGeometry(0.36, 0.28, 0.44), gloss, 0, 0.9, -0.24, 0.12);                                      // réservoir
+    add(new T.BoxGeometry(0.28, 0.14, 0.78), seatM, 0, 0.94, 0.26, -0.06);                                     // selle épaisse
+    add(new T.BoxGeometry(0.22, 0.05, 0.42), body, 0, 0.98, 0.72, -0.12);                                      // garde-boue arrière
+    for (const sx of [-0.15, 0.15]) add(new T.BoxGeometry(0.03, 0.24, 0.4), body, sx, 0.8, 0.42, -0.1);       // plaques latérales
+    add(new T.BoxGeometry(0.2, 0.3, 0.3), body, 0, 0.66, 0.24, 0.3);                                         // boîte à air
+    add(new T.BoxGeometry(0.08, 0.07, 0.72), metal, 0.1, 0.42, 0.38, 0.08); add(new T.BoxGeometry(0.08, 0.07, 0.72), metal, -0.1, 0.42, 0.38, 0.08); // bras oscillant
+    add(new T.CylinderGeometry(0.04, 0.05, 0.6, 10).rotateX(Math.PI / 2), metal, 0.16, 0.72, 0.42, -0.18);   // échappement
+    add(new T.CylinderGeometry(0.06, 0.06, 0.18, 10).rotateX(Math.PI / 2), gloss, 0.16, 0.8, 0.72, -0.18);
+    for (const sx of [-0.18, 0.18]) add(new T.BoxGeometry(0.03, 0.18, 0.34), body, sx, 0.86, -0.3, 0.1);      // ouïes de radiateur
+  } else { // quad : quatre gros pneus, châssis, garde-boue larges, selle, guidon, porte-bagages avant et arrière, pare-chocs
+    for (const [x, z] of [[-0.6, -0.62], [0.6, -0.62], [-0.6, 0.66], [0.6, 0.66]]) wheel(x, 0.33, z, 0.33, 0.28);
+    add(new T.BoxGeometry(0.62, 0.22, 1.45), gloss, 0, 0.42, 0);                                                // châssis
+    add(new T.BoxGeometry(0.56, 0.3, 0.9), body, 0, 0.7, 0);                                                    // carrosserie
+    for (const sx of [-1, 1]) { add(new T.BoxGeometry(0.42, 0.06, 0.66), body, sx * 0.55, 0.72, -0.62, 0.12); add(new T.BoxGeometry(0.42, 0.06, 0.66), body, sx * 0.55, 0.74, 0.66, -0.12); } // garde-boue
+    add(new T.BoxGeometry(0.34, 0.14, 0.72), seatM, 0, 0.9, 0.22);                                             // selle
+    add(new T.BoxGeometry(0.4, 0.18, 0.36), gloss, 0, 0.9, -0.28);                                             // réservoir
+    add(new T.CylinderGeometry(0.03, 0.03, 0.18, 8), metal, 0, 1.0, -0.45);                                    // colonne
+    add(new T.CylinderGeometry(0.018, 0.018, 0.78, 6).rotateZ(Math.PI / 2), metal, 0, 1.1, -0.47);            // guidon
+    for (const sx of [-0.37, 0.37]) add(new T.CylinderGeometry(0.03, 0.03, 0.12, 8).rotateZ(Math.PI / 2), seatM, sx, 1.1, -0.47);
+    for (const [z, w] of [[-0.88, 0.9], [0.92, 0.9]]) { add(new T.BoxGeometry(w, 0.03, 0.34), metal, 0, 0.92, z); for (const sx of [-0.4, 0.4]) add(new T.BoxGeometry(0.03, 0.08, 0.34), metal, sx, 0.96, z); } // porte-bagages
+    add(new T.BoxGeometry(0.7, 0.12, 0.06), metal, 0, 0.5, -1.0);                                              // pare-chocs
+    for (const sx of [-0.14, 0.14]) add(new T.BoxGeometry(0.12, 0.06, 0.03), std(0xdde6ff, { emissive: 0x8899aa, emissiveIntensity: .4 }), sx, 0.82, -0.72); // phares
+  }
+  g.userData.wheels = wheels;
+  return g;
+}
+const RIDE_Y = 0.14; // de combien le personnage monte sur la selle (hanches à la hauteur de la selle)
+const VEHICLES = ['bike', 'quad'].map((kind, i) => ({ i, kind, x: 0, z: 0, h: 0, v: 0, steer: 0, rider: null, ver: 0, active: false, m: makeVehicle(kind), R: kind === 'bike' ? 0.6 : 0.9, turn: kind === 'bike' ? 2.1 : 1.7 }));
+VEHICLES.forEach(V => { V.m.visible = false; scene.add(V.m); });
+let myPark = {}, engine = null;
+const vehP = new T.Vector3();
+// deux places dégagées près du centre (même calcul partout : même place pour tout le monde)
+function vehicleSpots() {
+  const res = [];
+  for (let r = 4; r < 45 && res.length < 2; r += 1.5) for (let k = 0; k < 24 && res.length < 2; k++) {
+    const a = k / 24 * Math.PI * 2 + r * 0.37, x = Math.sin(a) * r, z = Math.cos(a) * r;
+    if (map.rlim && Math.hypot(x, z) > map.rlim - 3) continue; if (Math.abs(x) > map.xlim - 2 || Math.abs(z) > map.zlim - 2) continue;
+    if ([0.4, 1.0].some(y => inObstacle(vehP.set(x, y, z), 1.5))) continue;
+    if (res.some(q => Math.hypot(q.x - x, q.z - z) < 4.5)) continue;
+    res.push({ x, z, h: a });
+  }
+  return res;
+}
+// en duel en ligne, chacun voit la carte de son côté (l'autre est retourné) : les véhicules du joueur 2 sont donc retournés aussi
+const vehFlip = () => mode === 'online' && !trio() ? -1 : 1;
+function resetVehicles() {
+  if (me.ride != null) { me.ride = null; meA.setRide(false); }
+  stopEngine(); myPark = {};
+  const sp = mode === 'practice' || map.lateral ? [] : vehicleSpots();
+  const fl = mode === 'online' && !trio() && mySlot === 1 ? -1 : 1; // places calculées dans le repère du joueur 1
+  VEHICLES.forEach((V, i) => { const s = sp[i]; Object.assign(V, { active: !!s, x: s ? fl * s.x : 0, z: s ? fl * s.z : 0, h: s ? s.h + (fl < 0 ? Math.PI : 0) : 0, v: 0, steer: 0, rider: null, ver: 0 }); });
+  if (mode === 'online') pres({ pv: {} });
+}
+function nearVehicle() {
+  if (me.ride != null) return null;
+  let best = null, bd = 2.6;
+  for (const V of VEHICLES) { if (!V.active || V.rider) continue; const d = Math.hypot(V.x - me.x, V.z - me.z); if (d < bd) { bd = d; best = V; } }
+  return best;
+}
+function toggleRide() {
+  if (me.ride != null) return dismount();
+  const V = nearVehicle(); if (!V || isDead(ME) || !(phase === 'fight' || phase === 'countdown')) return;
+  me.ride = V.i; V.rider = 'me'; V.v = 0; me.leanT = 0; me.lean = 0; me.drawing = false; me.draw = 0; aimId = null; meA.setRide(true); setLeanBtns();
+  sfx('tick', 0.8); startEngine(); refreshVehBtn();
+}
+function dismount() {
+  const V = VEHICLES[me.ride]; me.ride = null; meA.setRide(false); stopEngine();
+  if (V) { V.rider = null; V.v = 0; V.ver = Math.max(V.ver, ...peersNow.map(x => { const q = x.presence.pv; return q && q.g === net.started && q[V.i] ? num(q[V.i][4], 0) : 0; })) + 1;
+    me.x = V.x + Math.cos(V.h) * (V.R + 0.6); me.z = V.z - Math.sin(V.h) * (V.R + 0.6); me.vx = me.vz = 0; resolveMove(me); // on descend sur le côté droit
+    if (mode === 'online') { myPark[V.i] = [r3(V.x), r3(V.z), r3(V.h), 0, V.ver]; pres({ pv: { g: net.started, ...myPark } }); } }
+  refreshVehBtn();
+}
+function refreshVehBtn() {
+  const b = $('#vehBtn'); if (!b) return;
+  const show = mode && (phase === 'fight' || phase === 'countdown') && !isDead(ME) && (me.ride != null || !!nearVehicle());
+  b.hidden = !show; if (show) b.textContent = me.ride != null ? 'Descendre' : (nearVehicle().kind === 'bike' ? 'Monter sur la moto' : 'Monter sur le quad');
+}
+// conduite (moi) : accélération, freinage, marche arrière lente, direction plus vive à faible vitesse, ralentit en heurtant un obstacle
+function driveVehicle(dt, ix, iy) {
+  const V = VEHICLES[me.ride], vmax = map.maxv * 3, thr = -iy, act = canMove();
+  const target = !act ? 0 : thr > 0.05 ? vmax * Math.min(1, thr * 1.1) : thr < -0.05 ? (V.v > 0.4 ? 0 : -vmax * 0.3 * Math.min(1, -thr)) : 0;
+  const rate = target > V.v ? (V.v < 0 ? 12 : 6.5) : (thr < -0.05 && V.v > 0 ? 12 : 3.2);
+  V.v = approach(V.v, target, rate * dt);
+  V.steer += ((act ? ix : 0) - V.steer) * Math.min(1, dt * 10); // la direction répond vite mais sans à-coups
+  V.h -= V.steer * V.turn * Math.min(1, Math.abs(V.v) / 2.5) * Math.sign(V.v || 1) * (1 - 0.35 * Math.abs(V.v) / vmax) * dt;
+  const o = { x: V.x - Math.sin(V.h) * V.v * dt, z: V.z - Math.cos(V.h) * V.v * dt }, px = o.x, pz = o.z;
+  resolveMove(o); if (Math.hypot(o.x - px, o.z - pz) > 0.0005) V.v *= Math.max(0, 1 - 25 * dt); // ça frotte : on ralentit
+  V.x = o.x; V.z = o.z;
+  me.x = V.x; me.z = V.z; me.yaw = V.h; me.vx = -Math.sin(V.h) * V.v; me.vz = -Math.cos(V.h) * V.v;
+  me.drawing = false; me.draw = 0; me.reload = Math.max(me.reload, 0.15); // pas de tir en conduisant
+  runOver(V);
+  if (engine) { engine.o.frequency.setTargetAtTime(48 + Math.abs(V.v) * 11, actx.currentTime, 0.08); engine.g.gain.setTargetAtTime(0.025 + Math.abs(V.v) / vmax * 0.03, actx.currentTime, 0.1); }
+}
+// renverser : à plus de 2,5 m/s, toucher un adversaire l'élimine d'un coup (en ligne, c'est le conducteur qui décide, comme pour une flèche)
+function runOver(V) {
+  if (Math.abs(V.v) < 2.5 || !(phase === 'fight' || phase === 'ending')) return;
+  for (const f of foes) {
+    if (isDead(f) || mates('me', f.key) || Math.hypot(f.s.x - V.x, f.s.z - V.z) > V.R + 0.45) continue;
+    if (mode === 'online' && nroom) { const mine = dealt[myId] || (dealt[myId] = {}); mine[f.peer] = WIN; recountTaken(f, false, 'me'); nroom.emit('hit', { g: net.started, id: 0, k: 'V', v: f.peer, n: WIN, head: false }).catch(() => {}); pres({ dealt: { ...mine } }); }
+    else registerTaken(f, WIN, false, 'me');
+    big('Renversé !', 1.0, 'var(--teal)'); sfx('thunk', 1); V.v *= 0.7;
+  }
+}
+function startEngine() {
+  if (!actx || engine) return;
+  try { const o = actx.createOscillator(), f = actx.createBiquadFilter(), g = actx.createGain(); o.type = 'sawtooth'; o.frequency.value = 48; f.type = 'lowpass'; f.frequency.value = 420; g.gain.value = 0.025; o.connect(f).connect(g).connect(actx.destination); o.start(); engine = { o, g }; } catch (e) { engine = null; }
+}
+function stopEngine() { if (!engine) return; try { engine.g.gain.setTargetAtTime(0.0001, actx.currentTime, 0.05); engine.o.stop(actx.currentTime + 0.3); } catch (e) {} engine = null; }
+// chaque image : qui conduit quoi (moi, un autre joueur d'après sa présence, ou personne), position des véhicules, personnages assis dessus
+function updateVehicles(dt) {
+  const playing2 = mode && phase !== 'idle';
+  for (const V of VEHICLES) {
+    let rider = null;
+    if (me.ride === V.i) rider = ME;
+    for (const f of foes) if (f.s.ride && f.s.ride[0] === V.i && !isDead(f) && mode === 'online') {
+      if (rider === ME) { if (f.peer < myId) { dismount(); rider = f; } } // pris en même temps : le plus petit identifiant le garde
+      else if (!rider) rider = f;
+    }
+    V.rider = rider === ME ? 'me' : rider ? rider.key : null;
+    if (rider && rider !== ME) { V.x = rider.s.x; V.z = rider.s.z; V.h += angDiff(V.h, num(rider.s.ride[1], V.h) + (vehFlip() < 0 ? Math.PI : 0)) * Math.min(1, dt * 12); V.v = Math.hypot(rider.s.vx || 0, rider.s.vz || 0); }
+    if (!rider && mode === 'online') for (const x of peersNow) { const q = x.presence.pv; if (q && q.g === net.started && q[V.i] && num(q[V.i][4], 0) > V.ver) { const fl = vehFlip(); V.x = fl * num(q[V.i][0], V.x); V.z = fl * num(q[V.i][1], V.z); V.h = num(q[V.i][2], V.h) + (fl < 0 ? Math.PI : 0); V.ver = num(q[V.i][4], 0); } }
+    V.m.visible = V.active && playing2;
+    V.m.position.set(V.x, 0, V.z); V.m.rotation.set(0, V.h, rider ? -V.steer * Math.min(1, Math.abs(V.v) / 6) * (V.kind === 'bike' ? 0.32 : 0.08) : 0);
+    for (const w of V.m.userData.wheels) w.rotation.x -= V.v * dt / 0.36;
+  }
+  // personnages assis sur leur véhicule (un peu plus haut, jambes repliées)
+  for (const e of [ME, ...foes]) {
+    const riding = e === ME ? me.ride != null : !!(e.s.ride && mode === 'online' && !isDead(e));
+    e.A.setRide(riding);
+    if (riding) { e.A.root.position.y = RIDE_Y; e.A.updateHead(); }
+  }
+  if (me.ride != null && isDead(ME)) dismount();
+  refreshVehBtn();
+}
 // à 3 : pas de miroir, chacun part d'un des trois côtés de la forêt, tourné vers le centre
 function spawnOf(slot) {
   if (TOUR.on) return slot === 2 ? { x: 0, z: 0, yaw: 0 } : { x: 0, z: slot ? -map.spawnZ : map.spawnZ, yaw: slot ? Math.PI : 0 }; // tournante : face à face comme en duel
@@ -4106,7 +4267,7 @@ function menuStep(k) { document.querySelectorAll('#menu .step').forEach(el => { 
 document.querySelectorAll('#menu [data-go]').forEach(b => b.addEventListener('click', () => menuStep(b.dataset.go)));
 function setPlayingHud(on) {
   ['#score', '#hp', '#cross', '#stick', '#lookMark', '#quit'].forEach(s => { $(s).toggleAttribute('hidden', !on); });
-  if (!on) { lookId = null; leanNear = false; $('#leanL').hidden = $('#leanR').hidden = true; }
+  if (!on) { lookId = null; leanNear = false; $('#leanL').hidden = $('#leanR').hidden = true; $('#vehBtn').hidden = true; if (me.ride != null) dismount(); }
   $('#sil').hidden = !(on && SIL_SFX[curWpn().kind]);
 }
 
@@ -4120,6 +4281,7 @@ function clearArrows() {
 function resetMatch(k) {
   clearPulls(); // pas de corde au début d'une manche
   applyMap(k || mapKey);
+  resetVehicles(); // la moto et le quad reviennent au centre
   clearArrows();
   Object.assign(me, { x: 0, z: map.spawnZ, vx: 0, vz: 0, yaw: 0, pitch: 0.04, draw: 0, drawing: false, reload: 0, taken: 0, lean: 0, leanT: 0 });
   Object.assign(opp, { x: 0, z: -map.spawnZ, tx: 0, tz: -map.spawnZ, vx: 0, vz: 0, yaw: 0, tyaw: 0, pitch: 0.04, tpitch: 0.04, draw: 0, nock: true, taken: 0 });
@@ -4278,7 +4440,8 @@ function fpCamera(dt, V = me) {
   fpWalk += dt * sp * 3.6; fpBob += (Math.min(1.2, sp / map.maxv) - fpBob) * k; fpRoll += (clamp(side / map.maxv, -1, 1) - fpRoll) * k;
   const quiet = 1 - 0.75 * Math.sin(V.draw * Math.PI / 2), bx = Math.cos(fpWalk) * 0.02 * fpBob * quiet, by = Math.abs(Math.sin(fpWalk)) * 0.035 * fpBob * quiet;
   const ln = V.lean || 0, lx = bx + ln * LEAN_X; // penché : les yeux glissent sur le côté et la vue s'incline
-  camera.position.set(V.x - Math.sin(V.yaw) * 0.12 + Math.cos(V.yaw) * lx, 1.68 + by - Math.abs(ln) * 0.05, V.z - Math.cos(V.yaw) * 0.12 - Math.sin(V.yaw) * lx);
+  const rideUp = (V === me ? me.ride != null : !!V.ride) ? RIDE_Y + 0.05 : 0;
+  camera.position.set(V.x - Math.sin(V.yaw) * 0.12 + Math.cos(V.yaw) * lx, 1.68 + rideUp + by - Math.abs(ln) * 0.05, V.z - Math.cos(V.yaw) * 0.12 - Math.sin(V.yaw) * lx);
   forward(V.yaw, V.pitch, camF); camera.lookAt(look.copy(camera.position).add(camF)); camera.rotateZ(-fpRoll * 0.022 - ln * LEAN_ROLL);
 }
 // quand on vise, l'arme s'arrête juste sous le cercle du viseur : baisse propre à chacune, selon la hauteur de sa hausse ou de sa lunette
@@ -4421,6 +4584,7 @@ function updateMe(dt) {
   const out = isDead(ME); // éliminé (à 3) : on regarde la fin sans bouger ni tirer
   meA.root.visible = !(TOUR.on && mySlot === 2) && !inFP(); // spectateur de la tournante : invisible ; à la première personne, on ne voit pas son propre corps
   if (out) { me.drawing = false; me.draw = 0; }
+  if (me.ride != null && !out) driveVehicle(dt, ix, iy); else {
   const slow = (me.drawing && !curWpn().melee ? (map.lateral ? 0.65 : 0.55) : 1) * speedMul() * slowF(me), act = canMove() && !out;
   let tvx = 0, tvz = 0;
   if (act && map.lateral) tvx = ix * map.maxv * slow;
@@ -4436,19 +4600,20 @@ function updateMe(dt) {
   me.x += me.vx * dt; me.z += me.vz * dt;
   if (map.lateral) { me.z = map.spawnZ; if (Math.abs(me.x) > map.xlim) { me.x = clamp(me.x, -map.xlim, map.xlim); me.vx = 0; } }
   else { resolveMove(me); if (dt > 0) { me.vx = (me.x - px) / dt * 0.5 + me.vx * 0.5; me.vz = (me.z - pz) / dt * 0.5 + me.vz * 0.5; } }
+  }
   if (keys.ArrowUp) me.pitch = clamp(me.pitch + dt * 0.5, -0.45, 0.65);
   if (keys.ArrowDown) me.pitch = clamp(me.pitch - dt * 0.5, -0.45, 0.65);
   if (keys.ArrowLeft) me.yaw = clamp(me.yaw + dt * 1.2, -map.yawLim, map.yawLim);
   if (keys.ArrowRight) me.yaw = clamp(me.yaw - dt * 1.2, -map.yawLim, map.yawLim);
   me.reload = Math.max(0, me.reload - dt);
   if (me.swingHit > 0) { me.swingHit -= dt; if (me.swingHit <= 0) meleeStrike(); }
-  if (aimId !== null && !me.drawing && me.reload <= 0 && phase === 'fight' && !out) me.drawing = true;
+  if (aimId !== null && !me.drawing && me.reload <= 0 && phase === 'fight' && !out && me.ride == null) me.drawing = true;
   if (me.drawing) me.draw = Math.min(1, me.draw + dt / curWpn().aimT);
   if (curWpn().auto && me.drawing && aimId !== null && me.draw >= 1 && t >= me.nextShot - 1e-6 && phase === 'fight' && !out) fire();
   meA.root.position.set(me.x, 0, me.z); meA.root.rotation.y = me.yaw;
   meA.setPose(me.pitch, me.draw, me.reload <= 0);
   // penché : les boutons n'apparaissent qu'à moins de 3 m d'un tronc ; en s'éloignant, on se redresse
-  const near = !out && (phase === 'fight' || phase === 'countdown') && !(TOUR.on && mySlot === 2) && obstacles.length > 0 && nearTrunk();
+  const near = !out && me.ride == null && (phase === 'fight' || phase === 'countdown') && !(TOUR.on && mySlot === 2) && obstacles.length > 0 && nearTrunk();
   if (near !== leanNear) { leanNear = near; $('#leanL').hidden = $('#leanR').hidden = !near; if (!near && me.leanT) { me.leanT = 0; setLeanBtns(); } }
   const leanGoal = me.leanT ? leanRoom(me.leanT) : 0;
   me.lean += (leanGoal - me.lean) * (1 - Math.exp(-dt * 12)); if (Math.abs(me.lean) < 0.002 && !leanGoal) me.lean = 0;
@@ -5185,7 +5350,7 @@ function pres(patch) { Object.assign(myPres, patch); if (nroom) nroom.presence(p
 function netTick(now) {
   if (mode !== 'online' || !nroom || now - lastSendAt < NET_TICK) return;
   lastSendAt = Math.max(lastSendAt + NET_TICK, now - NET_TICK);
-  const p = { x: r3(me.x), z: r3(me.z), yaw: r3(me.yaw), pitch: r3(me.pitch), draw: Math.round(me.draw * 100) / 100, nock: me.reload <= 0, sil: silencer, ln: Math.round(me.lean * 20) / 20 };
+  const p = { x: r3(me.x), z: r3(me.z), yaw: r3(me.yaw), pitch: r3(me.pitch), draw: Math.round(me.draw * 100) / 100, nock: me.reload <= 0, sil: silencer, ln: Math.round(me.lean * 20) / 20, rv: me.ride != null ? [me.ride, r3(me.yaw)] : 0 };
   const key = JSON.stringify(p);
   if (key !== lastSent) { lastSent = key; pres(p); }
 }
@@ -5310,6 +5475,7 @@ function applyOppPres(p, f) {
   s.tyaw = M.lateral ? clamp(num(p.yaw, 0), -0.6, 0.6) : num(p.yaw, 0);
   s.tpitch = clamp(num(p.pitch, 0), -0.5, 0.8);
   s.tlean = clamp(num(p.ln, 0), -1, 1);
+  s.ride = Array.isArray(p.rv) && (p.rv[0] === 0 || p.rv[0] === 1) ? p.rv : null; // il conduit la moto (0) ou le quad (1)
   s.draw = clamp(num(p.draw, 0), 0, 1);
   s.nock = p.nock !== false;
   s.sil = p.sil === true; f.A.setSilencer(s.sil);
@@ -5806,6 +5972,8 @@ $('#nameIn').addEventListener('input', () => {
   pres({ nm: myName }); renderLobby();
 });
 // visser / dévisser le silencieux de l'arme à feu
+$('#vehBtn').addEventListener('click', () => toggleRide());
+addEventListener('keydown', e => { if (e.code === 'KeyE' && e.target.tagName !== 'INPUT' && mode && (phase === 'fight' || phase === 'countdown')) toggleRide(); });
 $('#leanL').addEventListener('click', () => leanTap(-1));
 $('#leanR').addEventListener('click', () => leanTap(1));
 $('#sil').addEventListener('click', () => {
@@ -5884,6 +6052,7 @@ function frame(now) {
   if (mode && phase !== 'idle') { updateMe(dt); updateOpp(dt); }
   updateFat(dt);
   meA.walk(dt); for (const f of Object.values(FOES)) f.A.walk(dt); // jambes qui marchent
+  updateVehicles(dt); // moto et quad
   meA.setSkin(skinOfE(ME)); for (const f of Object.values(FOES)) f.A.setSkin((mode === 'bot' && foes.includes(f)) || (!!f.peer && foes.includes(f) && skinOfE(f))); // les bots (moyen ou dur) portent le skin Tung x3
   { const st = inSpecFP() && specTarget(); fpA.setSkin(st ? skinOfE(st) : skinOfE(ME)); } // à la première personne : mes bras, ou ceux du joueur regardé
   updateArrows(dt); updateSplash(dt); updatePaint(dt); updateBlasts(dt);
@@ -5893,7 +6062,7 @@ function frame(now) {
   drawHud();
   updateSmoke();
   if (thermalOn) renderThermal(); else renderer.render(scene, camera);
-  if ((inFP() || inSpecFP()) && scopeEl.hidden) renderViewmodel();
+  if ((inFP() || inSpecFP()) && scopeEl.hidden && !(me.ride != null && !inSpecFP())) renderViewmodel(); // en conduisant : on voit le guidon, pas l'arme
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
