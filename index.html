@@ -79,7 +79,7 @@ body{position:fixed;inset:0;touch-action:none;-webkit-user-select:none;user-sele
 .mapsel button:disabled{opacity:.35;cursor:default}
 .mapsel button[hidden]{display:none}
 /* cartes retirées de l'interface (elles restent dans le jeu, pour les retrouver un jour : il suffit d'enlever cette règle et RETIRED_MAPS) */
-.mapsel [data-map=canyon],.mapsel [data-map=forestB2],.mapsel [data-map=forestV2],.mapsel [data-map=forestV3]{display:none!important}
+.mapsel [data-map=canyon],.mapsel [data-map=forestB2],.mapsel [data-map=forestV2],.mapsel [data-map=forestV3],.mapsel [data-map=forestXL]{display:none!important}
 .mapvar{margin-top:-4px}
 .mapvar button{text-align:center}
 #lobby .mapsel,#over .mapsel{grid-template-columns:repeat(2,1fr)}
@@ -910,8 +910,8 @@ const DUO = Object.fromEntries([...Object.entries(TRIO), ...Object.entries(QUAD)
 const menuMap = k => isDesert(k) ? 'desert' : DUO[k] || BIG4_INV[k] || k; // dans les menus, la version à 3 s'affiche comme sa forêt
 const baseMap = k => ({ forestA1s: 'forestA1', forestA2s: 'forestA2', forestJ1s: 'forestJ1', forestJ2s: 'forestJ2', forestY1s: 'forestY1', forestY2s: 'forestY2', forestW1s: 'forestW1', forestW2s: 'forestW2', forestR1s: 'forestR1', forestR2s: 'forestR2', forestM1s: 'forestM1', forestM2s: 'forestM2', forestL1s: 'forestL1', forestL2s: 'forestL2', forestK1s: 'forestK1', forestK2s: 'forestK2', forestF1s: 'forestF1', forestF2s: 'forestF2', forestC1s: 'forestC1', forestC2s: 'forestC2', forestB1s: 'forestB1', forestB2s: 'forestB2', forestV2s: 'forestV2', forestV3s: 'forestV3', forestT1s: 'forestT1', forestT2s: 'forestT2', forestQ1s: 'forestQ1', forestQ2s: 'forestQ2', forestP1s: 'forestP1', forestP2s: 'forestP2', forestH1s: 'forestH1', forestH2s: 'forestH2', forestS1s: 'forestS1', forestS2s: 'forestS2', forestO1s: 'forestO1', forestO2s: 'forestO2', forestN1s: 'forestN1', forestN2s: 'forestN2', forestD1s: 'forestD1', forestD2s: 'forestD2', forestE1s: 'forestE1', forestE2s: 'forestE2', forestZ1s: 'forestZ1', forestZ2s: 'forestZ2' })[k] || k, isSnow = k => !!(MAPS[k] && MAPS[k].snow);
 mapKey = 'forestB1'; // la forêt classique par défaut
-// cartes retirées de l'interface (Canyon, Forêt petits troncs, Forêt classique OG, Forêt petits troncs OG) : toujours dans le jeu, mais plus proposées
-const RETIRED_MAPS = ['canyon', 'forestB2', 'forestV2', 'forestV3'], retiredMap = k => RETIRED_MAPS.includes(baseMap(menuMap(k)));
+// cartes retirées de l'interface (Canyon, Forêt petits troncs, Forêt classique OG, Forêt petits troncs OG, Forêt géante) : toujours dans le jeu, mais plus proposées
+const RETIRED_MAPS = ['canyon', 'forestB2', 'forestV2', 'forestV3', 'forestXL'], retiredMap = k => RETIRED_MAPS.includes(baseMap(menuMap(k)));
 try { const k = localStorage.getItem('duelarc-map3'); if (isDesert(k)) mapKey = 'desert'; else if (k === 'canyon' || (MAPS[k] && (BIG3[baseMap(k)] || isOG(k)))) mapKey = k; } catch (e) {} // un désert (même à n joueurs) : le bouton Désert
 if (retiredMap(mapKey)) mapKey = 'forestB1'; // une carte retirée choisie avant : retour à la forêt classique
 
