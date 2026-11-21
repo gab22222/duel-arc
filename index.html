@@ -49,6 +49,9 @@ body{position:fixed;inset:0;touch-action:none;-webkit-user-select:none;user-sele
 #spec[hidden]{display:none}
 #spec .btn{padding:8px 12px;font-size:14px}
 #lobby .modesel{grid-template-columns:repeat(3,1fr)}
+/* modes retirés de l'interface (Tournante, Tournante roulette) : le code reste, pour les remettre un jour il suffit d'enlever ces deux règles et RETIRED_MODES */
+#lobby .modesel [data-gm=tour],#lobby .modesel [data-gm=roul]{display:none!important}
+#lobby .modesel{grid-template-columns:1fr}
 #lobby .modesel button{padding:7px 6px}
 #lobby .modesel button small{font-size:10.5px}
 #wpick{inset:0;display:grid;place-items:center;z-index:5;background:rgba(10,8,14,.35);pointer-events:auto}
@@ -4487,9 +4490,12 @@ function netTick(now) {
 function menuNote(t) { $('#menuNote').textContent = t; }
 let joining = false;
 // mode de jeu entre amis : « tournante » (par défaut) ou « classique » ; choisi dans le salon, synchronisé comme la carte
-let gameMode = 'tour';
+// modes retirés de l'interface : on joue toujours en Classique (le code des tournantes reste en place)
+const RETIRED_MODES = ['tour', 'roul'];
+let gameMode = 'classic';
 function setGameMode(g) {
   gameMode = g === 'classic' || g === 'roul' ? g : 'tour'; // tournante (choix de l'arme, par défaut), tournante roulette, classique
+  if (RETIRED_MODES.includes(gameMode)) gameMode = 'classic'; // tournantes retirées de l'interface
   document.querySelectorAll('.modesel button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.gm === gameMode)));
   // les tournantes se jouent en duel, en forêt 1 ou 2 : ni canyon, et la forêt 2 reste possible à 3
   const duels = gameMode !== 'classic';
