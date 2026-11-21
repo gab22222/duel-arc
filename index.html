@@ -468,7 +468,7 @@ p{margin:0}
     <div class="seg modesel" role="group" aria-label="Mode de jeu">
       <button data-gm="tour" aria-pressed="true">Tournante<small>l'arme choisie à tour de rôle</small></button>
       <button data-gm="roul" aria-pressed="false">Tournante roulette<small>l'arme tirée à la roue</small></button>
-      <button data-gm="classic" aria-pressed="false">Classique<small>carte et arme au choix</small></button>
+      <button data-gm="classic" aria-pressed="false">Classique<small>carte au choix · arme : la roulette, puis le vainqueur choisit</small></button>
     </div>
     <div class="seg teamsel" role="group" aria-label="Mode à 4" hidden>
       <button data-tm="ffa" aria-pressed="true">Chacun pour soi<small>1v1v1v1</small></button>
@@ -634,6 +634,7 @@ p{margin:0}
         <button data-wpn="grapplegun" aria-pressed="false">Grappin</button>
       </div>
     </div>
+    <p class="sub" id="overPick" hidden></p>
     <p class="sub" id="overStatus"></p>
     <button class="btn primary" id="btnAgain">Revanche</button>
     <button class="btn" id="btnMenu">Menu</button>
@@ -1752,7 +1753,7 @@ function applyMap(k) {
   const shown = baseMap(menuMap(k)); // une version neige ou à 3 apparaît comme sa forêt
   document.querySelectorAll('.mapsel button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.map === shown)));
   refreshMapVariants();
-  document.querySelectorAll('.wpnrow').forEach(r => { r.hidden = (map.lateral && !r.classList.contains('always')) || (gameMode !== 'classic' && !!r.closest('#lobby')); }); // le tir libre est toujours en forêt
+  refreshWpnRows(); // le tir libre est toujours en forêt
   refreshVariants();
   dressArchers();
 }
@@ -3484,8 +3485,16 @@ function finish() {
   else if (teams ? teams[standing[0].key] === teams.me : trio() ? standing[0] === ME : isDead(FOES.opp)) { title = 'Victoire'; color = 'var(--teal)'; sfx('win'); }
   else { title = 'Défaite'; color = 'var(--crimson)'; sfx('lose'); }
   big(title, 1.4, color);
+  if (mode === 'online') { // vainqueur : le seul debout, ou en équipes le premier de l'équipe gagnante dans l'ordre du salon ; égalité : personne
+    const idOf = e => e === ME ? myId : e.peer, L = lobbyPlayers().map(x => x.id);
+    let win = null;
+    if (teams && standing.length) win = [ME, ...foes].filter(e => teams[e.key] === teams[standing[0].key]).sort((a, b) => L.indexOf(idOf(a)) - L.indexOf(idOf(b)))[0];
+    else if (standing.length === 1) win = standing[0];
+    classicWinner = win ? idOf(win) : null;
+  }
   setTimeout(() => {
     if (phase !== 'over') return;
+    refreshWpnRows();
     $('#overTitle').textContent = title; $('#overTitle').style.color = color;
     $('#overEyebrow').textContent = (teams ? 'Fin de la partie · ' + TEAM[teamGame][2] : nPlayers >= 4 ? 'Fin du chacun pour soi' : 'Fin du duel') + (headshot ? ' · tir à la tête' : '');
     $('#overScore').textContent = teams ? (standing.length ? `Équipe gagnante : ${andJoin([ME, ...foes].filter(e => teams[e.key] === teams[standing[0].key]).map(e => e.name))}` : 'Personne ne reste debout') : trio() ? (standing.length ? `Dernier debout : ${standing[0].name}` : 'Personne ne reste debout')
@@ -4493,6 +4502,13 @@ let joining = false;
 // modes retirés de l'interface : on joue toujours en Classique (le code des tournantes reste en place)
 const RETIRED_MODES = ['tour', 'roul'];
 let gameMode = 'classic';
+// Classique en ligne : la première manche (ou après une égalité), une roulette tire l'arme ; ensuite le vainqueur de la manche choisit l'arme de la suivante.
+// Dans le salon, l'arme ne se choisit donc plus ; sur l'écran de fin, seul le vainqueur voit le choix d'arme
+let classicWinner = null; // id du vainqueur de la dernière manche (moi : myId), null au début ou après une égalité
+function refreshWpnRows() {
+  document.querySelectorAll('.wpnrow').forEach(r => { r.hidden = (map.lateral && !r.classList.contains('always')) || (!!r.closest('#lobby') && (gameMode !== 'classic' || mode === 'online')) || (!!r.closest('#over') && mode === 'online' && classicWinner !== myId); });
+  refreshVariants();
+}
 function setGameMode(g) {
   gameMode = g === 'classic' || g === 'roul' ? g : 'tour'; // tournante (choix de l'arme, par défaut), tournante roulette, classique
   if (RETIRED_MODES.includes(gameMode)) gameMode = 'classic'; // tournantes retirées de l'interface
@@ -4503,7 +4519,7 @@ function setGameMode(g) {
   $('#lobby [data-map=forestB1] small').textContent = duels ? 'symétrique' : 'symétrique, de 2 à 12';
   $('#lobby [data-map=forestB2] small').textContent = duels ? 'troncs égaux' : 'troncs égaux, de 2 à 12';
   if (duels && !BIG3[baseMap(menuMap(mapKey))] && !isOG(mapKey) && !isDesert(mapKey)) applyMap('forestB1');
-  document.querySelectorAll('#lobby .wpnrow').forEach(r => { r.hidden = gameMode !== 'classic' || map.lateral; });
+  refreshWpnRows();
   refreshVariants();
 }
 function setTeamMode(m) { teamMode = TEAM[m] ? m : 'ffa'; document.querySelectorAll('.teamsel button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.tm === teamMode))); }
@@ -4546,7 +4562,7 @@ async function enterRoom(code, creator) {
     nroom.on('hit', onHit),
   ];
   myJoin = Date.now();
-  setGameMode('tour'); TOUR.on = false;
+  setGameMode('tour'); TOUR.on = false; classicWinner = null; // nouveau salon : la première manche se joue à la roulette
   setTeamMode('ffa');
   pres({ sk: mySkin, np: 0, rdy: false, tok: '', started: '', dealt: {}, mapK: mapKey, wpn: weapon, mapV, j: myJoin, nm: myName, gm: gameMode, tm: teamMode, tourBase: '', tourMode: '', pick: null });
   phase = 'idle';
@@ -4709,7 +4725,7 @@ function chooseWeapon(w) {
   if (mode === 'online') {
     if (!(phase === 'idle' || phase === 'over')) return;
     mapV = Math.max(mapV, ...peersNow.map(x => num(x.presence.mapV, 0))) + 1;
-    setWeapon(w); pres({ mapK: mapKey, wpn: weapon, mapV });
+    setWeapon(w); pres({ mapK: mapKey, wpn: weapon, mapV }); renderOverStatus();
   } else setWeapon(w);
 }
 function pressReady() {
@@ -4724,7 +4740,7 @@ function evaluateReady() {
   const ps = peersNow.map(x => x.presence);
   // un autre a déjà lancé une partie qui m'inclut
   const st = ps.find(p => typeof p.started === 'string' && p.started.split('|').includes(net.tok));
-  if (st) return st.tourBase && st.started.startsWith(st.tourBase + '|r') ? startTour(st.tourBase, st.tourMode, st.smap) : startOnline(st.started, MAPS[st.smap] ? st.smap : mapKey, st.swpn ? wpnKey(st.swpn) : weapon);
+  if (st) return st.tourBase && st.started.startsWith(st.tourBase + '|r') ? startTour(st.tourBase, st.tourMode, st.smap) : startOnline(st.started, MAPS[st.smap] || isDesert(st.smap) ? st.smap : mapKey, st.swpn ? wpnKey(st.swpn) : weapon, st.sroul === 1);
   // tout le monde est prêt : la carte et l'arme sont celles du joueur au plus petit jeton (même choix sur chaque téléphone)
   if (ps.every(p => p.rdy === true && okTok(p.tok) && num(p.np, -1) === ps.length)) { // tous prêts, et chacun voit bien tous les autres (sinon un joueur à la connexion hésitante serait laissé de côté)
     const toks = [net.tok, ...ps.map(p => p.tok)].sort();
@@ -4732,10 +4748,14 @@ function evaluateReady() {
     if (lead.gm !== 'classic' && toks.length < 4) return startTour(toks.join('|'), lead.gm === 'roul' ? 'roul' : 'tour', lead.mapK); // à 4 : pas de tournante
     const m = menuMap(lead.mapK);
     const n = toks.length, k = isDesert(m) ? desertFor(n) : n === 2 && (m === 'canyon' || isOG(m)) ? m : n === 3 && m === 'forestXL' ? m : BIGN[n][BIG3[baseMap(m)] ? m : 'forestB1']; // forêt classique ou petits troncs en version à n joueurs ; canyon à 2 ; forêt géante à 3
-    startOnline(toks.join('|') + (TEAM[lead.tm] && TEAM[lead.tm][0] === toks.length ? '|' + lead.tm : ''), k, wpnKey(lead.wpn));
+    const gid = toks.join('|') + (TEAM[lead.tm] && TEAM[lead.tm][0] === toks.length ? '|' + lead.tm : '');
+    const wp = classicWinner && classicWinner !== myId ? peersNow.find(x => x.peer === classicWinner) : null;
+    if (classicWinner === myId) return startOnline(gid, k, weapon); // j'ai gagné la manche d'avant : mon arme
+    if (wp && WPN[wp.presence.wpn]) return startOnline(gid, k, wpnKey(wp.presence.wpn)); // l'arme choisie par le vainqueur
+    startOnline(gid, k, WPN_KEYS[Math.floor(mulberry32(hashStr(gid + '#w'))() * WPN_KEYS.length)], true); // pas de vainqueur : la roulette
   }
 }
-function startOnline(id, k, w) {
+function startOnline(id, k, w, roul = false) {
   net.rp = false; net.started = id;
   // participants : les joueurs présents dont le jeton fait partie de la partie ; la place de chacun suit l'ordre des jetons
   const toks = id.split('|').filter(x => !TEAM[x]), tmode = id.split('|').find(x => TEAM[x]) || '';
@@ -4752,15 +4772,18 @@ function startOnline(id, k, w) {
   }
   dealt = {};
   setWeapon(w);
-  pres({ rdy: false, started: id, smap: k, swpn: weapon, dealt: {}, tourBase: '' });
-  resetMatch(k);
+  pres({ rdy: false, started: id, smap: k, swpn: weapon, wpn: weapon, sroul: roul ? 1 : 0, dealt: {}, tourBase: '' }); // wpn : l'arme de la manche (le vainqueur la garde s'il ne change rien)
+  if (!roul) return resetMatch(k);
+  // première manche : la roue tourne chez tout le monde et s'arrête sur l'arme tirée (la même partout), puis la manche commence
+  phase = 'idle'; clearArrows(); setPlayingHud(false); showPanel(null); applyMap(k); setWeapon(w);
+  showRoulette('Roulette', 'Première manche : l’arme est tirée au sort', `${nPlayers} joueurs · ensuite, le vainqueur choisit`, w, () => { if (net.started !== id || mode !== 'online') return; setWeapon(w); resetMatch(k); });
 }
 function tourStop() { TOUR.on = false; TOUR.waitPick = false; clearTimeout(TOUR.pickT); $('#roulette').hidden = true; $('#wpick').hidden = true; $('#spec').hidden = true; }
 const hashStr = str => { let h = 2166136261; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; };
 const tourRng = k => mulberry32(hashStr(TOUR.base + '#' + TOUR.round + '#' + k));
 const tourName = id => (lobbyPlayers().find(x => x.id === id) || {}).name || 'Joueur';
 const WPN_KEYS = Object.keys(WPN);
-const wpnLabel = k => { const b = document.querySelector(`.wpnsel button[data-wpn="${k}"]`); return b ? b.textContent : k; };
+const wpnLabel = k => { const b = document.querySelector(`.wpnsel button[data-wpn="${k}"]`); if (b) return b.textContent; const f = familyOf(k), fb = f !== k && document.querySelector(`.wpnsel button[data-wpn="${f}"]`); return fb ? `${fb.textContent} ${VAR_NAME[k] || ''}`.trim() : k; }; // une variante : « M4 ACOG », « Arc Explosif »
 function tourWeapon() { return WPN_KEYS[Math.floor(tourRng('w')() * WPN_KEYS.length)]; } // vraiment au hasard : la même arme peut retomber
 function tourPair() {
   const r = tourRng('p'), ids = TOUR.ids.slice();
@@ -5001,8 +5024,13 @@ function renderLobby() {
   const b = $('#btnReady'); b.disabled = !ok || net.rp; b.textContent = net.rp ? 'En attente…' : n === 11 ? 'Prêt – lancer à 12' : n === 10 ? 'Prêt – lancer à 11' : n === 9 ? 'Prêt – lancer à 10' : n === 8 ? 'Prêt – lancer à 9' : n === 7 ? 'Prêt – lancer à 8' : n === 6 ? 'Prêt – lancer à 7' : n === 5 ? 'Prêt – lancer à 6' : n === 4 ? 'Prêt – lancer à 5' : n === 3 ? 'Prêt – lancer à 4' : n === 2 ? 'Prêt – lancer à 3' : n === 1 ? 'Prêt – lancer à 2' : 'Prêt';
 }
 function renderOverStatus() {
+  $('#overPick').hidden = mode !== 'online';
   if (mode === 'bot') { $('#overStatus').textContent = ''; return; }
   if (mode !== 'online') return;
+  const wName = classicWinner && classicWinner !== myId ? (lobbyPlayers().find(x => x.id === classicWinner) || {}).nm || 'Le vainqueur' : '';
+  const winHere = classicWinner === myId || peersNow.some(x => x.peer === classicWinner);
+  const wW = (peersNow.find(x => x.peer === classicWinner) || { presence: {} }).presence.wpn; // l'arme que le vainqueur a en main
+  $('#overPick').textContent = !classicWinner || !winHere ? 'Prochaine manche : la roulette tire l’arme au sort.' : classicWinner === myId ? `Tu as gagné : choisis l’arme de la prochaine manche, puis Revanche. Arme : ${wpnLabel(weapon)}` : `${wName} a gagné et choisit l’arme de la prochaine manche. Pour l’instant : ${wpnLabel(WPN[wW] ? wW : weapon)}`;
   let s = '';
   showTeamsel('#over', peersNow.length + 1);
   if (!peersNow.length) s = 'Tes adversaires ont quitté la partie.';
