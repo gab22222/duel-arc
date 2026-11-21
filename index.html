@@ -51,7 +51,7 @@ body{position:fixed;inset:0;touch-action:none;-webkit-user-select:none;user-sele
 #lobby .modesel{grid-template-columns:repeat(3,1fr)}
 /* modes retirés de l'interface (Tournante, Tournante roulette) : le code reste, pour les remettre un jour il suffit d'enlever ces deux règles et RETIRED_MODES */
 #lobby .modesel [data-gm=tour],#lobby .modesel [data-gm=roul]{display:none!important}
-#lobby .modesel{grid-template-columns:1fr}
+#lobby .modesel{display:none!important} /* un seul mode (Classique) : inutile de l'afficher */
 #lobby .modesel button{padding:7px 6px}
 #lobby .modesel button small{font-size:10.5px}
 #wpick{inset:0;display:grid;place-items:center;z-index:5;background:rgba(10,8,14,.35);pointer-events:auto}
