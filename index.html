@@ -126,7 +126,11 @@ body{position:fixed;inset:0;touch-action:none;-webkit-user-select:none;user-sele
 #stick.round #knob{top:40px;left:40px;width:44px;height:44px;border-radius:50%}
 #stick.round::before,#stick.round::after{display:none}
 
-#sil{position:fixed;z-index:6;left:calc(env(safe-area-inset-left,0px) + 30px);bottom:calc(env(safe-area-inset-bottom,0px) + 182px);padding:5px 10px;border-radius:999px;border:1px solid var(--line);background:rgba(14,12,22,.55);color:var(--mute);font:700 12px/1 var(--body);letter-spacing:.04em;cursor:pointer;touch-action:manipulation}
+#sil{position:fixed;z-index:6;left:calc(env(safe-area-inset-left,0px) + 30px);bottom:calc(env(safe-area-inset-bottom,0px) + 238px);padding:5px 10px;border-radius:999px;border:1px solid var(--line);background:rgba(14,12,22,.55);color:var(--mute);font:700 12px/1 var(--body);letter-spacing:.04em;cursor:pointer;touch-action:manipulation}
+.lean{position:fixed;z-index:6;bottom:calc(env(safe-area-inset-bottom,0px) + 172px);width:52px;height:44px;border-radius:14px;border:1px solid var(--line);background:rgba(14,12,22,.55);color:var(--bone);font:700 22px/1 var(--body);cursor:pointer;touch-action:manipulation;-webkit-user-select:none;user-select:none}
+#leanL{left:calc(env(safe-area-inset-left,0px) + 24px)}
+#leanR{left:calc(env(safe-area-inset-left,0px) + 96px)}
+.lean[aria-pressed="true"]{border-color:rgba(239,230,214,.6);background:rgba(239,230,214,.22)}
 #sil[aria-pressed="true"]{color:var(--bone);border-color:rgba(239,230,214,.5);background:rgba(239,230,214,.16)}
 #quit{position:fixed;z-index:6;top:calc(env(safe-area-inset-top,0px) + 8px);left:calc(env(safe-area-inset-left,0px) + 10px);width:40px;height:40px;border-radius:12px;border:1px solid var(--line);background:rgba(14,12,22,.55);color:var(--bone);font-size:18px;line-height:1;cursor:pointer}
 
@@ -272,6 +276,8 @@ p{margin:0}
 <div id="spec" hidden><span id="specTxt">Tu regardes</span><button class="btn" id="specBtn">Joueur suivant</button><button class="btn" id="specCam">Vue 3ᵉ personne</button></div>
 <button id="quit" aria-label="Quitter la partie" hidden>✕</button>
 <button id="sil" aria-pressed="false" hidden>Silencieux</button>
+<button class="lean" id="leanL" aria-label="Se pencher à gauche" aria-pressed="false" hidden>←</button>
+<button class="lean" id="leanR" aria-label="Se pencher à droite" aria-pressed="false" hidden>→</button>
 
 <section class="panel" id="menu">
   <div class="sheet">
@@ -2958,8 +2964,10 @@ function makeArcher(cloth, hoodCol, owner, fpv = false) { // fpv : seulement les
     const a = Math.sin(walkPh) * walkAmp;
     hips[0].rotation.x = tungHips.length ? (tungHips[0].rotation.x = a) : a; hips[1].rotation.x = -a; if (tungHips[1]) tungHips[1].rotation.x = -a;
   }
+  // penché : le haut du corps glisse et s'incline sur le côté (la tête arrive à ~45 cm)
+  function setLean(l) { upper.position.x = l * 0.33; upper.rotation.z = -l * 0.3; }
   function placeHands() { for (const [m, h] of hands) { h.quaternion.copy(m.quaternion); h.position.set(0, 0, m.scale.z / 2).applyQuaternion(m.quaternion).add(m.position); } }
-  return { root, upper, walk, setPose, setWeapon, swing, setSilencer, recoil, bowWorld, updateHead, zoneAt, heatParts, placeHands, headPos, laser, laserFrom, setColors, wear, setSkin, clothM, hoodM, get wpn() { return wpn; }, get tung() { return tungOn; } };
+  return { root, upper, walk, setLean, setPose, setWeapon, swing, setSilencer, recoil, bowWorld, updateHead, zoneAt, heatParts, placeHands, headPos, laser, laserFrom, setColors, wear, setSkin, clothM, hoodM, get wpn() { return wpn; }, get tung() { return tungOn; } };
 }
 const meA = makeArcher(0x2f8f83, 0x1f5f58, 'me');
 const oppA = makeArcher(0xa8342a, 0x6e1f1a, 'opp');
@@ -3173,7 +3181,16 @@ function sfx(k, v = 1) {
 }
 
 // ---------- game state (chaque joueur se voit au sud, face au -Z ; l'adversaire est symétrique)
-const me = { x: 0, z: 12, vx: 0, vz: 0, yaw: 0, pitch: 0.04, draw: 0, drawing: false, reload: 0, taken: 0, nextShot: -Infinity };
+const me = { x: 0, z: 12, vx: 0, vz: 0, yaw: 0, pitch: 0.04, draw: 0, drawing: false, reload: 0, taken: 0, nextShot: -Infinity, lean: 0, leanT: 0 };
+// se pencher (comme dans Rainbow Six Siege) : derrière un arbre, la tête, les bras et l'arme se décalent sur le côté ; les jambes ne bougent pas
+const LEAN_X = 0.45, LEAN_ROLL = 0.24, LEAN_NEAR = 3; // décalage des yeux (m), inclinaison de la vue (rad), distance max au tronc (m)
+let leanNear = false;
+function nearTrunk() { for (const o of nearObstacles(me.x, me.z)) if (o.type === 'trunk' && Math.hypot(o.x - me.x, o.z - me.z) - o.r < LEAN_NEAR) return true; return false; }
+// jusqu'où on peut se pencher sans mettre la tête dans le tronc (on essaie de moins en moins loin)
+const leanP = new T.Vector3();
+function leanRoom(dir) { const rx = Math.cos(me.yaw), rz = -Math.sin(me.yaw); for (const f of [1, 0.75, 0.5, 0.25]) { leanP.set(me.x + rx * LEAN_X * f * dir, 1.62, me.z + rz * LEAN_X * f * dir); if (!inObstacle(leanP, 0.15)) return f * dir; } return 0; }
+function setLeanBtns() { $('#leanL').setAttribute('aria-pressed', String(me.leanT < 0)); $('#leanR').setAttribute('aria-pressed', String(me.leanT > 0)); }
+function leanTap(dir) { me.leanT = me.leanT === dir ? 0 : dir; setLeanBtns(); }
 const opp = { x: 0, z: -12, tx: 0, tz: -12, vx: 0, vz: 0, yaw: 0, tyaw: 0, pitch: 0.04, tpitch: 0.04, draw: 0, nock: true, taken: 0 };
 const opp2 = { x: 0, z: 0, tx: 0, tz: 0, vx: 0, vz: 0, yaw: 0, tyaw: 0, pitch: 0.04, tpitch: 0.04, draw: 0, nock: true, taken: 0 };
 const opp11 = { x: 0, z: 0, tx: 0, tz: 0, vx: 0, vz: 0, yaw: 0, tyaw: 0, pitch: 0.04, tpitch: 0.04, draw: 0, nock: true, taken: 0 };
@@ -3258,7 +3275,7 @@ function menuStep(k) { document.querySelectorAll('#menu .step').forEach(el => { 
 document.querySelectorAll('#menu [data-go]').forEach(b => b.addEventListener('click', () => menuStep(b.dataset.go)));
 function setPlayingHud(on) {
   ['#score', '#hp', '#cross', '#stick', '#lookMark', '#quit'].forEach(s => { $(s).toggleAttribute('hidden', !on); });
-  if (!on) lookId = null;
+  if (!on) { lookId = null; leanNear = false; $('#leanL').hidden = $('#leanR').hidden = true; }
   $('#sil').hidden = !(on && SIL_SFX[curWpn().kind]);
 }
 
@@ -3273,7 +3290,7 @@ function resetMatch(k) {
   clearPulls(); // pas de corde au début d'une manche
   applyMap(k || mapKey);
   clearArrows();
-  Object.assign(me, { x: 0, z: map.spawnZ, vx: 0, vz: 0, yaw: 0, pitch: 0.04, draw: 0, drawing: false, reload: 0, taken: 0 });
+  Object.assign(me, { x: 0, z: map.spawnZ, vx: 0, vz: 0, yaw: 0, pitch: 0.04, draw: 0, drawing: false, reload: 0, taken: 0, lean: 0, leanT: 0 });
   Object.assign(opp, { x: 0, z: -map.spawnZ, tx: 0, tz: -map.spawnZ, vx: 0, vz: 0, yaw: 0, tyaw: 0, pitch: 0.04, tpitch: 0.04, draw: 0, nock: true, taken: 0 });
   Object.assign(opp2, { vx: 0, vz: 0, pitch: 0.04, tpitch: 0.04, draw: 0, nock: true, taken: 0 }); Object.assign(opp3, { vx: 0, vz: 0, pitch: 0.04, tpitch: 0.04, draw: 0, nock: true, taken: 0 }); Object.assign(opp4, { vx: 0, vz: 0, pitch: 0.04, tpitch: 0.04, draw: 0, nock: true, taken: 0 }); Object.assign(opp5, { vx: 0, vz: 0, pitch: 0.04, tpitch: 0.04, draw: 0, nock: true, taken: 0 }); Object.assign(opp6, { vx: 0, vz: 0, pitch: 0.04, tpitch: 0.04, draw: 0, nock: true, taken: 0 }); Object.assign(opp7, { vx: 0, vz: 0, pitch: 0.04, tpitch: 0.04, draw: 0, nock: true, taken: 0 }); Object.assign(opp8, { vx: 0, vz: 0, pitch: 0.04, tpitch: 0.04, draw: 0, nock: true, taken: 0 }); Object.assign(opp9, { vx: 0, vz: 0, pitch: 0.04, tpitch: 0.04, draw: 0, nock: true, taken: 0 }); Object.assign(opp10, { vx: 0, vz: 0, pitch: 0.04, tpitch: 0.04, draw: 0, nock: true, taken: 0 }); Object.assign(opp11, { vx: 0, vz: 0, pitch: 0.04, tpitch: 0.04, draw: 0, nock: true, taken: 0 });
   if (mode !== 'online') { nPlayers = 2; foes = [FOES.opp]; FOES.opp.peer = null; teams = null; mySlot = 0; }
@@ -3421,8 +3438,9 @@ function fpCamera(dt, V = me) {
   const sp = Math.hypot(vx, vz), side = vx * Math.cos(V.yaw) - vz * Math.sin(V.yaw), k = 1 - Math.exp(-dt * 8);
   fpWalk += dt * sp * 3.6; fpBob += (Math.min(1.2, sp / map.maxv) - fpBob) * k; fpRoll += (clamp(side / map.maxv, -1, 1) - fpRoll) * k;
   const quiet = 1 - 0.75 * Math.sin(V.draw * Math.PI / 2), bx = Math.cos(fpWalk) * 0.02 * fpBob * quiet, by = Math.abs(Math.sin(fpWalk)) * 0.035 * fpBob * quiet;
-  camera.position.set(V.x - Math.sin(V.yaw) * 0.12 + Math.cos(V.yaw) * bx, 1.68 + by, V.z - Math.cos(V.yaw) * 0.12 - Math.sin(V.yaw) * bx);
-  forward(V.yaw, V.pitch, camF); camera.lookAt(look.copy(camera.position).add(camF)); camera.rotateZ(-fpRoll * 0.022);
+  const ln = V.lean || 0, lx = bx + ln * LEAN_X; // penché : les yeux glissent sur le côté et la vue s'incline
+  camera.position.set(V.x - Math.sin(V.yaw) * 0.12 + Math.cos(V.yaw) * lx, 1.68 + by - Math.abs(ln) * 0.05, V.z - Math.cos(V.yaw) * 0.12 - Math.sin(V.yaw) * lx);
+  forward(V.yaw, V.pitch, camF); camera.lookAt(look.copy(camera.position).add(camF)); camera.rotateZ(-fpRoll * 0.022 - ln * LEAN_ROLL);
 }
 // quand on vise, l'arme s'arrête juste sous le cercle du viseur : baisse propre à chacune, selon la hauteur de sa hausse ou de sa lunette
 const FP_LOW = { arrow: 0, pistol: 0.007, revolver: 0.021, deagle: 0.033, vector: 0.073, m4: 0.073, shotgun: 0.124, grenade: 0.094, paintball: 0.19, snowball: 0.19, water: 0.19, beam: 0.19, taser: 0.007, rail: 0.19, glue: 0.007, nail: 0.19, net: 0.19, harpoon: 0.19, grapple: 0.19, bolt: 0.08, bullet: 0.098, barrett: 0.185, psniper: 0.162, scar: 0.095, stone: 0.063, rocket: 0.143 };
@@ -3459,7 +3477,8 @@ function hitMark(head) { const h = $('#hitm'); h.classList.remove('on', 'head');
 function camOffset(out, v = me) {
   // centrée : juste derrière et un peu plus haut, pour que la tête du personnage passe sous le viseur
   const oz = 2.9 - (v.draw || 0) * 0.8;
-  return out.set(v.x + oz * Math.sin(v.yaw), 2.45, v.z + oz * Math.cos(v.yaw));
+  const ln = (v.lean || 0) * LEAN_X; // penché : la caméra suit la tête sur le côté
+  return out.set(v.x + oz * Math.sin(v.yaw) + ln * Math.cos(v.yaw), 2.45, v.z + oz * Math.cos(v.yaw) - ln * Math.sin(v.yaw));
 }
 const camF = new T.Vector3(), aimP = new T.Vector3();
 // point réellement sous le viseur : on suit le rayon de la caméra avec les mêmes collisions que les flèches
@@ -3589,6 +3608,12 @@ function updateMe(dt) {
   if (curWpn().auto && me.drawing && aimId !== null && me.draw >= 1 && t >= me.nextShot - 1e-6 && phase === 'fight' && !out) fire();
   meA.root.position.set(me.x, 0, me.z); meA.root.rotation.y = me.yaw;
   meA.setPose(me.pitch, me.draw, me.reload <= 0);
+  // penché : les boutons n'apparaissent qu'à moins de 3 m d'un tronc ; en s'éloignant, on se redresse
+  const near = !out && (phase === 'fight' || phase === 'countdown') && !(TOUR.on && mySlot === 2) && obstacles.length > 0 && nearTrunk();
+  if (near !== leanNear) { leanNear = near; $('#leanL').hidden = $('#leanR').hidden = !near; if (!near && me.leanT) { me.leanT = 0; setLeanBtns(); } }
+  const leanGoal = me.leanT ? leanRoom(me.leanT) : 0;
+  me.lean += (leanGoal - me.lean) * (1 - Math.exp(-dt * 12)); if (Math.abs(me.lean) < 0.002 && !leanGoal) me.lean = 0;
+  meA.setLean(me.lean);
   deadPose(meA, out && trio());
   meA.updateHead();
   updateLaser(ME, out && trio());
@@ -3747,7 +3772,7 @@ function updateOpp(dt) {
     const s = f.s;
     if (mode !== 'bot') {
       s.x += (s.tx - s.x) * k; s.z += (s.tz - s.z) * k;
-      s.yaw += angDiff(s.yaw, s.tyaw) * k; s.pitch += (s.tpitch - s.pitch) * k;
+      s.yaw += angDiff(s.yaw, s.tyaw) * k; s.pitch += (s.tpitch - s.pitch) * k; s.lean = (s.lean || 0) + ((s.tlean || 0) - (s.lean || 0)) * k;
     }
     // en duel l'adversaire est vu en miroir (il se croit au sud) ; à 3 tout le monde partage le même repère
     f.A.root.position.set(s.x, 0, s.z); f.A.root.rotation.y = (trio() ? 0 : Math.PI) + s.yaw;
@@ -3755,7 +3780,7 @@ function updateOpp(dt) {
     tags[f.key].visible = mode === 'online' && phase !== 'idle' && !isDead(f); // pseudo au-dessus de la tête
     if (TOUR.on && f.slot === 2) f.A.root.visible = false; // le spectateur de la tournante n'est pas sur le terrain
     if (f === seen) { f.A.root.visible = false; tags[f.key].visible = false; }
-    f.A.setPose(s.pitch, s.draw, s.nock);
+    f.A.setPose(s.pitch, s.draw, s.nock); f.A.setLean(s.lean || 0);
     f.A.updateHead();
     updateLaser(f, isDead(f));
   }
@@ -4321,7 +4346,7 @@ function pres(patch) { Object.assign(myPres, patch); if (nroom) nroom.presence(p
 function netTick(now) {
   if (mode !== 'online' || !nroom || now - lastSendAt < NET_TICK) return;
   lastSendAt = Math.max(lastSendAt + NET_TICK, now - NET_TICK);
-  const p = { x: r3(me.x), z: r3(me.z), yaw: r3(me.yaw), pitch: r3(me.pitch), draw: Math.round(me.draw * 100) / 100, nock: me.reload <= 0, sil: silencer };
+  const p = { x: r3(me.x), z: r3(me.z), yaw: r3(me.yaw), pitch: r3(me.pitch), draw: Math.round(me.draw * 100) / 100, nock: me.reload <= 0, sil: silencer, ln: Math.round(me.lean * 20) / 20 };
   const key = JSON.stringify(p);
   if (key !== lastSent) { lastSent = key; pres(p); }
 }
@@ -4436,6 +4461,7 @@ function applyOppPres(p, f) {
   s.tz = k * clamp(num(p.z, M.spawnZ), -M.zlim, M.zlim);
   s.tyaw = M.lateral ? clamp(num(p.yaw, 0), -0.6, 0.6) : num(p.yaw, 0);
   s.tpitch = clamp(num(p.pitch, 0), -0.5, 0.8);
+  s.tlean = clamp(num(p.ln, 0), -1, 1);
   s.draw = clamp(num(p.draw, 0), 0, 1);
   s.nock = p.nock !== false;
   s.sil = p.sil === true; f.A.setSilencer(s.sil);
@@ -4920,6 +4946,8 @@ $('#nameIn').addEventListener('input', () => {
   pres({ nm: myName }); renderLobby();
 });
 // visser / dévisser le silencieux de l'arme à feu
+$('#leanL').addEventListener('click', () => leanTap(-1));
+$('#leanR').addEventListener('click', () => leanTap(1));
 $('#sil').addEventListener('click', () => {
   silencer = !silencer; $('#sil').setAttribute('aria-pressed', String(silencer)); meA.setSilencer(silencer); fpA.setSilencer(silencer);
   sfx('tick', 0.6);
