@@ -329,6 +329,7 @@ p{margin:0}
         <button data-map="island" aria-pressed="false">Île</button>
         <button data-map="jungle" aria-pressed="false">Jungle</button>
         <button data-map="wheat" aria-pressed="false">Champ de blé</button>
+        <button data-map="western" aria-pressed="false">Western</button>
       </div>
       <div class="opt wpnrow" hidden><span>Arme</span>
       <div class="seg wpnsel" role="group" aria-label="Arme en forêt">
@@ -499,6 +500,7 @@ p{margin:0}
       <button data-map="island" aria-pressed="false">Île</button>
       <button data-map="jungle" aria-pressed="false">Jungle</button>
       <button data-map="wheat" aria-pressed="false">Champ de blé</button>
+      <button data-map="western" aria-pressed="false">Western</button>
       <button data-map="forestXL" aria-pressed="false" disabled>Forêt géante<small>124 m, à 3</small></button>
     </div>
     <div class="opt wpnrow" hidden><span>Arme</span>
@@ -592,6 +594,7 @@ p{margin:0}
       <button data-map="island" aria-pressed="false">Île</button>
       <button data-map="jungle" aria-pressed="false">Jungle</button>
       <button data-map="wheat" aria-pressed="false">Champ de blé</button>
+      <button data-map="western" aria-pressed="false">Western</button>
       <button data-map="forestXL" aria-pressed="false" disabled>Forêt géante<small>124 m, à 3</small></button>
     </div>
     <div class="opt wpnrow" hidden><span>Arme</span>
@@ -911,7 +914,7 @@ const BIG2 = { forestB1: 'forestA1', forestB1s: 'forestA1s', forestB2: 'forestA2
 const BIGN = { 2: BIG2, 12: BIG12, 11: BIG11, 10: BIG10, 9: BIG9, 8: BIG8, 7: BIG7, 6: BIG6, 3: { forestB1: 'forestB1', forestB1s: 'forestB1s', forestB2: 'forestB2', forestB2s: 'forestB2s' }, 4: BIG4, 5: BIG5 }; // les boutons V1.2 / V2.2 -> la version pour n joueurs
 const isOG = k => !!MAP_FAMILY[baseMap(k)]; // les anciennes forêts (« OG ») : seulement à 2 joueurs
 // cartes « famille » de 2 à 12 joueurs (désert, île) : un bouton, et une version par nombre de joueurs (desert, desert3…desert12 ; island, island3…island12)
-const symFam = k => typeof k === 'string' ? ((/^(desert|island|jungle|wheat)(\d+)?$/.exec(k) || [])[1] || null) : null;
+const symFam = k => typeof k === 'string' ? ((/^(desert|island|jungle|wheat|western)(\d+)?$/.exec(k) || [])[1] || null) : null;
 const isSym = k => !!symFam(k);
 const famFor = (f, n) => n <= 2 ? f : f + Math.min(12, n);
 const bigFor = n => n >= 1 && n <= 12; // forêt classique et forêt petits troncs : de 2 à 12 joueurs (proposées aussi quand on attend seul dans le salon)
@@ -2065,10 +2068,188 @@ function buildWheat(N, F, O) {
   for (const [name, { geo, mat, m }] of parts) { const im = new T.InstancedMesh(geo, mat, m.length); m.forEach((x, i) => im.setMatrixAt(i, x)); im.instanceMatrix.needsUpdate = true; im.frustumCulled = false; G.add(im); }
   return G;
 }
+// ---------- western : village de l'Ouest au coucher du soleil. À 2, une rue principale qui relie les deux apparitions (château d'eau au milieu) ;
+// à plus de joueurs, une ville en étoile : chacun arrive par sa rue. Bâtiments à fausse façade et enseigne (saloon à balcon, banque en brique, écurie,
+// magasin général, shérif, hôtel), trottoirs en planches, tonneaux, caisses, chariots, abreuvoirs, barres d'attache, murets en adobe, clôtures, cactus,
+// virevoltants, mesas rouges au loin. Symétrique comme les autres cartes (une part recopiée par rotation), caisses cache-vues entre les apparitions.
+const westernGs = {};
+for (let n = 2; n <= 12; n++) {
+  const key = n === 2 ? 'western' : 'western' + n;
+  MAPS[key] = n === 2 ? { ...MAPS.forestA1, key, snow: false } : { ...MAPS[BIGN[n].forestB1], key, snow: false }; OBST[key] = [];
+  SYM_BUILD[key] = () => { if (westernGs[key]) return; westernGs[key] = buildWestern(n, MAPS[key], OBST[key]); };
+}
+SKY.western = skyTex([[0, '#1f3f7a'], [0.3, '#4f74b0'], [0.42, '#e3a06a'], [0.48, '#f6c27a'], [0.5, '#ffe3a6'], [0.53, '#c98a5a'], [1, '#5a3a2a']]);
+MAPLOOK.western = { fog: 0xe6b88a, near: 90, far: 420, hs: 0xffe2bc, hg: 0x7a5236, sun: 0xffc98a, sunI: 1.1 };
+for (let n = 3; n <= 12; n++) { SKY['western' + n] = SKY.western; MAPLOOK['western' + n] = MAPLOOK.western; }
+// enseignes peintes à la main
+const westSignTex = {};
+function westSign(text, bg, fg) {
+  if (westSignTex[text]) return westSignTex[text];
+  const c = document.createElement('canvas'); c.width = 512; c.height = 128; const g = c.getContext('2d');
+  g.fillStyle = bg; g.fillRect(0, 0, 512, 128);
+  for (let y = 0; y < 128; y += 21) { g.fillStyle = 'rgba(0,0,0,.12)'; g.fillRect(0, y, 512, 2); } // planches
+  g.strokeStyle = fg; g.lineWidth = 6; g.strokeRect(10, 10, 492, 108);
+  g.fillStyle = fg; g.font = `bold ${text.length > 9 ? 52 : 70}px Georgia, "Times New Roman", serif`; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.shadowColor = 'rgba(0,0,0,.35)'; g.shadowOffsetY = 3; g.fillText(text, 256, 68);
+  const t = new T.CanvasTexture(c); t.anisotropy = 4; return (westSignTex[text] = t);
+}
+function buildWestern(N, F, O) {
+  const G = new T.Group(); G.visible = false; scene.add(G);
+  const R = F.rlim, SR = F.spawnR || F.spawnZ, TW = 2 * Math.PI / N, HA = Math.PI / N;
+  let seed = 20261125 + N * 7919; const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
+  const rotP = (x, z, a) => [x * Math.cos(a) + z * Math.sin(a), -x * Math.sin(a) + z * Math.cos(a)];
+  const spawns = Array.from({ length: N }, (_, i) => rotP(0, SR, i * TW));
+  const W = 6.6, ROAD = W - 2.3, TOWER = 2.4, Rp = 9; // demi-largeur rue + trottoirs, demi-largeur de la chaussée, base du château d'eau, rayon de la place
+  const inSec = (x, z, m) => { const d = Math.hypot(x, z), a = Math.atan2(x, z); return d < R - m && (N === 2 ? z > m : Math.abs(a) * d < HA * d - m && (HA - Math.abs(a)) * d > m); };
+  const part = [];
+  const reach = q => q.hx !== undefined ? Math.hypot(q.hx, q.hz) : q.r;
+  // bâtiments des deux côtés de la rue (la rue de la part suit l'axe +z, de la place jusqu'à l'apparition)
+  const KIND = { saloon: { h: 7.2, wall: 0, sign: ['SALOON', '#2c1a10', '#f2c94c'] }, hotel: { h: 7, wall: 3, sign: ['HOTEL', '#e9dcc0', '#7a2a1c'] }, bank: { h: 5.4, wall: 4, sign: ['BANK', '#1c2b24', '#e8c34a'] },
+    store: { h: 5, wall: 2, sign: ['GENERAL STORE', '#e2d3ae', '#2a3a5a'] }, sheriff: { h: 4.6, wall: 1, sign: ['SHERIFF', '#3b2416', '#f1e4c4'] }, stable: { h: 5.6, wall: 5, sign: ['STABLE', '#5a2a1c', '#f0e2c0'] } };
+  const SIDES = { 1: ['saloon', 'bank', 'sheriff', 'store', 'hotel'], [-1]: ['hotel', 'store', 'stable', 'saloon', 'bank'] };
+  for (const side of [1, -1]) {
+    let z = Rp + 3 + (side > 0 ? 0 : 1.5), idx = 0;
+    while (z < SR - 9) {
+      const kind = SIDES[side][idx % 5], w = (kind === 'stable' ? 9.5 : kind === 'saloon' || kind === 'hotel' ? 9 : 7.6) + rnd() * 0.8, d = kind === 'stable' ? 9 : 8, cx = side * (W + d / 2), cz = z + w / 2, r = side > 0 ? -Math.PI / 2 : Math.PI / 2;
+      const ax = Math.cos(r), az = -Math.sin(r), fx = Math.sin(r), fz = Math.cos(r);
+      const ok = [[-1, -1], [1, -1], [-1, 1], [1, 1]].every(([a, b]) => { const x = cx + a * w / 2 * ax + b * d / 2 * fx, zz = cz + a * w / 2 * az + b * d / 2 * fz; return inSec(x, zz, 1); });
+      if (ok) { part.push({ t: 'bld', kind, x: cx, z: cz, r, ax, az, hx: w / 2, hz: d / 2, h: KIND[kind].h, v: rnd() }); idx++; z += w + 1.6 + rnd() * 2.2; } else z += 2;
+    }
+  }
+  const free = (x, z, rr, street) => { if (!inSec(x, z, rr + 0.8)) return false; if (Math.hypot(x, z - SR) < rr + 6) return false; if (Math.hypot(x, z) < Rp + TOWER + rr) return false;
+    const onStreetZone = Math.abs(x) < W + 9.5 && z > Rp - 2 && z < SR + 3;
+    if (street ? !(Math.abs(x) < ROAD - 0.3 && z > Rp && z < SR - 5) : onStreetZone) return false;
+    return part.every(q => Math.hypot(q.x - x, q.z - z) > reach(q) + rr + 1.2); };
+  const place = (t, n, mk, street = false) => { for (let i = 0, tries = 0; i < n && tries < n * 80; tries++) {
+    let x, z; if (street) { z = Rp + 2 + rnd() * (SR - Rp - 8); x = (rnd() > 0.5 ? 1 : -1) * (ROAD - 0.9 - rnd() * 1.2); } else { const a = (rnd() * 2 - 1) * HA, d = Math.sqrt(rnd()) * R; x = d * Math.sin(a); z = d * Math.cos(a); }
+    const q = mk(x, z); if (free(x, z, reach(q), street)) { part.push(q); i++; } } };
+  const along = () => [0, 1], ang = () => { const th = rnd() * Math.PI; return [Math.cos(th), -Math.sin(th)]; };
+  const L = Math.max(10, SR - Rp - 8);
+  // dans la rue : tonneaux, caisses, chariots garés, abreuvoirs, barres d'attache (le long des trottoirs)
+  place('barrel', Math.round(L / 6), (x, z) => ({ t: 'barrel', x, z, r: 0.36, v: rnd() }), true);
+  place('crate', Math.round(L / 12), (x, z) => ({ t: 'crate', x, z, ax: 1, az: 0, hx: 0.5, hz: 0.5, h: rnd() > 0.5 ? 1.9 : 0.95, v: rnd() }), true);
+  place('wagon', Math.max(1, Math.round(L / 22)), (x, z) => ({ t: 'wagon', x, z, ax: 0, az: 1, hx: 1.8, hz: 0.85, h: 1.5, v: rnd(), cov: rnd() > 0.5 }), true);
+  place('trough', Math.round(L / 18), (x, z) => ({ t: 'trough', x, z, ax: 0, az: 1, hx: 1.1, hz: 0.35, h: 0.75, v: rnd() }), true);
+  place('rail', Math.round(L / 14), (x, z) => ({ t: 'rail', x: Math.sign(x) * (ROAD - 0.25), z, ax: 0, az: 1, hx: 1.3, hz: 0.08, h: 1.05, v: rnd() }), true);
+  // autour de la ville : désert, murets en adobe, clôtures, chariots, tonneaux, cactus, rochers, virevoltants
+  const A = Math.PI * R * R / N;
+  place('adobe', Math.round(A * 0.0011), (x, z) => { const [ax, az] = ang(); return { t: 'adobe', x, z, ax, az, hx: 2 + rnd() * 2.2, hz: 0.3, h: 1.35 + (rnd() > 0.7 ? 0.9 : 0), v: rnd() }; });
+  place('wagon', Math.round(A * 0.0004), (x, z) => { const [ax, az] = ang(); return { t: 'wagon', x, z, ax, az, hx: 1.8, hz: 0.85, h: 1.5, v: rnd(), cov: rnd() > 0.4 }; });
+  place('fence', Math.round(A * 0.0005), (x, z) => { const [ax, az] = ang(); return { t: 'fence', x, z, ax, az, hx: 2.4 + Math.floor(rnd() * 3) * 1.2, hz: 0.08, h: 1.1, v: rnd() }; });
+  place('barrel', Math.round(A * 0.0012), (x, z) => ({ t: 'barrel', x, z, r: 0.36, v: rnd() }));
+  place('crate', Math.round(A * 0.0007), (x, z) => ({ t: 'crate', x, z, ax: 1, az: 0, hx: 0.5, hz: 0.5, h: rnd() > 0.6 ? 1.9 : 0.95, v: rnd() }));
+  place('cactus', Math.round(A * 0.0012), (x, z) => ({ t: 'cactus', x, z, r: 0.27, h: 2.3 + rnd() * 1.1, v: rnd() }));
+  place('rock', Math.round(A * 0.0008), (x, z) => ({ t: 'rock', x, z, r: 0.8 + rnd() * 0.7, v: rnd() }));
+  place('tumble', Math.round(A * 0.0006), (x, z) => ({ t: 'tumble', x, z, r: 0.45 + rnd() * 0.2, v: rnd() }));
+  let all = []; for (let k = 0; k < N; k++) for (const q of part) { const [x, z] = rotP(q.x, q.z, k * TW), o = { ...q, x, z }; if (q.ax !== undefined) [o.ax, o.az] = rotP(q.ax, q.az, k * TW); if (q.r !== undefined && q.t === 'bld') o.r = q.r - k * TW; all.push(o); }
+  all.push({ t: 'tower', x: 0, z: 0, ax: 1, az: 0, hx: TOWER, hz: TOWER, h: 3.4 });
+  const solidT = { bld: 1, crate: 1, wagon: 1, trough: 1, rail: 1, adobe: 1, fence: 1, tower: 1, blk: 1 };
+  const asObst = q => solidT[q.t] ? { type: 'box', x: q.x, z: q.z, ax: q.ax, az: q.az, hx: q.hx, hz: q.hz, h: q.h, r: Math.hypot(q.hx, q.hz) } : q.t === 'barrel' ? { type: 'trunk', x: q.x, z: q.z, r: 0.36, h: 1.05 } : q.t === 'cactus' ? { type: 'trunk', x: q.x, z: q.z, r: 0.27, h: q.h } : q.t === 'rock' ? { type: 'rock', x: q.x, z: q.z, r: q.r * 0.95, cy: q.r * 0.3, sy: 0.7 } : null;
+  const P = new T.Vector3(), sees = (a, b, list) => { const d = Math.hypot(b[0] - a[0], b[1] - a[1]), m = Math.ceil(d / 0.4); for (const y of [1.2, 1.62]) { let hid = false; for (let i = 1; i < m && !hid; i++) { const f = i / m; P.set(a[0] + (b[0] - a[0]) * f, y, a[1] + (b[1] - a[1]) * f); for (const o of list) if (Math.abs(o.x - P.x) < o.r + 0.1 && Math.abs(o.z - P.z) < o.r + 0.1 && hitObstacle(o, P, 0)) { hid = true; break; } } if (!hid) return true; } return false; };
+  // cache-vues : une pile de caisses en travers de chaque ligne entre deux apparitions qui se voient
+  for (let it = 0; it < 3; it++) {
+    const list = all.map(asObst).filter(Boolean); let added = false;
+    for (let j = 1; j < N; j++) if (sees(spawns[0], spawns[j], list)) {
+      const mx = (spawns[0][0] + spawns[j][0]) / 2, mz = (spawns[0][1] + spawns[j][1]) / 2, dx = spawns[j][0] - spawns[0][0], dz = spawns[j][1] - spawns[0][1], dl = Math.hypot(dx, dz), px = -dz / dl, pz = dx / dl;
+      for (let k = 0; k < N; k++) { const [x, z] = rotP(mx, mz, k * TW), [ax, az] = rotP(px, pz, k * TW); if (all.some(q => q.t === 'blk' && Math.hypot(q.x - x, q.z - z) < 1)) continue; all = all.filter(q => q.t === 'bld' || q.t === 'tower' || q.t === 'blk' || Math.hypot(q.x - x, q.z - z) > reach(q) + 3.5); all.push({ t: 'blk', x, z, ax, az, hx: 2.1, hz: 1.05, h: 2.85, v: 0.5 }); }
+      added = true;
+    }
+    if (!added) break;
+  }
+  for (const q of all) { const o = asObst(q); if (o) O.push(o); } gridObstacles(O);
+  // sol : terre ocre, rues plus sombres avec ornières, désert autour ; au loin, plateau puis mesas rouges
+  const inStreet = (x, z) => { if (Math.hypot(x, z) < Rp + 3) return 1; for (let k = 0; k < N; k++) { const [lx, lz] = rotP(x, z, -k * TW); if (lz > 0 && lz < SR + 4 && Math.abs(lx) < W) return Math.abs(lx) < ROAD ? (Math.abs(Math.abs(lx) - 1.4) < 0.35 ? 3 : 2) : 4; } return 0; };
+  const S = R + 220, gGeo = new T.PlaneGeometry(S * 2, S * 2, 150, 150).rotateX(-Math.PI / 2), gp = gGeo.attributes.position, gc = [], sc = new T.Color();
+  for (let i = 0; i < gp.count; i++) { const x = gp.getX(i), z = gp.getZ(i), d = Math.hypot(x, z), out = Math.max(0, d - R - 10), st = d < R ? inStreet(x, z) : 0;
+    gp.setY(i, out > 0 ? Math.min(6, out * 0.05) * (0.5 + 0.5 * Math.sin(x * 0.03 + z * 0.02)) : 0);
+    if (st === 3) sc.setHSL(0.07, 0.35, 0.33); else if (st === 2 || st === 1) sc.setHSL(0.075, 0.38, 0.42 + 0.03 * Math.sin(x * 1.3 + z)); else if (st === 4) sc.setHSL(0.07, 0.3, 0.36);
+    else sc.setHSL(0.075 + 0.01 * Math.sin(x * 0.2), 0.48, 0.55 + 0.05 * Math.sin(x * 0.4 + z * 0.33) - Math.min(0.12, out * 0.002));
+    gc.push(sc.r, sc.g, sc.b); }
+  gGeo.setAttribute('color', new T.Float32BufferAttribute(gc, 3)); gGeo.computeVertexNormals();
+  G.add(new T.Mesh(gGeo, new T.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 1 })));
+  // ---- instances
+  const parts = new Map(), D = new T.Object3D(), M = new T.Matrix4(), RX = new T.Matrix4();
+  const put = (name, geo, mat, m) => { if (!parts.has(name)) parts.set(name, { geo, mat, m: [] }); parts.get(name).m.push(m.clone()); };
+  const box = new T.BoxGeometry(1, 1, 1).translate(0, 0.5, 0), plane = new T.PlaneGeometry(1, 1).translate(0, 0.5, 0);
+  const wallMs = [std(0x8b6446), std(0xa07850), std(0xc9b48c), std(0x4f7f7a), std(0x8a4b38), std(0x8e3b2f)], trimM = std(0xe8dcc0), darkM = std(0x2a2018), plankM = std(0x7a5a3c), plankM2 = std(0x5e4430), roofM = std(0x4a3a2e);
+  const winM = new T.MeshStandardMaterial({ color: 0x3a2a18, emissive: 0xffa040, emissiveIntensity: 0.55, roughness: 0.5 }); // fenêtres éclairées
+  const signMs = {}; for (const k in KIND) signMs[k] = new T.MeshStandardMaterial({ map: westSign(...KIND[k].sign), roughness: 0.8 });
+  // une boîte dans le repère d'un objet (x : le long, z : vers l'avant), avec une inclinaison éventuelle autour de son axe x
+  const B = (q, name, geo, mat, lx, ly, lz, w, h, d, rx = 0) => {
+    const ax = q.ax, az = q.az, fx = -az, fz = ax; // avant : perpendiculaire à l'axe local x
+    D.position.set(q.x + lx * ax + lz * fx, ly, q.z + lx * az + lz * fz); D.rotation.set(0, Math.atan2(-az, ax), 0); D.scale.set(1, 1, 1); D.updateMatrix();
+    M.copy(D.matrix); if (rx) M.multiply(RX.makeRotationX(rx)); M.multiply(RX.makeScale(w, h, d)); put(name, geo, mat, M);
+  };
+  const cyl = new T.CylinderGeometry(1, 1, 1, 12).translate(0, 0.5, 0), cylH = new T.CylinderGeometry(1, 1, 1, 12, 1, false, 0, Math.PI).rotateZ(Math.PI / 2).translate(0, 0, 0);
+  const wheel = new T.TorusGeometry(0.55, 0.06, 6, 18), canvasM = std(0xe9e0c8, { side: T.DoubleSide }), metalM = std(0x2b2b2e), waterM = new T.MeshStandardMaterial({ color: 0x4a7f9a, roughness: 0.15 });
+  const cactM = std(0x56803e), cactM2 = std(0x466e32), rockG = new T.DodecahedronGeometry(1, 0), rockM = std(0xa0563a), tumbleM = new T.MeshBasicMaterial({ color: 0x8a6a3e, wireframe: true }), tumbleG = new T.IcosahedronGeometry(1, 1), adobeM = std(0xc9935e);
+  for (const q of all) {
+    const v = q.v || 0;
+    if (q.t === 'bld') {
+      const K = KIND[q.kind], w = q.hx * 2, d = q.hx !== undefined ? q.hz * 2 : 8, h = q.h, wm = wallMs[K.wall], front = d / 2;
+      // l'objet du bâtiment : x le long de la rue, z vers la rue (la façade)
+      B(q, 'w' + K.wall, box, wm, 0, 0, 0, w, h, d);
+      if (q.kind === 'stable') { // écurie : toit à deux pans, grande porte à croix, porte du grenier
+        for (const sg of [1, -1]) B(q, 'roof', box, roofM, 0, h - 0.1, sg * d / 4, w + 0.4, 0.18, d / 2 + 0.6, sg * -0.5);
+        B(q, 'dk', box, darkM, 0, 0, front + 0.02, 3.6, 3.4, 0.08);
+        for (const sg of [-1, 1]) B(q, 'tr', box, trimM, sg * 1.8, 0, front + 0.07, 0.18, 3.4, 0.08); B(q, 'tr', box, trimM, 0, 3.35, front + 0.07, 3.8, 0.18, 0.08);
+        B(q, 'dk', box, darkM, 0, 3.9, front + 0.02, 1.4, 1.1, 0.08); B(q, 'sg_stable', plane, signMs.stable, 0, h - 1.1, front + 0.1, w * 0.6, 0.9, 1);
+      } else { // fausse façade plus haute que le toit, corniche, enseigne ; toit plat en planches sombres, bordé, un peu en pente vers l'arrière
+        B(q, 'roof', box, roofM, 0, h, -0.2, w - 0.1, 0.16, d - 0.4, 0.04); for (const sg of [-1, 1]) B(q, 'pl2', box, plankM2, sg * (w / 2 - 0.08), h, -0.2, 0.16, 0.45, d - 0.3); B(q, 'pl2', box, plankM2, 0, h, -d / 2 + 0.08, w, 0.45, 0.16);
+        B(q, 'w' + K.wall, box, wm, 0, 0, front, w + 0.2, h + 1.7, 0.3); B(q, 'tr', box, trimM, 0, h + 1.6, front + 0.05, w + 0.6, 0.22, 0.5);
+        B(q, 'tr', box, trimM, 0, h + 1.3, front + 0.18, w + 0.3, 0.1, 0.1);
+        B(q, 'sg_' + q.kind, plane, signMs[q.kind], 0, h + 0.15, front + 0.17, w * 0.74, w * 0.74 / 4, 1);
+        for (const sg of [-1, 1]) B(q, 'tr', box, trimM, sg * (w / 2 + 0.05), 0, front + 0.05, 0.25, h + 1.7, 0.35); // montants d'angle
+      }
+      // trottoir en planches, porche (toit, poteaux), porte, fenêtres éclairées
+      B(q, 'pl', box, plankM, 0, 0, front + 1.15, w, 0.24, 2.3); B(q, 'pl2', box, plankM2, 0, 0.24, front + 2.28, w, 0.04, 0.06);
+      const tall = h > 6.5;
+      if (q.kind === 'saloon' || tall) { // balcon à l'étage avec balustrade, et petit toit au-dessus
+        B(q, 'pl', box, plankM, 0, 3.4, front + 1.15, w, 0.16, 2.3);
+        B(q, 'pl2', box, plankM2, 0, 4.35, front + 2.25, w, 0.08, 0.08); for (let i = 0; i <= 8; i++) B(q, 'pl2', box, plankM2, -w / 2 + i * w / 8, 3.56, front + 2.25, 0.06, 0.8, 0.06);
+        B(q, 'roof', box, roofM, 0, 6.25, front + 1.0, w, 0.14, 2.0, -0.18);
+      } else B(q, 'roof', box, roofM, 0, 3.15, front + 1.15, w, 0.14, 2.4, -0.2);
+      for (const sg of [-1, 1]) B(q, 'post', box, plankM2, sg * (w / 2 - 0.25), 0.24, front + 2.15, 0.16, tall || q.kind === 'saloon' ? 6.0 : 2.95, 0.16);
+      if (q.kind !== 'stable') {
+        B(q, 'dk', box, darkM, 0, 0.24, front + 0.17, 1.5, 2.35, 0.06); B(q, 'tr', box, trimM, 0, 2.59, front + 0.18, 1.8, 0.12, 0.06);
+        if (q.kind === 'saloon') for (const sg of [-1, 1]) B(q, 'w1', box, wallMs[1], sg * 0.38, 0.9, front + 0.26, 0.7, 1.1, 0.05); // portes battantes
+        if (q.kind === 'bank') for (const sg of [-1, 1]) B(q, 'col', cyl, trimM, sg * 1.25, 0.24, front + 0.45, 0.22, 3.0, 0.22); // colonnes de la banque
+        for (const sg of [-1, 1]) { const wx = sg * Math.min(w * 0.31, w / 2 - 1.2); B(q, 'win', box, winM, wx, 1.0, front + 0.17, 1.25, 1.35, 0.05); B(q, 'tr', box, trimM, wx, 0.95, front + 0.18, 1.45, 0.1, 0.06); B(q, 'tr', box, trimM, wx, 2.35, front + 0.18, 1.45, 0.1, 0.06); }
+        if (tall) for (const wx of [-w * 0.3, 0, w * 0.3]) { B(q, 'win', box, winM, wx, 4.35, front + 0.17, 1.0, 1.3, 0.05); B(q, 'tr', box, trimM, wx, 5.65, front + 0.18, 1.2, 0.1, 0.06); }
+      }
+    } else if (q.t === 'barrel') { const p = { ...q, ax: 1, az: 0 }; B(p, 'bar', cyl, plankM, 0, 0, 0, 0.36, 1.0, 0.36); for (const y of [0.18, 0.78]) B(p, 'ring', cyl, metalM, 0, y, 0, 0.375, 0.06, 0.375); B(p, 'bart', cyl, plankM2, 0, 1.0, 0, 0.33, 0.02, 0.33); }
+    else if (q.t === 'crate' || q.t === 'blk') { const lv = Math.round(q.h / 0.95), nx = Math.round(q.hx * 2), nz = Math.round(q.hz * 2);
+      for (let l = 0; l < lv; l++) for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) { const lx = (i - (nx - 1) / 2) + (l % 2) * 0.08, lz = j - (nz - 1) / 2; B(q, (i + j + l) % 2 ? 'cr1' : 'cr2', box, (i + j + l) % 2 ? wallMs[1] : wallMs[2], lx, l * 0.95, lz, 0.94, 0.92, 0.94); B(q, 'crx', box, plankM2, lx, l * 0.95 + 0.44, lz + 0.47, 0.96, 0.1, 0.02); } }
+    else if (q.t === 'wagon') { // chariot : plateau, ridelles, quatre roues ; certains bâchés
+      B(q, 'pl', box, plankM, 0, 0.75, 0, 3.4, 0.14, 1.5); for (const sg of [-1, 1]) B(q, 'pl2', box, plankM2, 0, 0.89, sg * 0.72, 3.4, 0.5, 0.08); for (const sg of [-1, 1]) B(q, 'pl2', box, plankM2, sg * 1.68, 0.89, 0, 0.08, 0.5, 1.5);
+      for (const [wx, wz] of [[-1.2, -0.85], [1.2, -0.85], [-1.2, 0.85], [1.2, 0.85]]) { const p = q; D.position.set(p.x + wx * p.ax - wz * p.az, 0.58, p.z + wx * p.az + wz * p.ax); D.rotation.set(0, Math.atan2(-p.az, p.ax), 0); D.scale.setScalar(1); D.updateMatrix(); put('wheel', wheel, plankM2, D.matrix); for (let s2 = 0; s2 < 3; s2++) { M.copy(D.matrix).multiply(RX.makeRotationZ(s2 * 1.047)).multiply(RX.makeScale(0.05, 1.05, 0.05)).multiply(RX.makeTranslation(0, -0.5, 0)); put('spoke', box, plankM2, M); } }
+      B(q, 'pl2', box, plankM2, 2.4, 0.75, 0, 1.6, 0.08, 0.1);
+      if (q.cov) { D.position.set(q.x, 1.05, q.z); D.rotation.set(0, Math.atan2(-q.az, q.ax), 0); D.scale.set(3.0, 1.15, 0.85); D.updateMatrix(); put('cov', cylH, canvasM, D.matrix); } }
+    else if (q.t === 'trough') { B(q, 'pl', box, plankM, 0, 0, 0, 2.2, 0.7, 0.7); B(q, 'wat', box, waterM, 0, 0.62, 0, 2.0, 0.06, 0.55); }
+    else if (q.t === 'rail' || q.t === 'fence') { const n = Math.max(1, Math.round(q.hx * 2 / 1.2)); for (let i = 0; i <= n; i++) B(q, 'post', box, plankM2, -q.hx + i * q.hx * 2 / n, 0, 0, 0.14, q.h + 0.1, 0.14); for (const y of q.t === 'rail' ? [0.95] : [0.45, 0.9]) B(q, 'pl', box, plankM, 0, y, 0, q.hx * 2, 0.1, 0.08); }
+    else if (q.t === 'adobe') { B(q, 'adobe', box, adobeM, 0, 0, 0, q.hx * 2, q.h, q.hz * 2); B(q, 'adobe', box, adobeM, -q.hx * 0.3, q.h, 0, q.hx * 1.1, 0.14, q.hz * 2 - 0.05); }
+    else if (q.t === 'cactus') { const p = { ...q, ax: Math.cos(v * 6.28), az: -Math.sin(v * 6.28) }; B(p, 'cb', cyl, cactM, 0, 0, 0, 0.22, q.h, 0.22);
+      for (const [sx, y0, len] of v > 0.4 ? [[1, q.h * 0.42, q.h * 0.32], [-1, q.h * 0.55, q.h * 0.26]] : [[1, q.h * 0.5, q.h * 0.3]]) { B(p, 'ce', box, cactM2, sx * 0.36, y0 - 0.12, 0, 0.5, 0.24, 0.24); B(p, 'ca', cyl, cactM2, sx * 0.55, y0 - 0.06, 0, 0.13, len, 0.13); } }
+    else if (q.t === 'rock') { D.position.set(q.x, q.r * 0.3, q.z); D.rotation.set(v, v * 4, v * 2); D.scale.set(q.r, q.r * 0.7, q.r * 0.9); D.updateMatrix(); put('rock', rockG, rockM, D.matrix); }
+    else if (q.t === 'tumble') { D.position.set(q.x, q.r, q.z); D.rotation.set(v * 3, v * 5, 0); D.scale.setScalar(q.r); D.updateMatrix(); put('tumble', tumbleG, tumbleM, D.matrix); }
+    else if (q.t === 'tower') { // château d'eau : remise en planches, quatre pieds, réservoir à cerclages, toit conique
+      B(q, 'w0', box, wallMs[0], 0, 0, 0, TOWER * 2, 3.4, TOWER * 2); B(q, 'dk', box, darkM, 0, 0, TOWER + 0.02, 1.3, 2.3, 0.06);
+      for (const [lx, lz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) B(q, 'post', box, plankM2, lx * (TOWER - 0.2), 3.4, lz * (TOWER - 0.2), 0.3, 4.2, 0.3);
+      D.position.set(0, 7.6, 0); D.rotation.set(0, 0, 0); D.scale.set(2.6, 3.4, 2.6); D.updateMatrix(); put('tank', cyl, plankM, D.matrix);
+      for (const y of [8.2, 9.6, 10.6]) { D.position.set(0, y, 0); D.scale.set(2.63, 0.08, 2.63); D.updateMatrix(); put('ring', cyl, metalM, D.matrix); }
+      const cone = new T.Mesh(new T.ConeGeometry(2.9, 1.8, 12), roofM); cone.position.set(0, 11.9, 0); G.add(cone); }
+  }
+  // au loin : mesas rouges à bandes (décor)
+  const mesaA = std(0xa4532f), mesaB = std(0xc06a3c), mesaC = std(0x8a4428);
+  for (let i = 0, n = 9 + N; i < n; i++) { const a = i / n * Math.PI * 2 + rnd() * 0.3, d = R + 90 + rnd() * 110, rr = 14 + rnd() * 26, hh = 18 + rnd() * 22, x = Math.sin(a) * d, z = Math.cos(a) * d;
+    D.rotation.set(0, rnd() * 6, 0); for (const [k, f, m] of [[0, 1, mesaA], [0.45, 0.88, mesaB], [0.8, 0.82, mesaC]]) { D.position.set(x, hh * k, z); D.scale.set(rr * f, hh * (k ? 0.36 : 0.45), rr * f * (0.8 + rnd() * 0.3)); D.updateMatrix(); put('mesa' + k, new T.CylinderGeometry(1, 1.12, 1, 9).translate(0, 0.5, 0), m, D.matrix); } }
+  for (const [name, { geo, mat, m }] of parts) { const im = new T.InstancedMesh(geo, mat, m.length); m.forEach((x, i) => im.setMatrixAt(i, x)); im.instanceMatrix.needsUpdate = true; im.frustumCulled = false; G.add(im); }
+  return G;
+}
 function applyMap(k) {
   if (SYM_BUILD[baseMap(k)]) SYM_BUILD[baseMap(k)]();
   mapKey = k; map = MAPS[k]; obstacles = OBST[k];
-  canyonG.visible = k === 'canyon'; desertG.visible = k === 'desert'; for (const [dk, dg] of Object.entries(desertGs)) dg.visible = dk === k; for (const [ik, ig] of Object.entries(islandGs)) ig.visible = ik === k; for (const [jk, jg] of Object.entries(jungleGs)) jg.visible = jk === k; for (const [wk, wg] of Object.entries(wheatGs)) wg.visible = wk === k; forestV2G.visible = baseMap(k) === 'forestV2'; forestV3G.visible = baseMap(k) === 'forestV3'; forestB1G.visible = baseMap(k) === 'forestB1'; forestB2G.visible = baseMap(k) === 'forestB2'; forestC1G.visible = baseMap(k) === 'forestC1'; forestC2G.visible = baseMap(k) === 'forestC2'; forestF1G.visible = baseMap(k) === 'forestF1'; forestF2G.visible = baseMap(k) === 'forestF2'; forestK1G.visible = baseMap(k) === 'forestK1'; forestK2G.visible = baseMap(k) === 'forestK2'; forestL1G.visible = baseMap(k) === 'forestL1'; forestL2G.visible = baseMap(k) === 'forestL2'; forestM1G.visible = baseMap(k) === 'forestM1'; forestM2G.visible = baseMap(k) === 'forestM2'; forestR1G.visible = baseMap(k) === 'forestR1'; forestR2G.visible = baseMap(k) === 'forestR2'; forestW1G.visible = baseMap(k) === 'forestW1'; forestW2G.visible = baseMap(k) === 'forestW2'; forestY1G.visible = baseMap(k) === 'forestY1'; forestY2G.visible = baseMap(k) === 'forestY2'; forestJ1G.visible = baseMap(k) === 'forestJ1'; forestJ2G.visible = baseMap(k) === 'forestJ2'; forestA1G.visible = baseMap(k) === 'forestA1'; forestA2G.visible = baseMap(k) === 'forestA2'; forestT1G.visible = baseMap(k) === 'forestT1'; forestT2G.visible = baseMap(k) === 'forestT2'; forestQ1G.visible = baseMap(k) === 'forestQ1'; forestQ2G.visible = baseMap(k) === 'forestQ2'; forestP1G.visible = baseMap(k) === 'forestP1'; forestP2G.visible = baseMap(k) === 'forestP2'; forestH1G.visible = baseMap(k) === 'forestH1'; forestH2G.visible = baseMap(k) === 'forestH2'; forestS1G.visible = baseMap(k) === 'forestS1'; forestS2G.visible = baseMap(k) === 'forestS2'; forestO1G.visible = baseMap(k) === 'forestO1'; forestO2G.visible = baseMap(k) === 'forestO2'; forestN1G.visible = baseMap(k) === 'forestN1'; forestN2G.visible = baseMap(k) === 'forestN2'; forestD1G.visible = baseMap(k) === 'forestD1'; forestD2G.visible = baseMap(k) === 'forestD2'; forestE1G.visible = baseMap(k) === 'forestE1'; forestE2G.visible = baseMap(k) === 'forestE2'; forestZ1G.visible = baseMap(k) === 'forestZ1'; forestZ2G.visible = baseMap(k) === 'forestZ2'; SNOW.set(isSnow(k)); snowFx.visible = isSnow(k); clearFeet(); bigForestG.visible = k === 'forestXL';
+  canyonG.visible = k === 'canyon'; desertG.visible = k === 'desert'; for (const [dk, dg] of Object.entries(desertGs)) dg.visible = dk === k; for (const [ik, ig] of Object.entries(islandGs)) ig.visible = ik === k; for (const [jk, jg] of Object.entries(jungleGs)) jg.visible = jk === k; for (const [wk, wg] of Object.entries(wheatGs)) wg.visible = wk === k; for (const [xk, xg] of Object.entries(westernGs)) xg.visible = xk === k; forestV2G.visible = baseMap(k) === 'forestV2'; forestV3G.visible = baseMap(k) === 'forestV3'; forestB1G.visible = baseMap(k) === 'forestB1'; forestB2G.visible = baseMap(k) === 'forestB2'; forestC1G.visible = baseMap(k) === 'forestC1'; forestC2G.visible = baseMap(k) === 'forestC2'; forestF1G.visible = baseMap(k) === 'forestF1'; forestF2G.visible = baseMap(k) === 'forestF2'; forestK1G.visible = baseMap(k) === 'forestK1'; forestK2G.visible = baseMap(k) === 'forestK2'; forestL1G.visible = baseMap(k) === 'forestL1'; forestL2G.visible = baseMap(k) === 'forestL2'; forestM1G.visible = baseMap(k) === 'forestM1'; forestM2G.visible = baseMap(k) === 'forestM2'; forestR1G.visible = baseMap(k) === 'forestR1'; forestR2G.visible = baseMap(k) === 'forestR2'; forestW1G.visible = baseMap(k) === 'forestW1'; forestW2G.visible = baseMap(k) === 'forestW2'; forestY1G.visible = baseMap(k) === 'forestY1'; forestY2G.visible = baseMap(k) === 'forestY2'; forestJ1G.visible = baseMap(k) === 'forestJ1'; forestJ2G.visible = baseMap(k) === 'forestJ2'; forestA1G.visible = baseMap(k) === 'forestA1'; forestA2G.visible = baseMap(k) === 'forestA2'; forestT1G.visible = baseMap(k) === 'forestT1'; forestT2G.visible = baseMap(k) === 'forestT2'; forestQ1G.visible = baseMap(k) === 'forestQ1'; forestQ2G.visible = baseMap(k) === 'forestQ2'; forestP1G.visible = baseMap(k) === 'forestP1'; forestP2G.visible = baseMap(k) === 'forestP2'; forestH1G.visible = baseMap(k) === 'forestH1'; forestH2G.visible = baseMap(k) === 'forestH2'; forestS1G.visible = baseMap(k) === 'forestS1'; forestS2G.visible = baseMap(k) === 'forestS2'; forestO1G.visible = baseMap(k) === 'forestO1'; forestO2G.visible = baseMap(k) === 'forestO2'; forestN1G.visible = baseMap(k) === 'forestN1'; forestN2G.visible = baseMap(k) === 'forestN2'; forestD1G.visible = baseMap(k) === 'forestD1'; forestD2G.visible = baseMap(k) === 'forestD2'; forestE1G.visible = baseMap(k) === 'forestE1'; forestE2G.visible = baseMap(k) === 'forestE2'; forestZ1G.visible = baseMap(k) === 'forestZ1'; forestZ2G.visible = baseMap(k) === 'forestZ2'; SNOW.set(isSnow(k)); snowFx.visible = isSnow(k); clearFeet(); bigForestG.visible = k === 'forestXL';
   skyMat.map = SKY[k]; skyMat.needsUpdate = true;
   const L = MAPLOOK[k];
   scene.fog.color.setHex(L.fog); scene.fog.near = L.near; scene.fog.far = L.far;
@@ -3647,7 +3828,13 @@ const me = { x: 0, z: 12, vx: 0, vz: 0, yaw: 0, pitch: 0.04, draw: 0, drawing: f
 // se pencher (comme dans Rainbow Six Siege) : derrière un arbre, la tête, les bras et l'arme se décalent sur le côté ; les jambes ne bougent pas
 const LEAN_X = 0.45, LEAN_ROLL = 0.24, LEAN_NEAR = 3; // décalage des yeux (m), inclinaison de la vue (rad), distance max au tronc (m)
 let leanNear = false;
-function nearTrunk() { for (const o of nearObstacles(me.x, me.z)) if (o.type === 'trunk' && Math.hypot(o.x - me.x, o.z - me.z) - o.r < LEAN_NEAR) return true; return false; }
+function nearTrunk() { // un tronc, ou un mur assez haut pour s'abriter (bâtiment, pile de bottes…)
+  for (const o of nearObstacles(me.x, me.z)) {
+    if (o.type === 'trunk' && Math.hypot(o.x - me.x, o.z - me.z) - o.r < LEAN_NEAR) return true;
+    if (o.type === 'box' && o.h >= 1.6) { const dx = me.x - o.x, dz = me.z - o.z, lx = Math.abs(dx * o.ax + dz * o.az) - o.hx, lz = Math.abs(-dx * o.az + dz * o.ax) - o.hz; if (Math.hypot(Math.max(lx, 0), Math.max(lz, 0)) < LEAN_NEAR) return true; }
+  }
+  return false;
+}
 // jusqu'où on peut se pencher sans mettre la tête dans le tronc (on essaie de moins en moins loin)
 const leanP = new T.Vector3();
 function leanRoom(dir) { const rx = Math.cos(me.yaw), rz = -Math.sin(me.yaw); for (const f of [1, 0.75, 0.5, 0.25]) { leanP.set(me.x + rx * LEAN_X * f * dir, 1.62, me.z + rz * LEAN_X * f * dir); if (!inObstacle(leanP, 0.15)) return f * dir; } return 0; }
