@@ -2263,7 +2263,8 @@ function makeArcher(cloth, hoodCol, owner, fpv = false) { // fpv : seulement les
   const clothM = std(cloth, { roughness: .9 }), hoodM = std(hoodCol, { roughness: .9 });
   const dark = std(0x2b2228), skin = std(0xd8a47c), wood = std(0x6e3f1f);
   const legs = [];
-  for (const sx of [-0.11, 0.11]) { const l = new T.Mesh(new T.BoxGeometry(0.15 * BODY_W, 0.86, 0.17 * BODY_W), dark); l.position.set(sx * BODY_W, 0.43, 0); root.add(l); legs.push(l); }
+  const hips = []; // chaque jambe tourne autour de la hanche quand on marche
+  for (const sx of [-0.11, 0.11]) { const hp = new T.Group(); hp.position.set(sx * BODY_W, 0.86, 0); root.add(hp); hips.push(hp); const l = new T.Mesh(new T.BoxGeometry(0.15 * BODY_W, 0.86, 0.17 * BODY_W), dark); l.position.set(0, -0.43, 0); hp.add(l); legs.push(l); }
   const torso = new T.Mesh(new T.CylinderGeometry(0.21, 0.29, 0.66, 7), clothM); torso.position.y = 1.08; torso.scale.set(BODY_W, 1, BODY_W); root.add(torso);
   const belt = new T.Mesh(new T.CylinderGeometry(0.235, 0.24, 0.07, 7), dark); belt.position.y = 0.98; belt.scale.set(BODY_W, 1, BODY_W); root.add(belt);
   const upper = new T.Group(); upper.position.y = 1.32; root.add(upper);
@@ -2920,24 +2921,26 @@ function makeArcher(cloth, hoodCol, owner, fpv = false) { // fpv : seulement les
   if (fpv) for (const [m] of heatParts) if (m !== armL.m && m !== armR.m) m.visible = false;
   // skin « Tung x3 » : un tronc de bois avec un visage, des jambes fines et de grands pieds nus ; ses couleurs ne changent jamais.
   // Les pièces du personnage de base restent là, invisibles, comme zone de touche : même taille pour tous les joueurs, quel que soit le skin
-  const tungG = new T.Group(); tungG.visible = false; root.add(tungG); let tungOn = false;
+  const tungG = new T.Group(); tungG.visible = false; root.add(tungG); let tungOn = false; const tungHips = [];
   if (!fpv) {
     const tp = (geo, mat, x, y, z, sx = 1, sy = 1, sz = 1) => { const m = new T.Mesh(geo, mat); m.position.set(x, y, z); m.scale.set(sx, sy, sz); tungG.add(m); return m; };
     const log = tp(new T.CylinderGeometry(0.205, 0.215, 1.0, 14, 3), TUNG.wood, 0, 1.36, 0);                     // le tronc : corps et tête
     tp(new T.CylinderGeometry(0.2, 0.2, 0.012, 14), TUNG.end, 0, 1.866, 0);                                          // le bois coupé, en haut
     for (const sx of [-1, 1]) {
+      const th = new T.Group(); th.position.y = 0.83; tungG.add(th); tungHips.push(th);
+      const tl = (geo, mat, x, y, z, a = 1, b = 1, c = 1) => { const m = tp(geo, mat, x, y - 0.83, z, a, b, c); th.add(m); return m; }; // pièce de jambe, rattachée à la hanche
       tp(new T.SphereGeometry(0.068, 12, 10), TUNG.eye, sx * 0.08, 1.625, -0.176, 1, 1.08, 0.55);                 // grands yeux ronds, grands ouverts
       tp(new T.SphereGeometry(0.031, 10, 8), TUNG.iris, sx * 0.075, 1.618, -0.208, 1, 1, 0.45);                    // pupilles
       const brow = tp(new T.BoxGeometry(0.11, 0.018, 0.03), TUNG.mouth, sx * 0.082, 1.715, -0.198); brow.rotation.z = -sx * 0.18; // sourcils levés
-      tp(new T.CylinderGeometry(0.036, 0.03, 0.8, 8), TUNG.wood, sx * 0.085, 0.43, 0);                             // jambes fines
-      tp(new T.SphereGeometry(0.044, 10, 8), TUNG.wood, sx * 0.085, 0.43, -0.006, 1, 0.8, 1);                    // genoux
-      const foot = tp(new T.SphereGeometry(0.075, 12, 8), TUNG.wood, sx * 0.095, 0.035, -0.07, 0.95, 0.5, 1.75);  // grands pieds nus
-      for (let i = 0; i < 4; i++) tp(new T.SphereGeometry(0.018, 6, 5), TUNG.wood, sx * (0.06 + i * 0.022), 0.03, -0.185 + Math.abs(i - 1.5) * 0.01, 1, 0.8, 1.2); // orteils
+      tl(new T.CylinderGeometry(0.036, 0.03, 0.8, 8), TUNG.wood, sx * 0.085, 0.43, 0);                             // jambes fines
+      tl(new T.SphereGeometry(0.044, 10, 8), TUNG.wood, sx * 0.085, 0.43, -0.006, 1, 0.8, 1);                    // genoux
+      const foot = tl(new T.SphereGeometry(0.075, 12, 8), TUNG.wood, sx * 0.095, 0.035, -0.07, 0.95, 0.5, 1.75);  // grands pieds nus
+      for (let i = 0; i < 4; i++) tl(new T.SphereGeometry(0.018, 6, 5), TUNG.wood, sx * (0.06 + i * 0.022), 0.03, -0.185 + Math.abs(i - 1.5) * 0.01, 1, 0.8, 1.2); // orteils
     }
     tp(new T.ConeGeometry(0.034, 0.1, 8), TUNG.wood, 0, 1.53, -0.215, 1, 1, 0.7).rotation.x = -Math.PI / 2 - 0.25; // nez
     const smile = tp(new T.TorusGeometry(0.085, 0.017, 6, 16, Math.PI), TUNG.mouth, 0, 1.49, -0.2); smile.rotation.set(0.12, 0, Math.PI); smile.scale.set(1, 0.7, 1); // grand sourire
     tp(new T.CylinderGeometry(0.205, 0.17, 0.06, 14), TUNG.wood, 0, 0.85, 0);                                        // le bas du tronc, arrondi
-    for (const m of tungG.children) { m.layers.enable(HEAT_LAYER_ID); heatParts.push([m, 0.62]); } // vision infrarouge : le tronc chauffe comme un corps
+    tungG.traverse(m => { if (m.isMesh) { m.layers.enable(HEAT_LAYER_ID); heatParts.push([m, 0.62]); } }); // vision infrarouge : le tronc chauffe comme un corps
   }
   function setSkin(tung) {
     if (tung === tungOn) return; tungOn = tung;
@@ -2945,8 +2948,18 @@ function makeArcher(cloth, hoodCol, owner, fpv = false) { // fpv : seulement les
     for (const a of [armL, armR]) { a.m.material = tung ? TUNG.wood : clothM; a.m.userData.th = tung ? 0.62 : 1; }
     for (const [, h] of hands) { h.material = tung ? TUNG.wood : gloveM; h.children[0].visible = !tung; }
   }
+  // marche : les jambes se balancent d'avant en arrière selon la distance vraiment parcourue (moi, bots, joueurs en ligne)
+  let walkPh = 0, walkAmp = 0, walkX = null, walkZ = 0;
+  function walk(dt) {
+    const x = root.position.x, z = root.position.z, d = walkX === null ? 0 : Math.hypot(x - walkX, z - walkZ); walkX = x; walkZ = z;
+    const v = dt > 0 && d < 3 ? d / dt : 0; // un saut de plus de 3 m (téléport, nouvelle manche) ne compte pas
+    if (d < 3) walkPh += d * Math.PI * 2 / 1.4; // un pas de chaque jambe tous les 1,4 m
+    walkAmp += (Math.min(0.32, v * 0.09) - walkAmp) * Math.min(1, dt * 8); // légère : 18° au plus, et les jambes reviennent droites à l'arrêt
+    const a = Math.sin(walkPh) * walkAmp;
+    hips[0].rotation.x = tungHips.length ? (tungHips[0].rotation.x = a) : a; hips[1].rotation.x = -a; if (tungHips[1]) tungHips[1].rotation.x = -a;
+  }
   function placeHands() { for (const [m, h] of hands) { h.quaternion.copy(m.quaternion); h.position.set(0, 0, m.scale.z / 2).applyQuaternion(m.quaternion).add(m.position); } }
-  return { root, upper, setPose, setWeapon, swing, setSilencer, recoil, bowWorld, updateHead, zoneAt, heatParts, placeHands, headPos, laser, laserFrom, setColors, wear, setSkin, clothM, hoodM, get wpn() { return wpn; }, get tung() { return tungOn; } };
+  return { root, upper, walk, setPose, setWeapon, swing, setSilencer, recoil, bowWorld, updateHead, zoneAt, heatParts, placeHands, headPos, laser, laserFrom, setColors, wear, setSkin, clothM, hoodM, get wpn() { return wpn; }, get tung() { return tungOn; } };
 }
 const meA = makeArcher(0x2f8f83, 0x1f5f58, 'me');
 const oppA = makeArcher(0xa8342a, 0x6e1f1a, 'opp');
@@ -4982,6 +4995,7 @@ function frame(now) {
   updatePhase(dt);
   if (mode && phase !== 'idle') { updateMe(dt); updateOpp(dt); }
   updateFat(dt);
+  meA.walk(dt); for (const f of Object.values(FOES)) f.A.walk(dt); // jambes qui marchent
   meA.setSkin(skinOfE(ME)); for (const f of Object.values(FOES)) f.A.setSkin((mode === 'bot' && foes.includes(f)) || (!!f.peer && foes.includes(f) && skinOfE(f))); // les bots (moyen ou dur) portent le skin Tung x3
   { const st = inSpecFP() && specTarget(); fpA.setSkin(st ? skinOfE(st) : skinOfE(ME)); } // à la première personne : mes bras, ou ceux du joueur regardé
   updateArrows(dt); updateSplash(dt); updatePaint(dt); updateBlasts(dt);
