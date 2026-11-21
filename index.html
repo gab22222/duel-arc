@@ -3076,7 +3076,7 @@ function explode(a) {
   // en ligne, seul le tireur compte les dégâts et les annonce (comme pour une balle)
   if (mode === 'online' && nroom && a.owner !== 'me') return;
   for (const tg of [ME, ...foes]) {
-    if (tg.key === a.owner || isDead(tg) || mates(a.owner, tg.key)) continue;
+    if (tg.key === a.owner || isDead(tg) || mates(a.owner, tg.key) || immune(tg)) continue;
     const dmg = grenadeDamage(bodyDist(p, tg.s));
     if (dmg <= 0) continue;
     if (!(mode === 'online' && nroom)) { registerTaken(tg, tg.s.taken + dmg, false, a.owner); continue; }
@@ -4110,6 +4110,11 @@ function makeVehicle(kind) {
   g.userData.wheels = wheels;
   return g;
 }
+// immunité : en montant sur un véhicule, 10 s sans prendre de dégâts (bulle visible de tous) ; elle s'arrête si on descend, et ne revient pas avant 20 s
+const IMMUNE_T = 10, IMMUNE_CD = 20;
+let immuneFrom = -99;
+const immune = e => e === ME ? me.immuneT > t : mode === 'online' ? !!e.s.imm : e.s.immuneT > t;
+const bubbleGeo = new T.SphereGeometry(1.25, 20, 14), bubbleMat = new T.MeshBasicMaterial({ color: 0x8fe8ff, transparent: true, opacity: 0.16, depthWrite: false, side: T.DoubleSide });
 const RIDE_Y = 0.14; // de combien le personnage monte sur la selle (hanches à la hauteur de la selle)
 const VEHICLES = ['bike', 'quad'].map((kind, i) => ({ i, kind, x: 0, z: 0, h: 0, v: 0, steer: 0, rider: null, ver: 0, active: false, m: makeVehicle(kind), R: kind === 'bike' ? 0.6 : 0.9, turn: kind === 'bike' ? 2.1 : 1.7 }));
 VEHICLES.forEach(V => { V.m.visible = false; scene.add(V.m); });
@@ -4131,7 +4136,7 @@ function vehicleSpots() {
 const vehFlip = () => mode === 'online' && !trio() ? -1 : 1;
 function resetVehicles() {
   if (me.ride != null) { me.ride = null; meA.setRide(false); }
-  stopEngine(); myPark = {};
+  me.immuneT = 0; immuneFrom = -99; stopEngine(); myPark = {};
   const sp = mode === 'practice' || map.lateral ? [] : vehicleSpots();
   const fl = mode === 'online' && !trio() && mySlot === 1 ? -1 : 1; // places calculées dans le repère du joueur 1
   VEHICLES.forEach((V, i) => { const s = sp[i]; Object.assign(V, { active: !!s, x: s ? fl * s.x : 0, z: s ? fl * s.z : 0, h: s ? s.h + (fl < 0 ? Math.PI : 0) : 0, v: 0, steer: 0, rider: null, ver: 0 }); });
@@ -4146,11 +4151,12 @@ function nearVehicle() {
 function toggleRide() {
   if (me.ride != null) return dismount();
   const V = nearVehicle(); if (!V || isDead(ME) || !(phase === 'fight' || phase === 'countdown')) return;
-  me.ride = V.i; V.rider = 'me'; V.v = 0; me.leanT = 0; me.lean = 0; me.drawing = false; me.draw = 0; aimId = null; meA.setRide(true); setLeanBtns();
+  me.ride = V.i; V.rider = 'me'; V.v = 0;
+  if (t - immuneFrom >= IMMUNE_CD) { immuneFrom = t; me.immuneT = t + IMMUNE_T; toast('Immunisé pendant 10 s', 1.4, 'var(--teal)'); } me.leanT = 0; me.lean = 0; me.drawing = false; me.draw = 0; aimId = null; meA.setRide(true); setLeanBtns();
   sfx('tick', 0.8); startEngine(); refreshVehBtn();
 }
 function dismount() {
-  const V = VEHICLES[me.ride]; me.ride = null; meA.setRide(false); stopEngine();
+  const V = VEHICLES[me.ride]; me.ride = null; me.immuneT = 0; meA.setRide(false); stopEngine();
   if (V) { V.rider = null; V.v = 0; V.ver = Math.max(V.ver, ...peersNow.map(x => { const q = x.presence.pv; return q && q.g === net.started && q[V.i] ? num(q[V.i][4], 0) : 0; })) + 1;
     me.x = V.x + Math.cos(V.h) * (V.R + 0.6); me.z = V.z - Math.sin(V.h) * (V.R + 0.6); me.vx = me.vz = 0; resolveMove(me); // on descend sur le côté droit
     if (mode === 'online') { myPark[V.i] = [r3(V.x), r3(V.z), r3(V.h), 0, V.ver]; pres({ pv: { g: net.started, ...myPark } }); } }
@@ -4159,7 +4165,7 @@ function dismount() {
 function refreshVehBtn() {
   const b = $('#vehBtn'); if (!b) return;
   const show = mode && (phase === 'fight' || phase === 'countdown') && !isDead(ME) && (me.ride != null || !!nearVehicle());
-  b.hidden = !show; if (show) b.textContent = me.ride != null ? 'Descendre' : (nearVehicle().kind === 'bike' ? 'Monter sur la moto' : 'Monter sur le quad');
+  b.hidden = !show; if (show) b.textContent = me.ride != null ? (me.immuneT > t ? `Descendre · immunisé ${Math.ceil(me.immuneT - t)} s` : 'Descendre') : (nearVehicle().kind === 'bike' ? 'Monter sur la moto' : 'Monter sur le quad');
 }
 // conduite (moi) : accélération, freinage, marche arrière lente, direction plus vive à faible vitesse, ralentit en heurtant un obstacle
 function driveVehicle(dt, ix, iy) {
@@ -4181,7 +4187,7 @@ function driveVehicle(dt, ix, iy) {
 function runOver(V) {
   if (Math.abs(V.v) < 2.5 || !(phase === 'fight' || phase === 'ending')) return;
   for (const f of foes) {
-    if (isDead(f) || mates('me', f.key) || Math.hypot(f.s.x - V.x, f.s.z - V.z) > V.R + 0.45) continue;
+    if (isDead(f) || mates('me', f.key) || immune(f) || Math.hypot(f.s.x - V.x, f.s.z - V.z) > V.R + 0.45) continue;
     if (mode === 'online' && nroom) { const mine = dealt[myId] || (dealt[myId] = {}); mine[f.peer] = WIN; recountTaken(f, false, 'me'); nroom.emit('hit', { g: net.started, id: 0, k: 'V', v: f.peer, n: WIN, head: false }).catch(() => {}); pres({ dealt: { ...mine } }); }
     else registerTaken(f, WIN, false, 'me');
     big('Renversé !', 1.0, 'var(--teal)'); sfx('thunk', 1); V.v *= 0.7;
@@ -4215,6 +4221,7 @@ function updateVehicles(dt) {
     e.A.setRide(riding);
     if (riding) { e.A.root.position.y = RIDE_Y; e.A.updateHead(); }
   }
+  for (const e of [ME, ...foes]) { const on = immune(e) && !isDead(e); if (on && !e.s.bubble) { e.s.bubble = new T.Mesh(bubbleGeo, bubbleMat); e.s.bubble.position.y = 1.05; e.A.root.add(e.s.bubble); } if (e.s.bubble) { e.s.bubble.visible = on && !(e === ME && inFP()); if (on) e.s.bubble.scale.setScalar(1 + Math.sin(t * 6) * 0.03); } }
   if (me.ride != null && isDead(ME)) dismount();
   refreshVehBtn();
 }
@@ -4563,7 +4570,7 @@ function swingBat() {
 function meleeStrike() {
   if (!(phase === 'fight' || phase === 'ending') || isDead(ME)) return;
   let best = null, bd = 1e9;
-  for (const f of foes) if (!isDead(f) && !mates('me', f.key) && inBatReach(me.x, me.z, me.yaw, f)) { const d = Math.hypot(f.s.x - me.x, f.s.z - me.z); if (d < bd) { bd = d; best = f; } }
+  for (const f of foes) if (!isDead(f) && !mates('me', f.key) && !immune(f) && inBatReach(me.x, me.z, me.yaw, f)) { const d = Math.hypot(f.s.x - me.x, f.s.z - me.z); if (d < bd) { bd = d; best = f; } }
   if (!best) return;
   sfx('thunk', 1);
   if (!(mode === 'online' && nroom)) { registerTaken(best, best.s.taken + 1, false, 'me'); return; }
@@ -4761,7 +4768,7 @@ function botMelee(f, dt) {
   if (B.swingHit > 0) {
     B.swingHit -= dt;
     // le bot est vu de face : son « devant » est son angle + π dans le repère du joueur
-    if (B.swingHit <= 0 && !isDead(TG) && inBatReach(S.x, S.z, S.yaw + Math.PI - YO, TG)) { sfx('thunk', 1); registerTaken(TG, TS.taken + 1, false, f.key); }
+    if (B.swingHit <= 0 && !isDead(TG) && !immune(TG) && inBatReach(S.x, S.z, S.yaw + Math.PI - YO, TG)) { sfx('thunk', 1); registerTaken(TG, TS.taken + 1, false, f.key); }
   } else if (d < BAT_RANGE * 0.85 && B.reload <= 0) {
     B.hold += dt;
     if (B.hold > (B.react || 0.25)) { A.swing(); sfx('whoosh', 0.5); B.swingHit = 0.1; B.reload = BAT_COOLDOWN * (hardBot() ? rand(1, 1.15) : rand(1, 1.6)); B.hold = 0; B.react = hardBot() ? rand(0.06, 0.16) : rand(0.12, 0.4); }
@@ -4946,6 +4953,7 @@ function hitArcher(a, tgt, head) {
   plantInArcher(a, tgt.A, head);
   sfx('thunk', 0.8);
   if (!(phase === 'fight' || phase === 'ending')) return;
+  if (immune(tgt)) { if (a.owner === 'me') big('Immunisé', 0.7, 'var(--bone)'); return; } // sur un véhicule depuis moins de 10 s : aucun dégât, aucun effet
   const dmg = hitDamage(a, head);
   if (a.kind === 'glue') applyGlue(tgt); // la cible est collée au sol
   if (a.kind === 'net') applyNet(tgt); // emprisonné dans le filet
@@ -4968,6 +4976,7 @@ function hitArcher(a, tgt, head) {
   pres({ dealt: { ...mine } });
 }
 function registerTaken(e, n, head, byKey) {
+  if (mode !== 'online' && immune(e)) return; // hors ligne : un joueur immunisé ne prend rien
   n = Math.min(WIN, Math.round(n * 100) / 100); // au HP près : plombs du fusil à pompe, 25 HP au vector, 50 HP au pistolet
   if (!(phase === 'fight' || phase === 'ending') || !(n > e.s.taken)) return;
   const wk = curWpn().kind, wasHead = head || ((isArrow(wk) || wk === 'bullet' || wk === 'm4' || wk === 'scar' || bigGun(wk)) && n === WIN && n - e.s.taken >= 2);
@@ -5350,7 +5359,7 @@ function pres(patch) { Object.assign(myPres, patch); if (nroom) nroom.presence(p
 function netTick(now) {
   if (mode !== 'online' || !nroom || now - lastSendAt < NET_TICK) return;
   lastSendAt = Math.max(lastSendAt + NET_TICK, now - NET_TICK);
-  const p = { x: r3(me.x), z: r3(me.z), yaw: r3(me.yaw), pitch: r3(me.pitch), draw: Math.round(me.draw * 100) / 100, nock: me.reload <= 0, sil: silencer, ln: Math.round(me.lean * 20) / 20, rv: me.ride != null ? [me.ride, r3(me.yaw)] : 0 };
+  const p = { x: r3(me.x), z: r3(me.z), yaw: r3(me.yaw), pitch: r3(me.pitch), draw: Math.round(me.draw * 100) / 100, nock: me.reload <= 0, sil: silencer, ln: Math.round(me.lean * 20) / 20, rv: me.ride != null ? [me.ride, r3(me.yaw)] : 0, im: me.immuneT > t ? 1 : 0 };
   const key = JSON.stringify(p);
   if (key !== lastSent) { lastSent = key; pres(p); }
 }
@@ -5475,6 +5484,7 @@ function applyOppPres(p, f) {
   s.tyaw = M.lateral ? clamp(num(p.yaw, 0), -0.6, 0.6) : num(p.yaw, 0);
   s.tpitch = clamp(num(p.pitch, 0), -0.5, 0.8);
   s.tlean = clamp(num(p.ln, 0), -1, 1);
+  s.imm = p.im === 1; // immunisé (vient de monter sur un véhicule)
   s.ride = Array.isArray(p.rv) && (p.rv[0] === 0 || p.rv[0] === 1) ? p.rv : null; // il conduit la moto (0) ou le quad (1)
   s.draw = clamp(num(p.draw, 0), 0, 1);
   s.nock = p.nock !== false;
