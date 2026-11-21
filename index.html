@@ -320,11 +320,11 @@ p{margin:0}
       <h2>Contre les bots</h2>
       <div class="seg mapsel" role="group" aria-label="Carte">
         <button data-map="canyon" aria-pressed="true">Canyon<small>face à face, esquive sur le côté</small></button>
-        <button data-map="forestB1" aria-pressed="false">Forêt classique<small>symétrique pour tous</small></button>
+        <button data-map="forestB1" aria-pressed="false">Forêt</button>
         <button data-map="forestB2" aria-pressed="false">Forêt petits troncs<small>tous les troncs de la même largeur</small></button>
         <button data-map="forestV2" aria-pressed="false">Forêt classique OG<small>l'ancienne forêt, en 1 contre 1</small></button>
         <button data-map="forestV3" aria-pressed="false">Forêt petits troncs OG<small>l'ancienne forêt, en 1 contre 1</small></button>
-        <button data-map="desert" aria-pressed="false">Désert<small>collines et cactus, de 2 à 12</small></button>
+        <button data-map="desert" aria-pressed="false">Désert</button>
       </div>
       <div class="opt wpnrow" hidden><span>Arme</span>
       <div class="seg wpnsel" role="group" aria-label="Arme en forêt">
@@ -487,11 +487,11 @@ p{margin:0}
     </div>
     <div class="seg mapsel" role="group" aria-label="Carte">
       <button data-map="canyon" aria-pressed="true">Canyon<small>face à face</small></button>
-      <button data-map="forestB1" aria-pressed="false">Forêt classique<small>symétrique, de 2 à 12</small></button>
+      <button data-map="forestB1" aria-pressed="false">Forêt</button>
       <button data-map="forestB2" aria-pressed="false">Forêt petits troncs<small>troncs égaux, de 2 à 12</small></button>
       <button data-map="forestV2" aria-pressed="false">Forêt classique OG<small>l'ancienne forêt, à 2</small></button>
       <button data-map="forestV3" aria-pressed="false">Forêt petits troncs OG<small>l'ancienne forêt, à 2</small></button>
-      <button data-map="desert" aria-pressed="false">Désert<small>collines et cactus, de 2 à 12</small></button>
+      <button data-map="desert" aria-pressed="false">Désert</button>
       <button data-map="forestXL" aria-pressed="false" disabled>Forêt géante<small>124 m, à 3</small></button>
     </div>
     <div class="opt wpnrow" hidden><span>Arme</span>
@@ -577,11 +577,11 @@ p{margin:0}
     </div>
     <div class="seg mapsel" role="group" aria-label="Carte">
       <button data-map="canyon" aria-pressed="true">Canyon<small>face à face</small></button>
-      <button data-map="forestB1" aria-pressed="false">Forêt classique<small>symétrique, de 2 à 12</small></button>
+      <button data-map="forestB1" aria-pressed="false">Forêt</button>
       <button data-map="forestB2" aria-pressed="false">Forêt petits troncs<small>troncs égaux, de 2 à 12</small></button>
       <button data-map="forestV2" aria-pressed="false">Forêt classique OG<small>l'ancienne forêt, à 2</small></button>
       <button data-map="forestV3" aria-pressed="false">Forêt petits troncs OG<small>l'ancienne forêt, à 2</small></button>
-      <button data-map="desert" aria-pressed="false">Désert<small>collines et cactus, de 2 à 12</small></button>
+      <button data-map="desert" aria-pressed="false">Désert</button>
       <button data-map="forestXL" aria-pressed="false" disabled>Forêt géante<small>124 m, à 3</small></button>
     </div>
     <div class="opt wpnrow" hidden><span>Arme</span>
@@ -4516,7 +4516,6 @@ function setGameMode(g) {
   // les tournantes se jouent en duel, en forêt 1 ou 2 : ni canyon, et la forêt 2 reste possible à 3
   const duels = gameMode !== 'classic';
   document.querySelectorAll('#lobby .mapsel [data-map=canyon], #lobby .mapsel [data-map=forestXL]').forEach(b => { b.hidden = duels; });
-  $('#lobby [data-map=forestB1] small').textContent = duels ? 'symétrique' : 'symétrique, de 2 à 12';
   $('#lobby [data-map=forestB2] small').textContent = duels ? 'troncs égaux' : 'troncs égaux, de 2 à 12';
   if (duels && !BIG3[baseMap(menuMap(mapKey))] && !isOG(mapKey) && !isDesert(mapKey)) applyMap('forestB1');
   refreshWpnRows();
@@ -5045,7 +5044,7 @@ function renderOverStatus() {
 // ---------- buttons
 document.querySelectorAll('.mapsel').forEach(sel => {
   const v = document.createElement('div'); v.className = 'seg mapvar'; v.setAttribute('role', 'group'); v.setAttribute('aria-label', 'Version de la forêt'); v.hidden = true;
-  v.innerHTML = '<button data-mv="normal">Normale<small>verte</small></button><button data-mv="snow">Neige<small>neige, traces de pas, flocons</small></button>'; sel.after(v);
+  v.innerHTML = '<button data-mv="normal">Normale</button><button data-mv="snow">Neige</button>'; sel.after(v);
   v.querySelectorAll('button').forEach(x => x.addEventListener('click', () => { const b = baseMap(menuMap(mapKey)), fm = MAP_FAMILY[b] || BIG3[b]; if (fm) chooseMap(fm[x.dataset.mv === 'snow' ? 1 : 0]); }));
 });
 document.querySelectorAll('.mapsel button').forEach(b => b.addEventListener('click', () => chooseMap(baseMap(menuMap(mapKey)) === b.dataset.map ? menuMap(mapKey) : b.dataset.map))); // même forêt : on garde sa version
