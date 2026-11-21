@@ -327,6 +327,7 @@ p{margin:0}
         <button data-map="forestV3" aria-pressed="false">Forêt petits troncs OG<small>l'ancienne forêt, en 1 contre 1</small></button>
         <button data-map="desert" aria-pressed="false">Désert</button>
         <button data-map="island" aria-pressed="false">Île</button>
+        <button data-map="jungle" aria-pressed="false">Jungle</button>
       </div>
       <div class="opt wpnrow" hidden><span>Arme</span>
       <div class="seg wpnsel" role="group" aria-label="Arme en forêt">
@@ -495,6 +496,7 @@ p{margin:0}
       <button data-map="forestV3" aria-pressed="false">Forêt petits troncs OG<small>l'ancienne forêt, à 2</small></button>
       <button data-map="desert" aria-pressed="false">Désert</button>
       <button data-map="island" aria-pressed="false">Île</button>
+      <button data-map="jungle" aria-pressed="false">Jungle</button>
       <button data-map="forestXL" aria-pressed="false" disabled>Forêt géante<small>124 m, à 3</small></button>
     </div>
     <div class="opt wpnrow" hidden><span>Arme</span>
@@ -586,6 +588,7 @@ p{margin:0}
       <button data-map="forestV3" aria-pressed="false">Forêt petits troncs OG<small>l'ancienne forêt, à 2</small></button>
       <button data-map="desert" aria-pressed="false">Désert</button>
       <button data-map="island" aria-pressed="false">Île</button>
+      <button data-map="jungle" aria-pressed="false">Jungle</button>
       <button data-map="forestXL" aria-pressed="false" disabled>Forêt géante<small>124 m, à 3</small></button>
     </div>
     <div class="opt wpnrow" hidden><span>Arme</span>
@@ -905,7 +908,7 @@ const BIG2 = { forestB1: 'forestA1', forestB1s: 'forestA1s', forestB2: 'forestA2
 const BIGN = { 2: BIG2, 12: BIG12, 11: BIG11, 10: BIG10, 9: BIG9, 8: BIG8, 7: BIG7, 6: BIG6, 3: { forestB1: 'forestB1', forestB1s: 'forestB1s', forestB2: 'forestB2', forestB2s: 'forestB2s' }, 4: BIG4, 5: BIG5 }; // les boutons V1.2 / V2.2 -> la version pour n joueurs
 const isOG = k => !!MAP_FAMILY[baseMap(k)]; // les anciennes forêts (« OG ») : seulement à 2 joueurs
 // cartes « famille » de 2 à 12 joueurs (désert, île) : un bouton, et une version par nombre de joueurs (desert, desert3…desert12 ; island, island3…island12)
-const symFam = k => typeof k === 'string' ? ((/^(desert|island)(\d+)?$/.exec(k) || [])[1] || null) : null;
+const symFam = k => typeof k === 'string' ? ((/^(desert|island|jungle)(\d+)?$/.exec(k) || [])[1] || null) : null;
 const isSym = k => !!symFam(k);
 const famFor = (f, n) => n <= 2 ? f : f + Math.min(12, n);
 const bigFor = n => n >= 1 && n <= 12; // forêt classique et forêt petits troncs : de 2 à 12 joueurs (proposées aussi quand on attend seul dans le salon)
@@ -1832,10 +1835,103 @@ function buildIsland(N, F, O) {
   for (const { geo, mat, m } of parts.values()) { const im = new T.InstancedMesh(geo, mat, m.length); m.forEach((x, i) => im.setMatrixAt(i, x)); im.instanceMatrix.needsUpdate = true; im.frustumCulled = false; G.add(im); }
   return G;
 }
+// ---------- jungle : forêt tropicale très dense. Arbres géants à contreforts et canopée, lianes, arbres moyens, fougères, buissons, fleurs,
+// rochers moussus, rayons de soleil qui percent la canopée, brume verte. De 2 à 12 joueurs, comme le désert et l'île : une part tirée au sort
+// (toujours la même) autour de l'apparition 0, recopiée par rotation ; des arbres géants cache-vues s'ajoutent entre les apparitions qui se verraient.
+const jungleGs = {};
+for (let n = 2; n <= 12; n++) {
+  const key = n === 2 ? 'jungle' : 'jungle' + n;
+  MAPS[key] = n === 2 ? { ...MAPS.forestA1, key, snow: false } : { ...MAPS[BIGN[n].forestB1], key, snow: false }; OBST[key] = [];
+  SYM_BUILD[key] = () => { if (jungleGs[key]) return; jungleGs[key] = buildJungle(n, MAPS[key], OBST[key]); };
+}
+SKY.jungle = skyTex([[0, '#2f5a3a'], [0.35, '#6f9a6a'], [0.48, '#a9c79a'], [0.5, '#b7d0a4'], [0.53, '#4f6e45'], [1, '#1f3322']]);
+MAPLOOK.jungle = { fog: 0x7d9c76, near: 12, far: 78, hs: 0xd9efc0, hg: 0x24381f, sun: 0xffefc0, sunI: 0.85 };
+for (let n = 3; n <= 12; n++) { SKY['jungle' + n] = SKY.jungle; MAPLOOK['jungle' + n] = MAPLOOK.jungle; }
+function buildJungle(N, F, O) {
+  const G = new T.Group(); G.visible = false; scene.add(G);
+  const R = F.rlim, SR = F.spawnR || F.spawnZ, TW = 2 * Math.PI / N;
+  let seed = 20261123 + N * 7919; const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
+  const rotP = (x, z, a) => [x * Math.cos(a) + z * Math.sin(a), -x * Math.sin(a) + z * Math.cos(a)];
+  const spawns = Array.from({ length: N }, (_, i) => rotP(0, SR, i * TW));
+  const part = [], A = Math.PI * R * R / N, cR = 2.4 + (R - 56) * 0.006;
+  // t : 'g' arbre géant (obstacle), 'm' arbre moyen (obstacle), 'r' rocher moussu (obstacle), 'f' fougère, 'b' buisson, 'l' plante à grandes feuilles, 'k' fleurs (décor)
+  const solid = t => t === 'g' || t === 'm' || t === 'r';
+  const free = (x, z, r, t) => { const d0 = Math.hypot(x, z); if (d0 < cR + r + 3 || d0 > R - r - 0.5) return false; if (Math.hypot(x, z - SR) < r + (solid(t) ? 6 : 2.5)) return false;
+    const a = Math.atan2(x, z); if (Math.abs(a) * d0 > (Math.PI / N) * d0 - r - 0.4) return false;
+    return part.every(q => Math.hypot(q.x - x, q.z - z) > (solid(t) && solid(q.t) ? q.r + r + 1.2 : solid(t) || solid(q.t) ? q.r + r * 0.6 : (q.r + r) * 0.55)); };
+  const place = (t, n, rMin, rMax) => { for (let i = 0, tries = 0; i < n && tries < n * 40; tries++) { const a = (rnd() * 2 - 1) * Math.PI / N, d = Math.sqrt(rnd()) * R, x = d * Math.sin(a), z = d * Math.cos(a), r = rMin + rnd() * (rMax - rMin); if (free(x, z, r, t)) { part.push({ t, x, z, r, h: t === 'g' ? 15 + rnd() * 6 : t === 'm' ? 7 + rnd() * 4 : 0, v: rnd() }); i++; } } };
+  place('g', Math.round(A * 0.0019), 0.7, 1.15); place('m', Math.round(A * 0.0085), 0.22, 0.36); place('r', Math.round(A * 0.0012), 0.7, 1.3);
+  place('l', Math.round(A * 0.011), 0.8, 1.4); place('b', Math.round(A * 0.022), 0.7, 1.3); place('f', Math.round(A * 0.05), 0.6, 1.2); place('k', Math.round(A * 0.009), 0.3, 0.5);
+  let all = []; for (let k = 0; k < N; k++) for (const q of part) { const [x, z] = rotP(q.x, q.z, k * TW); all.push({ ...q, x, z }); }
+  all.push({ t: 'g', x: 0, z: 0, r: cR, h: 22, v: 0.4, big: true });
+  const asObst = q => q.t === 'g' || q.t === 'm' ? { type: 'trunk', x: q.x, z: q.z, r: q.r, h: q.h } : q.t === 'r' ? { type: 'rock', x: q.x, z: q.z, r: q.r * 0.95, cy: q.r * 0.3, sy: 0.7 } : null;
+  const P = new T.Vector3(), sees = (a, b, list) => { const d = Math.hypot(b[0] - a[0], b[1] - a[1]), m = Math.ceil(d / 0.4); for (const y of [1.2, 1.62]) { let hid = false; for (let i = 1; i < m && !hid; i++) { const f = i / m; P.set(a[0] + (b[0] - a[0]) * f, y, a[1] + (b[1] - a[1]) * f); for (const o of list) if (Math.abs(o.x - P.x) < o.r + 0.1 && Math.abs(o.z - P.z) < o.r + 0.1 && hitObstacle(o, P, 0)) { hid = true; break; } } if (!hid) return true; } return false; };
+  // cache-vues : un arbre géant au tronc énorme au milieu de chaque paire d'apparitions qui se voient (et ses copies tournées)
+  for (let it = 0; it < 4; it++) {
+    const list = all.map(asObst).filter(Boolean); let added = false;
+    for (let j = 1; j < N; j++) if (sees(spawns[0], spawns[j], list)) {
+      const mx = (spawns[0][0] + spawns[j][0]) / 2, mz = (spawns[0][1] + spawns[j][1]) / 2, br = 1.9 + it * 0.4;
+      for (let k = 0; k < N; k++) { const [x, z] = rotP(mx, mz, k * TW); if (all.some(q => q.t === 'g' && q.r >= br - 0.05 && Math.hypot(q.x - x, q.z - z) < 1)) continue; all = all.filter(q => Math.hypot(q.x - x, q.z - z) > q.r + br + 0.6 || !solid(q.t)); all.push({ t: 'g', x, z, r: br, h: 20, v: 0.7, big: true }); }
+      added = true;
+    }
+    if (!added) break;
+  }
+  for (const q of all) { const o = asObst(q); if (o) O.push(o); } gridObstacles(O);
+  // sol : terre sombre, mousse, tapis de feuilles ; au-delà de la limite, la jungle continue (décor)
+  const S = R + 70, gGeo = new T.PlaneGeometry(S * 2, S * 2, 110, 110).rotateX(-Math.PI / 2), gp = gGeo.attributes.position, gc = [], sc = new T.Color();
+  for (let i = 0; i < gp.count; i++) { const x = gp.getX(i), z = gp.getZ(i), n1 = Math.sin(x * 0.31 + z * 0.17) + Math.sin(x * 0.09 - z * 0.23), d = Math.hypot(x, z);
+    gp.setY(i, d < R ? 0.05 * Math.sin(x * 0.9 + z * 0.6) : 0.4 * Math.sin(x * 0.2) * Math.cos(z * 0.2));
+    const moss = n1 > -0.35; sc.setHSL(moss ? 0.25 + 0.02 * n1 : 0.08 + 0.02 * n1, moss ? 0.42 : 0.32, moss ? 0.19 + 0.035 * n1 : 0.15 + 0.03 * Math.sin(x * 1.7 + z)); gc.push(sc.r, sc.g, sc.b); } // surtout de la mousse, quelques plaques de terre
+  gGeo.setAttribute('color', new T.Float32BufferAttribute(gc, 3)); gGeo.computeVertexNormals();
+  G.add(new T.Mesh(gGeo, new T.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 1 })));
+  // bordure : un mur d'arbres géants et de buissons tout autour (décor, la limite de la zone empêche d'y aller)
+  const nB = Math.round(2 * Math.PI * (R + 6) / 5.5);
+  for (let i = 0; i < nB; i++) { const a = i / nB * Math.PI * 2 + rnd() * 0.05, d = R + 3 + rnd() * 9; all.push({ t: 'g', x: Math.sin(a) * d, z: Math.cos(a) * d, r: 0.8 + rnd() * 0.5, h: 15 + rnd() * 6, v: rnd(), deco: true }); all.push({ t: 'b', x: Math.sin(a + 0.05) * (R + 1.5), z: Math.cos(a + 0.05) * (R + 1.5), r: 1.3 + rnd() * 0.8, v: rnd() }); }
+  // instances
+  const parts = new Map(), D = new T.Object3D(), M4 = new T.Matrix4();
+  const put = (name, geo, mat, m) => { if (!parts.has(name)) parts.set(name, { geo, mat, m: [] }); parts.get(name).m.push(m.clone()); };
+  const putT = (name, geo, mat, x, y, z, sx, sy, sz, rx = 0, ry = 0, rz = 0) => { D.position.set(x, y, z); D.rotation.set(rx, ry, rz); D.scale.set(sx, sy, sz); D.updateMatrix(); put(name, geo, mat, D.matrix); };
+  const blob = (det, amp) => { const g = new T.IcosahedronGeometry(1, det), q = g.attributes.position; for (let i = 0; i < q.count; i++) { const k = 1 + amp * Math.sin(q.getX(i) * 4.3 + q.getY(i) * 3.1 + q.getZ(i) * 5.7); q.setXYZ(i, q.getX(i) * k, q.getY(i) * k, q.getZ(i) * k); } g.computeVertexNormals(); return g; };
+  const barkG = new T.CylinderGeometry(0.72, 1, 1, 9).translate(0, 0.5, 0), barkM = std(0x5b4636, { roughness: .95 }), barkM2 = std(0x6f5a44, { roughness: .95 });
+  const rootG = new T.ConeGeometry(1, 1, 4).translate(0, 0.5, 0).scale(0.18, 1, 1);
+  const crownG = blob(1, 0.12), leafA = std(0x2f6b2c), leafB = std(0x3f7f34), leafC = std(0x245a26), leafD = std(0x4d8a3a);
+  const lianaG = new T.CylinderGeometry(0.035, 0.03, 1, 4).translate(0, -0.5, 0), lianaM = std(0x4a5a2c);
+  const midG = new T.CylinderGeometry(0.75, 1, 1, 7).translate(0, 0.5, 0), midM = std(0x7a6a52);
+  const rockG = blob(0, 0.15), rockM = std(0x5e6658), mossM = std(0x4f7a37);
+  const frondG = new T.ConeGeometry(0.22, 1.5, 4).translate(0, 0.75, 0).scale(1, 1, 0.16), fernA = std(0x3f8f33, { side: T.DoubleSide }), fernB = std(0x55a33d, { side: T.DoubleSide });
+  const bigLeafG = new T.SphereGeometry(1, 8, 4, 0, Math.PI * 2, 0, Math.PI / 2).scale(0.55, 0.12, 1).translate(0, 0, 0.9), bigLeafM = std(0x2e7d3a, { side: T.DoubleSide }), stemG = new T.CylinderGeometry(0.03, 0.04, 1, 4).translate(0, 0.5, 0), stemM = std(0x3c6b2e);
+  const bushG = blob(0, 0.2), bushA = std(0x2c6a2a), bushB = std(0x3b7a30);
+  const flowerG = new T.ConeGeometry(0.09, 0.22, 5).rotateX(Math.PI), flowerMs = [std(0xd9342b), std(0xf08a24), std(0xb03ab0), std(0xf2d03b)];
+  const rayG = new T.CylinderGeometry(0.6, 2.4, 1, 10, 1, true).translate(0, 0.5, 0), rayM = new T.MeshBasicMaterial({ color: 0xfff1b8, transparent: true, opacity: 0.075, blending: T.AdditiveBlending, depthWrite: false, side: T.DoubleSide });
+  let rays = 0;
+  for (const q of all) {
+    const ry = q.v * 6.28;
+    if (q.t === 'g') { // arbre géant : tronc large, contreforts, canopée en trois masses, lianes qui pendent
+      const r = q.r, h = q.h, bm = q.v > 0.5 ? barkM : barkM2;
+      putT(q.v > 0.5 ? 'gA' : 'gB', barkG, bm, q.x, 0, q.z, r, h, r, 0, ry);
+      for (let i = 0; i < 5; i++) { const a = ry + i * 1.257; putT('root', rootG, barkM, q.x + Math.sin(a) * r * 0.9, 0, q.z + Math.cos(a) * r * 0.9, r * 1.1, 1.6 + r * 1.4, r * 1.25, 0, a); }
+      const cs = q.big ? 1.5 : 1;
+      for (let i = 0; i < 4; i++) { const a = ry + i * 1.7, o = (i ? 2.6 : 0) * cs, c = ['cA', 'cB', 'cC', 'cD'][i]; putT(c, crownG, [leafA, leafB, leafC, leafD][i], q.x + Math.sin(a) * o, h - 1 + (i ? -1 + q.v * 2 : 1), q.z + Math.cos(a) * o, (4.2 + q.v) * cs, (2 + q.v * 0.6) * cs, (4 + q.v) * cs, 0, a); }
+      if (!q.deco) for (let i = 0; i < 3; i++) { const a = ry + i * 2.3 + 0.5, o = 1.6 + i * 0.9; putT('li', lianaG, lianaM, q.x + Math.sin(a) * o * cs, h - 2.5, q.z + Math.cos(a) * o * cs, 1, h - 3.5 - i * 2.5 - q.v * 2, 1, 0.04, 0, 0.03); }
+      if (!q.deco && rays < 6 + N * 2 && q.v > 0.75) { rays++; putT('ray', rayG, rayM, q.x + 5, 0, q.z - 3, 1, h - 3, 1, 0.12, 0, -0.18); } // un rayon de soleil qui perce la canopée
+    } else if (q.t === 'm') { // arbre moyen : tronc fin un peu penché, deux masses de feuillage
+      putT('m', midG, midM, q.x, 0, q.z, q.r, q.h, q.r, 0.03, ry, 0.02);
+      putT('cB', crownG, leafB, q.x + 0.3, q.h, q.z, 2.1 + q.v * 0.6, 1.2, 2, 0, ry); putT('cD', crownG, leafD, q.x - 0.6, q.h - 1.2, q.z + 0.5, 1.6, 1, 1.5, 0, ry + 1);
+    } else if (q.t === 'r') { putT('r', rockG, rockM, q.x, q.r * 0.3, q.z, q.r, q.r * 0.7, q.r * 0.9, 0, ry); putT('moss', rockG, mossM, q.x, q.r * 0.55, q.z, q.r * 0.8, q.r * 0.35, q.r * 0.72, 0, ry); }
+    else if (q.t === 'f') { // fougère : sept frondes en éventail
+      for (let i = 0; i < 7; i++) { D.position.set(q.x, 0.05, q.z); D.rotation.set(0, ry + i * 0.9, 0); D.scale.setScalar(q.r * 1.1); D.updateMatrix(); M4.copy(D.matrix).multiply(new T.Matrix4().makeRotationX(0.75 + (i % 3) * 0.2)); put(i % 2 ? 'fA' : 'fB', frondG, i % 2 ? fernA : fernB, M4); }
+    } else if (q.t === 'l') { // plante à très grandes feuilles (oreilles d'éléphant)
+      for (let i = 0; i < 5; i++) { const a = ry + i * 1.25, hh = 0.7 + (i % 3) * 0.3; putT('st', stemG, stemM, q.x, 0, q.z, 1, hh * q.r, 1, 0.5 * Math.cos(a), 0, 0.5 * Math.sin(a)); D.position.set(q.x + Math.sin(a) * 0.35 * q.r, hh * q.r, q.z + Math.cos(a) * 0.35 * q.r); D.rotation.set(-0.35, a, 0); D.scale.setScalar(q.r * 0.9); D.updateMatrix(); put('bl', bigLeafG, bigLeafM, D.matrix); }
+    } else if (q.t === 'b') putT(q.v > 0.5 ? 'bA' : 'bB', bushG, q.v > 0.5 ? bushA : bushB, q.x, q.r * 0.5, q.z, q.r, q.r * 0.75, q.r, 0, ry);
+    else if (q.t === 'k') { for (let i = 0; i < 4; i++) { const a = ry + i * 1.6, fm = Math.floor(q.v * 4) % 4; putT('k' + fm, flowerG, flowerMs[fm], q.x + Math.sin(a) * 0.25, 0.35 + (i % 2) * 0.15, q.z + Math.cos(a) * 0.25, 1, 1, 1); putT('st', stemG, stemM, q.x + Math.sin(a) * 0.25, 0, q.z + Math.cos(a) * 0.25, 1, 0.4 + (i % 2) * 0.15, 1); } }
+  }
+  for (const [name, { geo, mat, m }] of parts) { const im = new T.InstancedMesh(geo, mat, m.length); m.forEach((x, i) => im.setMatrixAt(i, x)); im.instanceMatrix.needsUpdate = true; im.frustumCulled = false; if (name === 'ray') im.renderOrder = 3; G.add(im); }
+  return G;
+}
 function applyMap(k) {
   if (SYM_BUILD[baseMap(k)]) SYM_BUILD[baseMap(k)]();
   mapKey = k; map = MAPS[k]; obstacles = OBST[k];
-  canyonG.visible = k === 'canyon'; desertG.visible = k === 'desert'; for (const [dk, dg] of Object.entries(desertGs)) dg.visible = dk === k; for (const [ik, ig] of Object.entries(islandGs)) ig.visible = ik === k; forestV2G.visible = baseMap(k) === 'forestV2'; forestV3G.visible = baseMap(k) === 'forestV3'; forestB1G.visible = baseMap(k) === 'forestB1'; forestB2G.visible = baseMap(k) === 'forestB2'; forestC1G.visible = baseMap(k) === 'forestC1'; forestC2G.visible = baseMap(k) === 'forestC2'; forestF1G.visible = baseMap(k) === 'forestF1'; forestF2G.visible = baseMap(k) === 'forestF2'; forestK1G.visible = baseMap(k) === 'forestK1'; forestK2G.visible = baseMap(k) === 'forestK2'; forestL1G.visible = baseMap(k) === 'forestL1'; forestL2G.visible = baseMap(k) === 'forestL2'; forestM1G.visible = baseMap(k) === 'forestM1'; forestM2G.visible = baseMap(k) === 'forestM2'; forestR1G.visible = baseMap(k) === 'forestR1'; forestR2G.visible = baseMap(k) === 'forestR2'; forestW1G.visible = baseMap(k) === 'forestW1'; forestW2G.visible = baseMap(k) === 'forestW2'; forestY1G.visible = baseMap(k) === 'forestY1'; forestY2G.visible = baseMap(k) === 'forestY2'; forestJ1G.visible = baseMap(k) === 'forestJ1'; forestJ2G.visible = baseMap(k) === 'forestJ2'; forestA1G.visible = baseMap(k) === 'forestA1'; forestA2G.visible = baseMap(k) === 'forestA2'; forestT1G.visible = baseMap(k) === 'forestT1'; forestT2G.visible = baseMap(k) === 'forestT2'; forestQ1G.visible = baseMap(k) === 'forestQ1'; forestQ2G.visible = baseMap(k) === 'forestQ2'; forestP1G.visible = baseMap(k) === 'forestP1'; forestP2G.visible = baseMap(k) === 'forestP2'; forestH1G.visible = baseMap(k) === 'forestH1'; forestH2G.visible = baseMap(k) === 'forestH2'; forestS1G.visible = baseMap(k) === 'forestS1'; forestS2G.visible = baseMap(k) === 'forestS2'; forestO1G.visible = baseMap(k) === 'forestO1'; forestO2G.visible = baseMap(k) === 'forestO2'; forestN1G.visible = baseMap(k) === 'forestN1'; forestN2G.visible = baseMap(k) === 'forestN2'; forestD1G.visible = baseMap(k) === 'forestD1'; forestD2G.visible = baseMap(k) === 'forestD2'; forestE1G.visible = baseMap(k) === 'forestE1'; forestE2G.visible = baseMap(k) === 'forestE2'; forestZ1G.visible = baseMap(k) === 'forestZ1'; forestZ2G.visible = baseMap(k) === 'forestZ2'; SNOW.set(isSnow(k)); snowFx.visible = isSnow(k); clearFeet(); bigForestG.visible = k === 'forestXL';
+  canyonG.visible = k === 'canyon'; desertG.visible = k === 'desert'; for (const [dk, dg] of Object.entries(desertGs)) dg.visible = dk === k; for (const [ik, ig] of Object.entries(islandGs)) ig.visible = ik === k; for (const [jk, jg] of Object.entries(jungleGs)) jg.visible = jk === k; forestV2G.visible = baseMap(k) === 'forestV2'; forestV3G.visible = baseMap(k) === 'forestV3'; forestB1G.visible = baseMap(k) === 'forestB1'; forestB2G.visible = baseMap(k) === 'forestB2'; forestC1G.visible = baseMap(k) === 'forestC1'; forestC2G.visible = baseMap(k) === 'forestC2'; forestF1G.visible = baseMap(k) === 'forestF1'; forestF2G.visible = baseMap(k) === 'forestF2'; forestK1G.visible = baseMap(k) === 'forestK1'; forestK2G.visible = baseMap(k) === 'forestK2'; forestL1G.visible = baseMap(k) === 'forestL1'; forestL2G.visible = baseMap(k) === 'forestL2'; forestM1G.visible = baseMap(k) === 'forestM1'; forestM2G.visible = baseMap(k) === 'forestM2'; forestR1G.visible = baseMap(k) === 'forestR1'; forestR2G.visible = baseMap(k) === 'forestR2'; forestW1G.visible = baseMap(k) === 'forestW1'; forestW2G.visible = baseMap(k) === 'forestW2'; forestY1G.visible = baseMap(k) === 'forestY1'; forestY2G.visible = baseMap(k) === 'forestY2'; forestJ1G.visible = baseMap(k) === 'forestJ1'; forestJ2G.visible = baseMap(k) === 'forestJ2'; forestA1G.visible = baseMap(k) === 'forestA1'; forestA2G.visible = baseMap(k) === 'forestA2'; forestT1G.visible = baseMap(k) === 'forestT1'; forestT2G.visible = baseMap(k) === 'forestT2'; forestQ1G.visible = baseMap(k) === 'forestQ1'; forestQ2G.visible = baseMap(k) === 'forestQ2'; forestP1G.visible = baseMap(k) === 'forestP1'; forestP2G.visible = baseMap(k) === 'forestP2'; forestH1G.visible = baseMap(k) === 'forestH1'; forestH2G.visible = baseMap(k) === 'forestH2'; forestS1G.visible = baseMap(k) === 'forestS1'; forestS2G.visible = baseMap(k) === 'forestS2'; forestO1G.visible = baseMap(k) === 'forestO1'; forestO2G.visible = baseMap(k) === 'forestO2'; forestN1G.visible = baseMap(k) === 'forestN1'; forestN2G.visible = baseMap(k) === 'forestN2'; forestD1G.visible = baseMap(k) === 'forestD1'; forestD2G.visible = baseMap(k) === 'forestD2'; forestE1G.visible = baseMap(k) === 'forestE1'; forestE2G.visible = baseMap(k) === 'forestE2'; forestZ1G.visible = baseMap(k) === 'forestZ1'; forestZ2G.visible = baseMap(k) === 'forestZ2'; SNOW.set(isSnow(k)); snowFx.visible = isSnow(k); clearFeet(); bigForestG.visible = k === 'forestXL';
   skyMat.map = SKY[k]; skyMat.needsUpdate = true;
   const L = MAPLOOK[k];
   scene.fog.color.setHex(L.fog); scene.fog.near = L.near; scene.fog.far = L.far;
