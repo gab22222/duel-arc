@@ -328,6 +328,7 @@ p{margin:0}
         <button data-map="desert" aria-pressed="false">Désert</button>
         <button data-map="island" aria-pressed="false">Île</button>
         <button data-map="jungle" aria-pressed="false">Jungle</button>
+        <button data-map="wheat" aria-pressed="false">Champ de blé</button>
       </div>
       <div class="opt wpnrow" hidden><span>Arme</span>
       <div class="seg wpnsel" role="group" aria-label="Arme en forêt">
@@ -497,6 +498,7 @@ p{margin:0}
       <button data-map="desert" aria-pressed="false">Désert</button>
       <button data-map="island" aria-pressed="false">Île</button>
       <button data-map="jungle" aria-pressed="false">Jungle</button>
+      <button data-map="wheat" aria-pressed="false">Champ de blé</button>
       <button data-map="forestXL" aria-pressed="false" disabled>Forêt géante<small>124 m, à 3</small></button>
     </div>
     <div class="opt wpnrow" hidden><span>Arme</span>
@@ -589,6 +591,7 @@ p{margin:0}
       <button data-map="desert" aria-pressed="false">Désert</button>
       <button data-map="island" aria-pressed="false">Île</button>
       <button data-map="jungle" aria-pressed="false">Jungle</button>
+      <button data-map="wheat" aria-pressed="false">Champ de blé</button>
       <button data-map="forestXL" aria-pressed="false" disabled>Forêt géante<small>124 m, à 3</small></button>
     </div>
     <div class="opt wpnrow" hidden><span>Arme</span>
@@ -908,7 +911,7 @@ const BIG2 = { forestB1: 'forestA1', forestB1s: 'forestA1s', forestB2: 'forestA2
 const BIGN = { 2: BIG2, 12: BIG12, 11: BIG11, 10: BIG10, 9: BIG9, 8: BIG8, 7: BIG7, 6: BIG6, 3: { forestB1: 'forestB1', forestB1s: 'forestB1s', forestB2: 'forestB2', forestB2s: 'forestB2s' }, 4: BIG4, 5: BIG5 }; // les boutons V1.2 / V2.2 -> la version pour n joueurs
 const isOG = k => !!MAP_FAMILY[baseMap(k)]; // les anciennes forêts (« OG ») : seulement à 2 joueurs
 // cartes « famille » de 2 à 12 joueurs (désert, île) : un bouton, et une version par nombre de joueurs (desert, desert3…desert12 ; island, island3…island12)
-const symFam = k => typeof k === 'string' ? ((/^(desert|island|jungle)(\d+)?$/.exec(k) || [])[1] || null) : null;
+const symFam = k => typeof k === 'string' ? ((/^(desert|island|jungle|wheat)(\d+)?$/.exec(k) || [])[1] || null) : null;
 const isSym = k => !!symFam(k);
 const famFor = (f, n) => n <= 2 ? f : f + Math.min(12, n);
 const bigFor = n => n >= 1 && n <= 12; // forêt classique et forêt petits troncs : de 2 à 12 joueurs (proposées aussi quand on attend seul dans le salon)
@@ -1928,10 +1931,144 @@ function buildJungle(N, F, O) {
   for (const [name, { geo, mat, m }] of parts) { const im = new T.InstancedMesh(geo, mat, m.length); m.forEach((x, i) => im.setMatrixAt(i, x)); im.instanceMatrix.needsUpdate = true; im.frustumCulled = false; if (name === 'ray') im.renderOrder = 3; G.add(im); }
   return G;
 }
+// ---------- champ de blé : grand champ doré sous le soleil, grange rouge au centre, chemins de terre vers chaque apparition, bottes de foin rondes,
+// piles de bottes carrées, clôtures en bois, grands chênes, épouvantails, coquelicots et bleuets. De 2 à 12 joueurs comme les autres cartes :
+// une part tirée au sort (toujours la même) recopiée par rotation, et des piles de foin cache-vues entre les apparitions qui se verraient.
+const wheatGs = {};
+for (let n = 2; n <= 12; n++) {
+  const key = n === 2 ? 'wheat' : 'wheat' + n;
+  MAPS[key] = n === 2 ? { ...MAPS.forestA1, key, snow: false } : { ...MAPS[BIGN[n].forestB1], key, snow: false }; OBST[key] = [];
+  SYM_BUILD[key] = () => { if (wheatGs[key]) return; wheatGs[key] = buildWheat(n, MAPS[key], OBST[key]); };
+}
+SKY.wheat = skyTex([[0, '#2c6fd1'], [0.33, '#6fb0ec'], [0.46, '#cfe6f6'], [0.5, '#f4f1e0'], [0.53, '#c9d6a0'], [1, '#6c7f45']]);
+MAPLOOK.wheat = { fog: 0xd8e6ef, near: 90, far: 430, hs: 0xfff6dc, hg: 0x8a7a45, sun: 0xfff0c8, sunI: 1.15 };
+for (let n = 3; n <= 12; n++) { SKY['wheat' + n] = SKY.wheat; MAPLOOK['wheat' + n] = MAPLOOK.wheat; }
+// épis de blé : une image (tiges dorées, épis, quelques barbes) posée sur deux plans croisés
+let wheatTex = null;
+function wheatTexture() {
+  if (wheatTex) return wheatTex;
+  const c = document.createElement('canvas'); c.width = 128; c.height = 128; const g = c.getContext('2d');
+  let a = 7; const r = () => { a = (a * 1664525 + 1013904223) >>> 0; return a / 4294967296; };
+  for (let i = 0; i < 22; i++) {
+    const x = 6 + r() * 116, top = 14 + r() * 30, lean = (r() - 0.5) * 16, col = `hsl(${43 + r() * 7},${70 + r() * 15}%,${62 + r() * 12}%)`;
+    g.strokeStyle = col; g.lineWidth = 3; g.beginPath(); g.moveTo(x, 128); g.quadraticCurveTo(x + lean * 0.3, 70, x + lean, top + 18); g.stroke();
+    g.fillStyle = `hsl(${41 + r() * 7},${78 + r() * 12}%,${64 + r() * 12}%)`;
+    g.beginPath(); g.ellipse(x + lean, top + 8, 4.2, 12, lean * 0.02, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = 'rgba(236,206,140,.8)'; g.lineWidth = 1; g.beginPath(); g.moveTo(x + lean, top); g.lineTo(x + lean + (r() - 0.5) * 6, top - 9); g.stroke();
+  }
+  wheatTex = new T.CanvasTexture(c); wheatTex.generateMipmaps = false; wheatTex.minFilter = T.LinearFilter; return wheatTex; // sans mipmaps : les bords transparents ne foncent pas l'épi au loin
+}
+function buildWheat(N, F, O) {
+  const G = new T.Group(); G.visible = false; scene.add(G);
+  const R = F.rlim, SR = F.spawnR || F.spawnZ, TW = 2 * Math.PI / N;
+  let seed = 20261124 + N * 7919; const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
+  const rotP = (x, z, a) => [x * Math.cos(a) + z * Math.sin(a), -x * Math.sin(a) + z * Math.cos(a)];
+  const spawns = Array.from({ length: N }, (_, i) => rotP(0, SR, i * TW));
+  const BARN = 4.6, PATH = 1.6; // demi-côté de la grange, demi-largeur des chemins
+  const onPath = (x, z) => { for (let k = 0; k < N; k++) { const [px, pz] = rotP(x, z, -k * TW); if (pz > 0 && pz < SR + 2 && Math.abs(px) < PATH) return true; } return Math.hypot(x, z) < BARN + 4; };
+  // t : 'o' chêne, 'q' botte ronde, 'h' pile de bottes carrées, 'f' clôture, 'c' épouvantail
+  const part = [], A = Math.PI * R * R / N;
+  const reach = q => q.hx !== undefined ? Math.max(q.hx, q.hz) : q.r;
+  const free = (x, z, r) => { const d0 = Math.hypot(x, z); if (d0 < BARN + 5 + r || d0 > R - r - 1) return false; if (Math.hypot(x, z - SR) < r + 7) return false; if (onPath(x, z)) return false;
+    const a = Math.atan2(x, z); if (Math.abs(a) * d0 > (Math.PI / N) * d0 - r - 0.6) return false; return part.every(q => Math.hypot(q.x - x, q.z - z) > reach(q) + r + 1.4); };
+  const place = (t, n, mk) => { for (let i = 0, tries = 0; i < n && tries < n * 60; tries++) { const a = (rnd() * 2 - 1) * Math.PI / N, d = Math.sqrt(rnd()) * R, x = d * Math.sin(a), z = d * Math.cos(a), q = mk(x, z); if (free(x, z, reach(q))) { part.push(q); i++; } } };
+  const ang = () => { const th = rnd() * Math.PI; return [Math.cos(th), -Math.sin(th)]; };
+  place('o', Math.round(A * 0.0006), (x, z) => ({ t: 'o', x, z, r: 0.55 + rnd() * 0.25, h: 7 + rnd() * 2, v: rnd() }));
+  place('h', Math.round(A * 0.0009), (x, z) => { const [ax, az] = ang(), lv = rnd() > 0.5 ? 2 : 1; return { t: 'h', x, z, ax, az, hx: 1.2 + (rnd() > 0.5 ? 1.2 : 0), hz: 0.6 + (rnd() > 0.6 ? 0.6 : 0), h: lv * 0.95, v: rnd() }; });
+  place('q', Math.round(A * 0.0016), (x, z) => ({ t: 'q', x, z, r: 0.8, v: rnd() }));
+  place('f', Math.round(A * 0.0006), (x, z) => { const [ax, az] = ang(); return { t: 'f', x, z, ax, az, hx: 3 + Math.floor(rnd() * 4) * 1.2, hz: 0.08, h: 1.15, v: rnd() }; });
+  place('c', Math.max(1, Math.round(A * 0.00012)), (x, z) => ({ t: 'c', x, z, r: 0.3, v: rnd() }));
+  let all = []; for (let k = 0; k < N; k++) for (const q of part) { const [x, z] = rotP(q.x, q.z, k * TW), o = { ...q, x, z }; if (q.ax !== undefined) [o.ax, o.az] = rotP(q.ax, q.az, k * TW); all.push(o); }
+  all.push({ t: 'barn', x: 0, z: 0, ax: 1, az: 0, hx: BARN, hz: BARN, h: 7.2 });
+  const asObst = q => q.t === 'o' ? { type: 'trunk', x: q.x, z: q.z, r: q.r, h: q.h } : q.t === 'c' ? { type: 'trunk', x: q.x, z: q.z, r: 0.12, h: 2.2 } : q.t === 'q' ? { type: 'rock', x: q.x, z: q.z, r: 0.8, cy: 0.75, sy: 0.95 }
+    : { type: 'box', x: q.x, z: q.z, ax: q.ax, az: q.az, hx: q.hx, hz: q.hz, h: q.h, r: Math.hypot(q.hx, q.hz) };
+  const P = new T.Vector3(), sees = (a, b, list) => { const d = Math.hypot(b[0] - a[0], b[1] - a[1]), m = Math.ceil(d / 0.4); for (const y of [1.2, 1.62]) { let hid = false; for (let i = 1; i < m && !hid; i++) { const f = i / m; P.set(a[0] + (b[0] - a[0]) * f, y, a[1] + (b[1] - a[1]) * f); for (const o of list) if (Math.abs(o.x - P.x) < o.r + 0.1 && Math.abs(o.z - P.z) < o.r + 0.1 && hitObstacle(o, P, 0)) { hid = true; break; } } if (!hid) return true; } return false; };
+  // cache-vues : une grosse pile de bottes de foin (3 étages) en travers de chaque ligne entre deux apparitions qui se voient
+  for (let it = 0; it < 3; it++) {
+    const list = all.map(asObst); let added = false;
+    for (let j = 1; j < N; j++) if (sees(spawns[0], spawns[j], list)) {
+      const mx = (spawns[0][0] + spawns[j][0]) / 2, mz = (spawns[0][1] + spawns[j][1]) / 2, dx = spawns[j][0] - spawns[0][0], dz = spawns[j][1] - spawns[0][1], dl = Math.hypot(dx, dz);
+      const px = -dz / dl, pz = dx / dl; // le long de la pile : en travers de la ligne de vue
+      for (let k = 0; k < N; k++) { const [x, z] = rotP(mx, mz, k * TW), [ax, az] = rotP(px, pz, k * TW); if (all.some(q => q.big && Math.hypot(q.x - x, q.z - z) < 1)) continue; all = all.filter(q => q.big || q.t === 'barn' || Math.hypot(q.x - x, q.z - z) > reach(q) + 4.5); /* on ne retire ni la grange ni les autres cache-vues */ all.push({ t: 'h', x, z, ax, az, hx: 3.6, hz: 1.2, h: 2.85, v: 0.5, big: true }); }
+      added = true;
+    }
+    if (!added) break;
+  }
+  for (const q of all) O.push(asObst(q)); gridObstacles(O);
+  // sol : terre sous le blé, chemins de terre clairs, prairie verte au-delà, collines au loin
+  const S = R + 160, gGeo = new T.PlaneGeometry(S * 2, S * 2, 120, 120).rotateX(-Math.PI / 2), gp = gGeo.attributes.position, gc = [], sc = new T.Color();
+  for (let i = 0; i < gp.count; i++) { const x = gp.getX(i), z = gp.getZ(i), d = Math.hypot(x, z), out = Math.max(0, d - R - 8);
+    gp.setY(i, out > 0 ? Math.min(18, out * 0.18) * (0.55 + 0.45 * Math.sin(x * 0.025 + z * 0.02)) : 0);
+    if (d > R + 2) sc.setHSL(0.24 + 0.02 * Math.sin(x * 0.05), 0.42, 0.36 + 0.05 * Math.sin(z * 0.04 + x * 0.03)); // prairie
+    else if (onPath(x, z)) sc.setHSL(0.09, 0.32, 0.5 + 0.03 * Math.sin(x * 2 + z)); // chemin
+    else sc.setHSL(0.115, 0.55, 0.5 + 0.04 * Math.sin(x * 0.8 + z * 0.6)); // chaume doré sous le blé
+    gc.push(sc.r, sc.g, sc.b); }
+  gGeo.setAttribute('color', new T.Float32BufferAttribute(gc, 3)); gGeo.computeVertexNormals();
+  G.add(new T.Mesh(gGeo, new T.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 1 })));
+  // instances
+  const parts = new Map(), D = new T.Object3D();
+  const put = (name, geo, mat, m) => { if (!parts.has(name)) parts.set(name, { geo, mat, m: [] }); parts.get(name).m.push(m.clone()); };
+  const putT = (name, geo, mat, x, y, z, sx, sy, sz, rx = 0, ry = 0, rz = 0) => { D.position.set(x, y, z); D.rotation.set(rx, ry, rz); D.scale.set(sx, sy, sz); D.updateMatrix(); put(name, geo, mat, D.matrix); };
+  const blob = (det, amp) => { const g = new T.IcosahedronGeometry(1, det), q = g.attributes.position; for (let i = 0; i < q.count; i++) { const k = 1 + amp * Math.sin(q.getX(i) * 4.3 + q.getY(i) * 3.1 + q.getZ(i) * 5.7); q.setXYZ(i, q.getX(i) * k, q.getY(i) * k, q.getZ(i) * k); } g.computeVertexNormals(); return g; };
+  const box = new T.BoxGeometry(1, 1, 1).translate(0, 0.5, 0);
+  const strawM = std(0xe0bb5e, { roughness: .95 }), strawM2 = std(0xd2a94a, { roughness: .95 }), roundG = new T.CylinderGeometry(0.8, 0.8, 1.2, 16).rotateZ(Math.PI / 2), roundEndG = new T.CylinderGeometry(0.62, 0.62, 1.22, 16).rotateZ(Math.PI / 2), roundEndM = std(0xc89a3e);
+  const woodM = std(0x8a6a45, { roughness: .9 }), woodM2 = std(0x6e5233, { roughness: .9 });
+  const oakTrunkG = new T.CylinderGeometry(0.75, 1, 1, 8).translate(0, 0.5, 0), oakM = std(0x5a4330), crownG = blob(1, 0.1), leafA = std(0x4d8a3a), leafB = std(0x5f9c42), leafC = std(0x3f7a33);
+  const wheatG = (() => { const g = new T.PlaneGeometry(1.7, 1.1).translate(0, 0.55, 0), g2 = g.clone().rotateY(Math.PI / 2); const pos = [...g.attributes.position.array, ...g2.attributes.position.array], uv = [...g.attributes.uv.array, ...g2.attributes.uv.array], nrm = []; for (let i = 0; i < pos.length / 3; i++) nrm.push(0, 1, 0); const idx = [...g.index.array, ...g2.index.array.map(i => i + 4)]; const m = new T.BufferGeometry(); m.setAttribute('position', new T.Float32BufferAttribute(pos, 3)); m.setAttribute('uv', new T.Float32BufferAttribute(uv, 2)); m.setAttribute('normal', new T.Float32BufferAttribute(nrm, 3)); m.setIndex(idx); return m; })();
+  const wheatM = new T.MeshLambertMaterial({ map: wheatTexture(), alphaTest: 0.45, side: T.DoubleSide, color: 0xffffff, emissive: 0x3a2a08 });
+  const poppyG = new T.SphereGeometry(0.07, 6, 4), poppyM = std(0xd8261c), cornM = std(0x3f6fd8);
+  // grange (au centre) : murs rouges, coins et bords blancs, toit en pyramide (les quatre côtés pareils), grande porte à croix blanche sur chaque côté
+  { const B = BARN, H = 4.4, red = std(0xa8322a, { roughness: .85 }), white = std(0xf1ece0), roofM = std(0x5d5f63, { roughness: .7 }), dark = std(0x6a1f1a), cbox = new T.BoxGeometry(1, 1, 1);
+    const add = (geo, mat, x, y, z, sx, sy, sz) => { const m = new T.Mesh(geo, mat); m.position.set(x, y, z); m.scale.set(sx, sy, sz); G.add(m); return m; };
+    add(box, red, 0, 0, 0, B * 2, H, B * 2);
+    for (const [sx, sz] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) add(box, white, sx * B, 0, sz * B, 0.3, H, 0.3); // coins
+    add(new T.ConeGeometry(B * 1.5, 3.2, 4, 1).rotateY(Math.PI / 4).translate(0, 1.6, 0), roofM, 0, H, 0, 1, 1, 1); // toit
+    add(box, white, 0, H - 0.15, 0, B * 2 + 0.3, 0.3, B * 2 + 0.3); // bord du toit
+    for (let i = 0; i < 4; i++) {
+      const g = new T.Group(); g.rotation.y = i * Math.PI / 2; G.add(g); // une façade (tournée d'un quart de tour à chaque fois)
+      const f = (geo, mat, x, y, z, sx, sy, sz, rz = 0) => { const m = new T.Mesh(geo, mat); m.position.set(x, y, z); m.scale.set(sx, sy, sz); m.rotation.z = rz; g.add(m); };
+      f(cbox, dark, 0, 1.55, B + 0.03, 3.2, 3.1, 0.06);              // grande porte
+      f(cbox, white, 0, 3.1, B + 0.07, 3.5, 0.18, 0.1);              // linteau
+      for (const sx of [-1, 1]) f(cbox, white, sx * 1.7, 1.55, B + 0.07, 0.16, 3.1, 0.1); // montants
+      for (const sg of [-1, 1]) f(cbox, white, 0, 1.55, B + 0.08, 0.14, 4.3, 0.08, sg * 0.8); // croix
+      f(cbox, white, 0, H + 0.9, B * 0.62 + 0.04, 0.9, 0.9, 0.06); f(cbox, dark, 0, H + 0.9, B * 0.62 + 0.07, 0.7, 0.7, 0.04); // lucarne du grenier
+    }
+    const vane = new T.Mesh(new T.ConeGeometry(0.12, 1.4, 6), std(0x2f3033)); vane.position.y = H + 3.6; G.add(vane); }
+  for (const q of all) {
+    const ry = Math.atan2(-(q.az || 0), q.ax || 1);
+    if (q.t === 'o') { putT('ot', oakTrunkG, oakM, q.x, 0, q.z, q.r, q.h * 0.55, q.r, 0, q.v * 6);
+      for (let i = 0; i < 4; i++) { const a = q.v * 6 + i * 1.7, o = i ? 1.9 : 0; putT(['oA', 'oB', 'oC', 'oA'][i], crownG, [leafA, leafB, leafC, leafA][i], q.x + Math.sin(a) * o, q.h * 0.55 + 1.4 + (i ? 0.4 : 1.2), q.z + Math.cos(a) * o, 3.1 - (i ? 0.6 : 0), 2.4, 3 - (i ? 0.5 : 0), 0, a); } }
+    else if (q.t === 'q') { const a = q.v * 6.28; putT('q', roundG, q.v > 0.5 ? strawM : strawM2, q.x, 0.8, q.z, 1, 1, 1, 0, a); putT('qe', roundEndG, roundEndM, q.x, 0.8, q.z, 1, 1, 1, 0, a); }
+    else if (q.t === 'h' || q.t === 'f' || q.t === 'barn') {
+      if (q.t === 'barn') continue;
+      if (q.t === 'h') { // pile de bottes carrées : chaque étage fait de bottes de 1,2 × 0,6 m posées côte à côte (un peu décalées d'un étage à l'autre)
+        const lv = Math.round(q.h / 0.95), px = -q.az, pz = q.ax;
+        for (let l = 0; l < lv; l++) { const nx = Math.max(1, Math.round((q.hx * 2 - l * 0.3) / 1.2)), nz = Math.max(1, Math.round((q.hz * 2 - (l ? 0.1 : 0)) / 0.6)), off = l % 2 ? 0.15 : 0;
+          for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) { const lx = (i - (nx - 1) / 2) * 1.2 + off, lz = (j - (nz - 1) / 2) * 0.6, b = (i + j + l) % 3; D.position.set(q.x + q.ax * lx + px * lz, l * 0.95, q.z + q.az * lx + pz * lz); D.rotation.set(0, ry, 0); D.scale.set(1.16, 0.92, 0.56); D.updateMatrix(); put('h' + b, box, [strawM, strawM2, roundEndM][b], D.matrix); } } }
+      else { const n = Math.round(q.hx * 2 / 1.2); for (let i = 0; i <= n; i++) { const t2 = -q.hx + i * q.hx * 2 / n; putT('fp', box, woodM2, q.x + q.ax * t2, 0, q.z + q.az * t2, 0.13, 1.25, 0.13, 0, ry); }
+        for (const y of [0.45, 0.9]) putT('fr', box, woodM, q.x, y, q.z, q.hx * 2, 0.09, 0.06, 0, ry); }
+    } else if (q.t === 'c') { // épouvantail : piquet, bras, chemise, tête de paille, chapeau
+      putT('cp', box, woodM2, q.x, 0, q.z, 0.1, 2.1, 0.1, 0, q.v * 6); putT('cp', box, woodM2, q.x, 1.55, q.z, 1.5, 0.08, 0.08, 0, q.v * 6);
+      putT('cs', box, std(0x3d6fa8), q.x, 1.0, q.z, 0.55, 0.7, 0.3, 0, q.v * 6); putT('ch', new T.SphereGeometry(0.2, 8, 6), strawM, q.x, 1.95, q.z, 1, 1, 1);
+      putT('cH', new T.ConeGeometry(0.32, 0.35, 10), std(0x6b4a2a), q.x, 2.2, q.z, 1, 1, 1); }
+  }
+  // le blé : des touffes partout sauf sur les chemins, autour des apparitions et des obstacles ; quelques coquelicots et bleuets
+  const obsNear = (x, z) => O.some(o => Math.abs(o.x - x) < (o.r || 1) + 1.6 && Math.abs(o.z - z) < (o.r || 1) + 1.6 && Math.hypot(o.x - x, o.z - z) < (o.type === 'box' ? Math.hypot(o.hx, o.hz) : o.r) + 0.5);
+  const STEP = 1.3, wheatPos = [];
+  for (let x = -R; x <= R; x += STEP) for (let z = -R; z <= R; z += STEP) {
+    const jx = x + (rnd() - 0.5) * STEP * 0.8, jz = z + (rnd() - 0.5) * STEP * 0.8, d = Math.hypot(jx, jz);
+    if (d > R + 1 || onPath(jx, jz) || spawns.some(([sx, sz]) => Math.hypot(jx - sx, jz - sz) < 3.5) || obsNear(jx, jz)) continue;
+    putT('w', wheatG, wheatM, jx, 0, jz, 0.85 + rnd() * 0.35, 0.8 + rnd() * 0.35, 0.85 + rnd() * 0.35, 0, rnd() * 3.14);
+    const fr = rnd(); if (fr < 0.05) putT(fr < 0.035 ? 'pp' : 'pc', poppyG, fr < 0.035 ? poppyM : cornM, jx + 0.3, 0.75 + rnd() * 0.2, jz, 1, 0.7, 1);
+  }
+  for (let i = 0, n = Math.round(2 * Math.PI * (R + 40) / 14); i < n; i++) { const a = i / n * Math.PI * 2, d = R + 25 + rnd() * 30; putT('oB2', crownG, leafC, Math.sin(a) * d, 2 + rnd() * 2, Math.cos(a) * d, 5 + rnd() * 4, 4 + rnd() * 3, 5 + rnd() * 4, 0, a); } // haies et bosquets au loin
+  for (const [name, { geo, mat, m }] of parts) { const im = new T.InstancedMesh(geo, mat, m.length); m.forEach((x, i) => im.setMatrixAt(i, x)); im.instanceMatrix.needsUpdate = true; im.frustumCulled = false; G.add(im); }
+  return G;
+}
 function applyMap(k) {
   if (SYM_BUILD[baseMap(k)]) SYM_BUILD[baseMap(k)]();
   mapKey = k; map = MAPS[k]; obstacles = OBST[k];
-  canyonG.visible = k === 'canyon'; desertG.visible = k === 'desert'; for (const [dk, dg] of Object.entries(desertGs)) dg.visible = dk === k; for (const [ik, ig] of Object.entries(islandGs)) ig.visible = ik === k; for (const [jk, jg] of Object.entries(jungleGs)) jg.visible = jk === k; forestV2G.visible = baseMap(k) === 'forestV2'; forestV3G.visible = baseMap(k) === 'forestV3'; forestB1G.visible = baseMap(k) === 'forestB1'; forestB2G.visible = baseMap(k) === 'forestB2'; forestC1G.visible = baseMap(k) === 'forestC1'; forestC2G.visible = baseMap(k) === 'forestC2'; forestF1G.visible = baseMap(k) === 'forestF1'; forestF2G.visible = baseMap(k) === 'forestF2'; forestK1G.visible = baseMap(k) === 'forestK1'; forestK2G.visible = baseMap(k) === 'forestK2'; forestL1G.visible = baseMap(k) === 'forestL1'; forestL2G.visible = baseMap(k) === 'forestL2'; forestM1G.visible = baseMap(k) === 'forestM1'; forestM2G.visible = baseMap(k) === 'forestM2'; forestR1G.visible = baseMap(k) === 'forestR1'; forestR2G.visible = baseMap(k) === 'forestR2'; forestW1G.visible = baseMap(k) === 'forestW1'; forestW2G.visible = baseMap(k) === 'forestW2'; forestY1G.visible = baseMap(k) === 'forestY1'; forestY2G.visible = baseMap(k) === 'forestY2'; forestJ1G.visible = baseMap(k) === 'forestJ1'; forestJ2G.visible = baseMap(k) === 'forestJ2'; forestA1G.visible = baseMap(k) === 'forestA1'; forestA2G.visible = baseMap(k) === 'forestA2'; forestT1G.visible = baseMap(k) === 'forestT1'; forestT2G.visible = baseMap(k) === 'forestT2'; forestQ1G.visible = baseMap(k) === 'forestQ1'; forestQ2G.visible = baseMap(k) === 'forestQ2'; forestP1G.visible = baseMap(k) === 'forestP1'; forestP2G.visible = baseMap(k) === 'forestP2'; forestH1G.visible = baseMap(k) === 'forestH1'; forestH2G.visible = baseMap(k) === 'forestH2'; forestS1G.visible = baseMap(k) === 'forestS1'; forestS2G.visible = baseMap(k) === 'forestS2'; forestO1G.visible = baseMap(k) === 'forestO1'; forestO2G.visible = baseMap(k) === 'forestO2'; forestN1G.visible = baseMap(k) === 'forestN1'; forestN2G.visible = baseMap(k) === 'forestN2'; forestD1G.visible = baseMap(k) === 'forestD1'; forestD2G.visible = baseMap(k) === 'forestD2'; forestE1G.visible = baseMap(k) === 'forestE1'; forestE2G.visible = baseMap(k) === 'forestE2'; forestZ1G.visible = baseMap(k) === 'forestZ1'; forestZ2G.visible = baseMap(k) === 'forestZ2'; SNOW.set(isSnow(k)); snowFx.visible = isSnow(k); clearFeet(); bigForestG.visible = k === 'forestXL';
+  canyonG.visible = k === 'canyon'; desertG.visible = k === 'desert'; for (const [dk, dg] of Object.entries(desertGs)) dg.visible = dk === k; for (const [ik, ig] of Object.entries(islandGs)) ig.visible = ik === k; for (const [jk, jg] of Object.entries(jungleGs)) jg.visible = jk === k; for (const [wk, wg] of Object.entries(wheatGs)) wg.visible = wk === k; forestV2G.visible = baseMap(k) === 'forestV2'; forestV3G.visible = baseMap(k) === 'forestV3'; forestB1G.visible = baseMap(k) === 'forestB1'; forestB2G.visible = baseMap(k) === 'forestB2'; forestC1G.visible = baseMap(k) === 'forestC1'; forestC2G.visible = baseMap(k) === 'forestC2'; forestF1G.visible = baseMap(k) === 'forestF1'; forestF2G.visible = baseMap(k) === 'forestF2'; forestK1G.visible = baseMap(k) === 'forestK1'; forestK2G.visible = baseMap(k) === 'forestK2'; forestL1G.visible = baseMap(k) === 'forestL1'; forestL2G.visible = baseMap(k) === 'forestL2'; forestM1G.visible = baseMap(k) === 'forestM1'; forestM2G.visible = baseMap(k) === 'forestM2'; forestR1G.visible = baseMap(k) === 'forestR1'; forestR2G.visible = baseMap(k) === 'forestR2'; forestW1G.visible = baseMap(k) === 'forestW1'; forestW2G.visible = baseMap(k) === 'forestW2'; forestY1G.visible = baseMap(k) === 'forestY1'; forestY2G.visible = baseMap(k) === 'forestY2'; forestJ1G.visible = baseMap(k) === 'forestJ1'; forestJ2G.visible = baseMap(k) === 'forestJ2'; forestA1G.visible = baseMap(k) === 'forestA1'; forestA2G.visible = baseMap(k) === 'forestA2'; forestT1G.visible = baseMap(k) === 'forestT1'; forestT2G.visible = baseMap(k) === 'forestT2'; forestQ1G.visible = baseMap(k) === 'forestQ1'; forestQ2G.visible = baseMap(k) === 'forestQ2'; forestP1G.visible = baseMap(k) === 'forestP1'; forestP2G.visible = baseMap(k) === 'forestP2'; forestH1G.visible = baseMap(k) === 'forestH1'; forestH2G.visible = baseMap(k) === 'forestH2'; forestS1G.visible = baseMap(k) === 'forestS1'; forestS2G.visible = baseMap(k) === 'forestS2'; forestO1G.visible = baseMap(k) === 'forestO1'; forestO2G.visible = baseMap(k) === 'forestO2'; forestN1G.visible = baseMap(k) === 'forestN1'; forestN2G.visible = baseMap(k) === 'forestN2'; forestD1G.visible = baseMap(k) === 'forestD1'; forestD2G.visible = baseMap(k) === 'forestD2'; forestE1G.visible = baseMap(k) === 'forestE1'; forestE2G.visible = baseMap(k) === 'forestE2'; forestZ1G.visible = baseMap(k) === 'forestZ1'; forestZ2G.visible = baseMap(k) === 'forestZ2'; SNOW.set(isSnow(k)); snowFx.visible = isSnow(k); clearFeet(); bigForestG.visible = k === 'forestXL';
   skyMat.map = SKY[k]; skyMat.needsUpdate = true;
   const L = MAPLOOK[k];
   scene.fog.color.setHex(L.fog); scene.fog.near = L.near; scene.fog.far = L.far;
