@@ -319,7 +319,7 @@ p{margin:0}
         <button data-map="forestB2" aria-pressed="false">Forêt petits troncs<small>tous les troncs de la même largeur</small></button>
         <button data-map="forestV2" aria-pressed="false">Forêt classique OG<small>l'ancienne forêt, en 1 contre 1</small></button>
         <button data-map="forestV3" aria-pressed="false">Forêt petits troncs OG<small>l'ancienne forêt, en 1 contre 1</small></button>
-        <button data-map="desert" aria-pressed="false">Désert<small>collines et cactus, en 1 contre 1</small></button>
+        <button data-map="desert" aria-pressed="false">Désert<small>collines et cactus, de 2 à 12</small></button>
       </div>
       <div class="opt wpnrow" hidden><span>Arme</span>
       <div class="seg wpnsel" role="group" aria-label="Arme en forêt">
@@ -486,7 +486,7 @@ p{margin:0}
       <button data-map="forestB2" aria-pressed="false">Forêt petits troncs<small>troncs égaux, de 2 à 12</small></button>
       <button data-map="forestV2" aria-pressed="false">Forêt classique OG<small>l'ancienne forêt, à 2</small></button>
       <button data-map="forestV3" aria-pressed="false">Forêt petits troncs OG<small>l'ancienne forêt, à 2</small></button>
-      <button data-map="desert" aria-pressed="false">Désert<small>collines et cactus, à 2</small></button>
+      <button data-map="desert" aria-pressed="false">Désert<small>collines et cactus, de 2 à 12</small></button>
       <button data-map="forestXL" aria-pressed="false" disabled>Forêt géante<small>124 m, à 3</small></button>
     </div>
     <div class="opt wpnrow" hidden><span>Arme</span>
@@ -576,7 +576,7 @@ p{margin:0}
       <button data-map="forestB2" aria-pressed="false">Forêt petits troncs<small>troncs égaux, de 2 à 12</small></button>
       <button data-map="forestV2" aria-pressed="false">Forêt classique OG<small>l'ancienne forêt, à 2</small></button>
       <button data-map="forestV3" aria-pressed="false">Forêt petits troncs OG<small>l'ancienne forêt, à 2</small></button>
-      <button data-map="desert" aria-pressed="false">Désert<small>collines et cactus, à 2</small></button>
+      <button data-map="desert" aria-pressed="false">Désert<small>collines et cactus, de 2 à 12</small></button>
       <button data-map="forestXL" aria-pressed="false" disabled>Forêt géante<small>124 m, à 3</small></button>
     </div>
     <div class="opt wpnrow" hidden><span>Arme</span>
@@ -677,7 +677,7 @@ const MAPS = {
   // 1v1v1 : forêt géante de 124 m de côté (plus de 3 fois plus grande dans chaque direction), apparitions à 94 m les unes des autres
   forestXL: { key: 'forestXL', spawnZ: 17, lateral: false, xlim: 62, zlim: 62, maxv: 3.1, acc: 22, yawLim: Infinity, big: true, spawnR: 54 },
   // 1v1v1 : jardins de temples japonais de 140 m de côté ; chacun apparaît dans une cour fermée, porte tournée vers l'extérieur
-  desert: { key: 'desert', spawnZ: 30, lateral: false, xlim: 34, zlim: 46, maxv: 3.1, acc: 22, yawLim: Infinity }, // désert : 68 × 92 m, collines de sable, cactus et rochers, symétrique par demi-tour, apparitions à 60 m ; en 1 contre 1
+  desert: { key: 'desert', spawnZ: 30, lateral: false, xlim: 34, zlim: 46, maxv: 3.1, acc: 22, yawLim: Infinity }, // désert à 2 : 68 × 92 m, collines de sable, cactus et rochers, symétrique par demi-tour, apparitions à 60 m (de 3 à 12 : voir desert3…desert12)
 };
 // arme en forêt : arc (par défaut), arbalète, carabine, batte, pistolet, revolver, deagle, vector, M4, Barrett, fusil à pompe, bière, lance-grenades, minigun, paintball ou sniper paintball ; le canyon reste toujours à l'arc
 // kind : projectile ; aimT : temps pour bander / épauler ; zoomX : lunette (null = zoom léger de l'arc)
@@ -893,16 +893,18 @@ MAPS.forestA1 = { ...MAPS.forestB1, key: 'forestA1', spawnZ: 36, spawnR: 36, xli
 MAPS.forestA1s = { ...MAPS.forestA1, key: 'forestA1s', snow: true }; MAPS.forestA2s = { ...MAPS.forestA2, key: 'forestA2s', snow: true };
 const BIG2 = { forestB1: 'forestA1', forestB1s: 'forestA1s', forestB2: 'forestA2', forestB2s: 'forestA2s' };
 const BIGN = { 2: BIG2, 12: BIG12, 11: BIG11, 10: BIG10, 9: BIG9, 8: BIG8, 7: BIG7, 6: BIG6, 3: { forestB1: 'forestB1', forestB1s: 'forestB1s', forestB2: 'forestB2', forestB2s: 'forestB2s' }, 4: BIG4, 5: BIG5 }; // les boutons V1.2 / V2.2 -> la version pour n joueurs
-const isOG = k => k === 'desert' || !!MAP_FAMILY[baseMap(k)]; // les anciennes forêts (« OG ») et le désert : seulement à 2 joueurs
+const isOG = k => !!MAP_FAMILY[baseMap(k)]; // les anciennes forêts (« OG ») : seulement à 2 joueurs
+const isDesert = k => k === 'desert' || /^desert\d+$/.test(k); // le désert, en version à 2 ou à n joueurs
+const desertFor = n => n <= 2 ? 'desert' : 'desert' + Math.min(12, n);
 const bigFor = n => n >= 1 && n <= 12; // forêt classique et forêt petits troncs : de 2 à 12 joueurs (proposées aussi quand on attend seul dans le salon)
 const BIG4_INV = Object.fromEntries([...Object.entries(BIG4), ...Object.entries(BIG5), ...Object.entries(BIG6), ...Object.entries(BIG7), ...Object.entries(BIG8), ...Object.entries(BIG9), ...Object.entries(BIG10), ...Object.entries(BIG11), ...Object.entries(BIG12), ...Object.entries(BIG2)].map(([a, b]) => [b, a]));
 const MAP_FAMILY = { forestV2: ['forestV2', 'forestV2s'], forestV3: ['forestV3', 'forestV3s'] }; // on choisit la forêt, puis sa version
 const TRIO = { forestV2: 'forestT1', forestV2s: 'forestT1s', forestV3: 'forestT2', forestV3s: 'forestT2s' }, QUAD = { forestV2: 'forestQ1', forestV2s: 'forestQ1s', forestV3: 'forestQ2', forestV3s: 'forestQ2s' }, PENTA = { forestV2: 'forestP1', forestV2s: 'forestP1s', forestV3: 'forestP2', forestV3s: 'forestP2s' }, HEXA = { forestV2: 'forestH1', forestV2s: 'forestH1s', forestV3: 'forestH2', forestV3s: 'forestH2s' }, HEPTA = { forestV2: 'forestS1', forestV2s: 'forestS1s', forestV3: 'forestS2', forestV3s: 'forestS2s' }, OCTA = { forestV2: 'forestO1', forestV2s: 'forestO1s', forestV3: 'forestO2', forestV3s: 'forestO2s' }, FAM9 = { forestV2: 'forestN1', forestV2s: 'forestN1s', forestV3: 'forestN2', forestV3s: 'forestN2s' }, FAM10 = { forestV2: 'forestD1', forestV2s: 'forestD1s', forestV3: 'forestD2', forestV3s: 'forestD2s' }, FAM11 = { forestV2: 'forestE1', forestV2s: 'forestE1s', forestV3: 'forestE2', forestV3s: 'forestE2s' }, FAM12 = { forestV2: 'forestZ1', forestV2s: 'forestZ1s', forestV3: 'forestZ2', forestV3s: 'forestZ2s' };
 const DUO = Object.fromEntries([...Object.entries(TRIO), ...Object.entries(QUAD), ...Object.entries(PENTA), ...Object.entries(HEXA), ...Object.entries(HEPTA), ...Object.entries(OCTA), ...Object.entries(FAM9), ...Object.entries(FAM10), ...Object.entries(FAM11), ...Object.entries(FAM12)].map(([a, b]) => [b, a])); // forêt à 3 ou 4 -> la même à 2
-const menuMap = k => DUO[k] || BIG4_INV[k] || k; // dans les menus, la version à 3 s'affiche comme sa forêt
+const menuMap = k => isDesert(k) ? 'desert' : DUO[k] || BIG4_INV[k] || k; // dans les menus, la version à 3 s'affiche comme sa forêt
 const baseMap = k => ({ forestA1s: 'forestA1', forestA2s: 'forestA2', forestJ1s: 'forestJ1', forestJ2s: 'forestJ2', forestY1s: 'forestY1', forestY2s: 'forestY2', forestW1s: 'forestW1', forestW2s: 'forestW2', forestR1s: 'forestR1', forestR2s: 'forestR2', forestM1s: 'forestM1', forestM2s: 'forestM2', forestL1s: 'forestL1', forestL2s: 'forestL2', forestK1s: 'forestK1', forestK2s: 'forestK2', forestF1s: 'forestF1', forestF2s: 'forestF2', forestC1s: 'forestC1', forestC2s: 'forestC2', forestB1s: 'forestB1', forestB2s: 'forestB2', forestV2s: 'forestV2', forestV3s: 'forestV3', forestT1s: 'forestT1', forestT2s: 'forestT2', forestQ1s: 'forestQ1', forestQ2s: 'forestQ2', forestP1s: 'forestP1', forestP2s: 'forestP2', forestH1s: 'forestH1', forestH2s: 'forestH2', forestS1s: 'forestS1', forestS2s: 'forestS2', forestO1s: 'forestO1', forestO2s: 'forestO2', forestN1s: 'forestN1', forestN2s: 'forestN2', forestD1s: 'forestD1', forestD2s: 'forestD2', forestE1s: 'forestE1', forestE2s: 'forestE2', forestZ1s: 'forestZ1', forestZ2s: 'forestZ2' })[k] || k, isSnow = k => !!(MAPS[k] && MAPS[k].snow);
 mapKey = 'forestB1'; // la forêt classique par défaut
-try { const k = localStorage.getItem('duelarc-map3'); if (k === 'canyon' || (MAPS[k] && (BIG3[baseMap(k)] || isOG(k)))) mapKey = k; } catch (e) {}
+try { const k = localStorage.getItem('duelarc-map3'); if (k === 'canyon' || (MAPS[k] && (BIG3[baseMap(k)] || isOG(k) || isDesert(k)))) mapKey = menuMap(k) === 'desert' ? 'desert' : k; } catch (e) {}
 
 // ---------- renderer
 const canvas = $('#c');
@@ -1578,7 +1580,7 @@ function hitTarget(a) {
 let practicePrevMap = null;
 
 // ---------- désert : sable ondulé, collines (couvertures qu'on contourne), cactus, rochers de grès ; tout a son jumeau à l'opposé (demi-tour autour du centre)
-const desertG = new T.Group(); scene.add(desertG); desertG.visible = false; OBST.desert = [];
+const desertG = new T.Group(); scene.add(desertG); desertG.visible = false; OBST.desert = []; const MAPLOOK_DESERT_KEYS = [];
 {
   const M = MAPS.desert, O = OBST.desert, rnd = (() => { let a = 20261121; return () => { a = (a * 1664525 + 1013904223) >>> 0; return a / 4294967296; }; })();
   const sandM = new T.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 1 });
@@ -1630,9 +1632,77 @@ const desertG = new T.Group(); scene.add(desertG); desertG.visible = false; OBST
   for (let i = 0; i < 26; i++) { const a = i / 26 * Math.PI * 2, R = 62 + rnd() * 18, d = new T.Mesh(new T.SphereGeometry(1, 14, 7, 0, Math.PI * 2, 0, Math.PI / 2), rnd() > 0.5 ? hillM : hillM2); d.scale.set(16 + rnd() * 12, 6 + rnd() * 7, 12 + rnd() * 10); add(d, Math.sin(a) * R * 0.8, 0, Math.cos(a) * R); d.rotation.y = a; }
   gridObstacles(O);
 }
+// ---------- désert de 3 à 12 joueurs : zone ronde de la même taille que la forêt classique au même nombre ; une part tirée au sort (toujours la même) autour de
+// l'apparition 0, recopiée par rotation de 360°/n ; des collines s'ajoutent entre les apparitions qui se verraient. Tout est en instances (léger, même à 12)
+const desertGs = {};
+for (let n = 3; n <= 12; n++) {
+  const key = 'desert' + n; MAPS[key] = { ...MAPS[BIGN[n].forestB1], key, snow: false }; OBST[key] = [];
+  SYM_BUILD[key] = () => { if (desertGs[key]) return; desertGs[key] = buildDesertN(n, MAPS[key], OBST[key]); };
+}
+function buildDesertN(N, F, O) {
+  const G = new T.Group(); G.visible = false; scene.add(G);
+  const R = F.rlim, SR = F.spawnR, TW = 2 * Math.PI / N;
+  let seed = 20261121 + N * 7919; const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
+  const rotP = (x, z, a) => [x * Math.cos(a) + z * Math.sin(a), -x * Math.sin(a) + z * Math.cos(a)]; // même sens que les apparitions (angle 0 : vers +z)
+  const spawns = Array.from({ length: N }, (_, i) => rotP(0, SR, i * TW));
+  // la part autour de l'apparition 0 : collines, cactus, rochers, à distance des bords de la part pour que les copies ne se chevauchent pas
+  const part = [], A = Math.PI * R * R / N, cR = 7.5 + (R - 56) * 0.045;
+  const free = (x, z, r) => { const d0 = Math.hypot(x, z); if (d0 < cR + r + 2 || d0 > R - r - 1.5) return false; if (Math.hypot(x, z - SR) < r + 7) return false;
+    const a = Math.atan2(x, z); if (Math.abs(a) * d0 > (Math.PI / N) * d0 - r - 0.6) return false; return part.every(q => Math.hypot(q.x - x, q.z - z) > q.r + r + (q.t === 'h' && r > 2 ? -1.5 : 0.8)); };
+  const place = (t, n, rMin, rMax) => { for (let i = 0, tries = 0; i < n && tries < n * 60; tries++) { const a = (rnd() * 2 - 1) * Math.PI / N, d = Math.sqrt(rnd()) * R, x = d * Math.sin(a), z = d * Math.cos(a), r = rMin + rnd() * (rMax - rMin); if (free(x, z, r)) { part.push({ t, x, z, r, h: t === 'h' ? 2 + rnd() * 1.8 : t === 'c' ? 2.3 + rnd() * 1 : 0, v: rnd() }); i++; } } };
+  place('h', Math.round(A * 0.0032), 3.4, 6.4); place('r', Math.round(A * 0.0026), 0.8, 1.4); place('c', Math.round(A * 0.0034), 0.27, 0.27);
+  // tout recopier autour du centre, puis un grand tertre au centre
+  let all = []; for (let k = 0; k < N; k++) for (const q of part) { const [x, z] = rotP(q.x, q.z, k * TW); all.push({ ...q, x, z }); }
+  all.push({ t: 'h', x: 0, z: 0, r: cR, h: 4.2, v: 0.3 });
+  const asObst = q => q.t === 'h' ? { type: 'rock', x: q.x, z: q.z, r: q.r, cy: 0, sy: q.h / q.r } : q.t === 'c' ? { type: 'trunk', x: q.x, z: q.z, r: 0.27, h: q.h } : { type: 'rock', x: q.x, z: q.z, r: q.r * 0.95, cy: q.r * 0.35, sy: 0.75 };
+  const P = new T.Vector3(), sees = (a, b, list) => { const d = Math.hypot(b[0] - a[0], b[1] - a[1]), m = Math.ceil(d / 0.4); for (const y of [1.2, 1.62]) { let hid = false; for (let i = 1; i < m && !hid; i++) { const f = i / m; P.set(a[0] + (b[0] - a[0]) * f, y, a[1] + (b[1] - a[1]) * f); for (const o of list) if (Math.abs(o.x - P.x) < o.r + 0.1 && Math.abs(o.z - P.z) < o.r + 0.1 && hitObstacle(o, P, 0)) { hid = true; break; } } if (!hid) return true; } return false; };
+  // cache-vues : une colline au milieu de chaque paire d'apparitions qui se voient (et ses copies tournées)
+  for (let it = 0; it < 3; it++) {
+    const list = all.map(asObst); let added = false;
+    for (let j = 1; j < N; j++) if (sees(spawns[0], spawns[j], list)) {
+      const mx = (spawns[0][0] + spawns[j][0]) / 2, mz = (spawns[0][1] + spawns[j][1]) / 2, br = Math.min(5, Math.max(3.4, Math.hypot(spawns[0][0] - spawns[j][0], spawns[0][1] - spawns[j][1]) * 0.12));
+      for (let k = 0; k < N; k++) { const [x, z] = rotP(mx, mz, k * TW); if (all.some(q => q.t === 'h' && q.r >= 3 && Math.hypot(q.x - x, q.z - z) < 1)) continue; all = all.filter(q => Math.hypot(q.x - x, q.z - z) > q.r + br + 0.5 || q.t === 'h'); all.push({ t: 'h', x, z, r: br, h: 3.2, v: 0.6 }); }
+      added = true;
+    }
+    if (!added) break;
+  }
+  for (const q of all) O.push(asObst(q)); gridObstacles(O);
+  // sol : sable à petites rides dans la zone, grandes dunes au-delà
+  const S = R + 90, gGeo = new T.PlaneGeometry(S * 2, S * 2, 110, 110).rotateX(-Math.PI / 2), gp = gGeo.attributes.position, gc = [], sc = new T.Color();
+  for (let i = 0; i < gp.count; i++) { const x = gp.getX(i), z = gp.getZ(i), out = Math.max(0, Math.hypot(x, z) - R - 3);
+    const y = out > 0 ? Math.min(16, out * 0.5) * (0.6 + 0.4 * Math.sin(x * 0.08 + z * 0.05)) + Math.sin(x * 0.19) * Math.cos(z * 0.15) * 1.3 : 0.03 * Math.sin(x * 1.3 + z * 0.4);
+    gp.setY(i, y); sc.setHSL(0.095 + 0.01 * Math.sin(x * 0.3), 0.55, 0.62 + 0.05 * Math.sin(x * 0.7 + z * 0.9) + Math.min(0.06, y * 0.01)); gc.push(sc.r, sc.g, sc.b); }
+  gGeo.setAttribute('color', new T.Float32BufferAttribute(gc, 3)); gGeo.computeVertexNormals();
+  G.add(new T.Mesh(gGeo, new T.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 1 })));
+  // instances : une pièce = une géométrie et un matériau, toutes les positions d'un coup
+  const hemi = r => { const g = new T.SphereGeometry(1, 18, 9, 0, Math.PI * 2, 0, Math.PI / 2), q = g.attributes.position; for (let i = 0; i < q.count; i++) { const k = 1 + r * Math.sin(q.getX(i) * 7 + q.getZ(i) * 5) * Math.min(1, q.getY(i) * 3); q.setXYZ(i, q.getX(i) * k, q.getY(i), q.getZ(i) * k); } g.computeVertexNormals(); return g; };
+  const parts = new Map(), D = new T.Object3D();
+  const put = (name, geo, mat, x, y, z, sx, sy, sz, rx = 0, ry = 0, rz = 0) => { if (!parts.has(name)) parts.set(name, { geo, mat, m: [] }); D.position.set(x, y, z); D.rotation.set(rx, ry, rz); D.scale.set(sx, sy, sz); D.updateMatrix(); parts.get(name).m.push(D.matrix.clone()); };
+  const hillGeo = hemi(0.05), hillA = std(0xd6a865), hillB = std(0xc8955a), rockGeo = new T.DodecahedronGeometry(1, 0), rockA = std(0xb4673f), rockB = std(0x9c5534), cA = std(0x4f7a3a), cB = std(0x3f6630);
+  const cBody = new T.CylinderGeometry(0.2, 0.24, 1, 8).translate(0, 0.5, 0), cTop = new T.SphereGeometry(0.2, 8, 5, 0, Math.PI * 2, 0, Math.PI / 2), cElbow = new T.CylinderGeometry(0.12, 0.12, 0.42, 7).rotateZ(Math.PI / 2), cArm = new T.CylinderGeometry(0.12, 0.13, 1, 7).translate(0, 0.5, 0), cCap = new T.SphereGeometry(0.12, 7, 4, 0, Math.PI * 2, 0, Math.PI / 2);
+  const W = new T.Object3D(), C = new T.Object3D(); W.add(C);
+  for (const q of all) {
+    if (q.t === 'h') put(q.v > 0.5 ? 'hA' : 'hB', hillGeo, q.v > 0.5 ? hillA : hillB, q.x, 0, q.z, q.r * 0.98, q.h, q.r * 0.98, 0, q.v * 6.28);
+    else if (q.t === 'r') put(q.v > 0.5 ? 'rA' : 'rB', rockGeo, q.v > 0.5 ? rockA : rockB, q.x, q.r * 0.35, q.z, q.r, q.r * 0.75, q.r * 0.9, q.v, q.v * 4, q.v * 2);
+    else { // cactus : tronc, sommet, un ou deux bras (coude, bras, bout)
+      W.position.set(q.x, 0, q.z); W.rotation.set(0, q.v * 6.28, 0); W.updateMatrixWorld(true);
+      const add = (name, geo, mat, x, y, z, sy = 1) => { C.position.set(x, y, z); C.scale.set(1, sy, 1); C.updateMatrixWorld(true); if (!parts.has(name)) parts.set(name, { geo, mat, m: [] }); parts.get(name).m.push(C.matrixWorld.clone()); };
+      add('cb', cBody, cA, 0, 0, 0, q.h); add('ct', cTop, cA, 0, q.h, 0);
+      for (const [sx, y0, len] of q.v > 0.4 ? [[1, q.h * 0.42, q.h * 0.32], [-1, q.h * 0.55, q.h * 0.26]] : [[1, q.h * 0.5, q.h * 0.3]]) { add('ce', cElbow, cB, sx * 0.36, y0, 0); add('ca', cArm, cB, sx * 0.55, y0 - 0.06, 0, len); add('cc', cCap, cB, sx * 0.55, y0 + len - 0.06, 0); }
+    }
+  }
+  // hautes dunes tout autour, au-delà de la limite (décor)
+  const nD = Math.round(2 * Math.PI * (R + 30) / 16);
+  for (let i = 0; i < nD; i++) { const a = i / nD * Math.PI * 2, d = R + 22 + rnd() * 18; put(rnd() > 0.5 ? 'hA' : 'hB', hillGeo, rnd() > 0.5 ? hillA : hillB, Math.sin(a) * d, 0, Math.cos(a) * d, 14 + rnd() * 10, 6 + rnd() * 7, 11 + rnd() * 9, 0, a); }
+  for (const { geo, mat, m } of parts.values()) { const im = new T.InstancedMesh(geo, mat, m.length); m.forEach((x, i) => im.setMatrixAt(i, x)); im.instanceMatrix.needsUpdate = true; im.frustumCulled = false; G.add(im); }
+  return G;
+}
+for (let n = 3; n <= 12; n++) MAPLOOK_DESERT_KEYS.push('desert' + n);
 SKY.desert = skyTex([[0, '#3d7fc4'], [0.34, '#86b8e0'], [0.47, '#f3d9a8'], [0.5, '#f7e2b8'], [0.53, '#d9b07a'], [1, '#8a6a44']]);
+for (const k of MAPLOOK_DESERT_KEYS) SKY[k] = SKY.desert; // même ciel pour toutes les tailles
 const MAPLOOK = {
   desert: { fog: 0xe9d3a8, near: 35, far: 160, hs: 0xfff1d4, hg: 0xa9845a, sun: 0xfff2d6, sunI: 1.05 },
+  ...Object.fromEntries(MAPLOOK_DESERT_KEYS.map(k => [k, { fog: 0xe9d3a8, near: 60, far: 320, hs: 0xfff1d4, hg: 0xa9845a, sun: 0xfff2d6, sunI: 1.05 }])),
   get forestV3() { return this.forestV2; },
   get forestV3s() { return this.forestV2s; },
   get forestT1() { return this.forestV2; }, get forestT2() { return this.forestV2; }, get forestT1s() { return this.forestV2s; }, get forestT2s() { return this.forestV2s; },
@@ -1665,12 +1735,12 @@ const MAPLOOK = {
 function applyMap(k) {
   if (SYM_BUILD[baseMap(k)]) SYM_BUILD[baseMap(k)]();
   mapKey = k; map = MAPS[k]; obstacles = OBST[k];
-  canyonG.visible = k === 'canyon'; desertG.visible = k === 'desert'; forestV2G.visible = baseMap(k) === 'forestV2'; forestV3G.visible = baseMap(k) === 'forestV3'; forestB1G.visible = baseMap(k) === 'forestB1'; forestB2G.visible = baseMap(k) === 'forestB2'; forestC1G.visible = baseMap(k) === 'forestC1'; forestC2G.visible = baseMap(k) === 'forestC2'; forestF1G.visible = baseMap(k) === 'forestF1'; forestF2G.visible = baseMap(k) === 'forestF2'; forestK1G.visible = baseMap(k) === 'forestK1'; forestK2G.visible = baseMap(k) === 'forestK2'; forestL1G.visible = baseMap(k) === 'forestL1'; forestL2G.visible = baseMap(k) === 'forestL2'; forestM1G.visible = baseMap(k) === 'forestM1'; forestM2G.visible = baseMap(k) === 'forestM2'; forestR1G.visible = baseMap(k) === 'forestR1'; forestR2G.visible = baseMap(k) === 'forestR2'; forestW1G.visible = baseMap(k) === 'forestW1'; forestW2G.visible = baseMap(k) === 'forestW2'; forestY1G.visible = baseMap(k) === 'forestY1'; forestY2G.visible = baseMap(k) === 'forestY2'; forestJ1G.visible = baseMap(k) === 'forestJ1'; forestJ2G.visible = baseMap(k) === 'forestJ2'; forestA1G.visible = baseMap(k) === 'forestA1'; forestA2G.visible = baseMap(k) === 'forestA2'; forestT1G.visible = baseMap(k) === 'forestT1'; forestT2G.visible = baseMap(k) === 'forestT2'; forestQ1G.visible = baseMap(k) === 'forestQ1'; forestQ2G.visible = baseMap(k) === 'forestQ2'; forestP1G.visible = baseMap(k) === 'forestP1'; forestP2G.visible = baseMap(k) === 'forestP2'; forestH1G.visible = baseMap(k) === 'forestH1'; forestH2G.visible = baseMap(k) === 'forestH2'; forestS1G.visible = baseMap(k) === 'forestS1'; forestS2G.visible = baseMap(k) === 'forestS2'; forestO1G.visible = baseMap(k) === 'forestO1'; forestO2G.visible = baseMap(k) === 'forestO2'; forestN1G.visible = baseMap(k) === 'forestN1'; forestN2G.visible = baseMap(k) === 'forestN2'; forestD1G.visible = baseMap(k) === 'forestD1'; forestD2G.visible = baseMap(k) === 'forestD2'; forestE1G.visible = baseMap(k) === 'forestE1'; forestE2G.visible = baseMap(k) === 'forestE2'; forestZ1G.visible = baseMap(k) === 'forestZ1'; forestZ2G.visible = baseMap(k) === 'forestZ2'; SNOW.set(isSnow(k)); snowFx.visible = isSnow(k); clearFeet(); bigForestG.visible = k === 'forestXL';
+  canyonG.visible = k === 'canyon'; desertG.visible = k === 'desert'; for (const [dk, dg] of Object.entries(desertGs)) dg.visible = dk === k; forestV2G.visible = baseMap(k) === 'forestV2'; forestV3G.visible = baseMap(k) === 'forestV3'; forestB1G.visible = baseMap(k) === 'forestB1'; forestB2G.visible = baseMap(k) === 'forestB2'; forestC1G.visible = baseMap(k) === 'forestC1'; forestC2G.visible = baseMap(k) === 'forestC2'; forestF1G.visible = baseMap(k) === 'forestF1'; forestF2G.visible = baseMap(k) === 'forestF2'; forestK1G.visible = baseMap(k) === 'forestK1'; forestK2G.visible = baseMap(k) === 'forestK2'; forestL1G.visible = baseMap(k) === 'forestL1'; forestL2G.visible = baseMap(k) === 'forestL2'; forestM1G.visible = baseMap(k) === 'forestM1'; forestM2G.visible = baseMap(k) === 'forestM2'; forestR1G.visible = baseMap(k) === 'forestR1'; forestR2G.visible = baseMap(k) === 'forestR2'; forestW1G.visible = baseMap(k) === 'forestW1'; forestW2G.visible = baseMap(k) === 'forestW2'; forestY1G.visible = baseMap(k) === 'forestY1'; forestY2G.visible = baseMap(k) === 'forestY2'; forestJ1G.visible = baseMap(k) === 'forestJ1'; forestJ2G.visible = baseMap(k) === 'forestJ2'; forestA1G.visible = baseMap(k) === 'forestA1'; forestA2G.visible = baseMap(k) === 'forestA2'; forestT1G.visible = baseMap(k) === 'forestT1'; forestT2G.visible = baseMap(k) === 'forestT2'; forestQ1G.visible = baseMap(k) === 'forestQ1'; forestQ2G.visible = baseMap(k) === 'forestQ2'; forestP1G.visible = baseMap(k) === 'forestP1'; forestP2G.visible = baseMap(k) === 'forestP2'; forestH1G.visible = baseMap(k) === 'forestH1'; forestH2G.visible = baseMap(k) === 'forestH2'; forestS1G.visible = baseMap(k) === 'forestS1'; forestS2G.visible = baseMap(k) === 'forestS2'; forestO1G.visible = baseMap(k) === 'forestO1'; forestO2G.visible = baseMap(k) === 'forestO2'; forestN1G.visible = baseMap(k) === 'forestN1'; forestN2G.visible = baseMap(k) === 'forestN2'; forestD1G.visible = baseMap(k) === 'forestD1'; forestD2G.visible = baseMap(k) === 'forestD2'; forestE1G.visible = baseMap(k) === 'forestE1'; forestE2G.visible = baseMap(k) === 'forestE2'; forestZ1G.visible = baseMap(k) === 'forestZ1'; forestZ2G.visible = baseMap(k) === 'forestZ2'; SNOW.set(isSnow(k)); snowFx.visible = isSnow(k); clearFeet(); bigForestG.visible = k === 'forestXL';
   skyMat.map = SKY[k]; skyMat.needsUpdate = true;
   const L = MAPLOOK[k];
   scene.fog.color.setHex(L.fog); scene.fog.near = L.near; scene.fog.far = L.far;
   hemi.color.setHex(L.hs); hemi.groundColor.setHex(L.hg); sunL.color.setHex(L.sun); sunL.intensity = L.sunI;
-  if (mode !== 'practice' && (k === 'canyon' || BIG3[baseMap(k)] || isOG(k))) try { localStorage.setItem('duelarc-map3', k); } catch (e) {} // le choix du menu
+  if (mode !== 'practice' && (k === 'canyon' || BIG3[baseMap(k)] || isOG(k) || isDesert(k))) try { localStorage.setItem('duelarc-map3', k); } catch (e) {} // le choix du menu
   const shown = baseMap(menuMap(k)); // une version neige ou à 3 apparaît comme sa forêt
   document.querySelectorAll('.mapsel button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.map === shown)));
   refreshMapVariants();
@@ -4421,7 +4491,7 @@ function setGameMode(g) {
   document.querySelectorAll('#lobby .mapsel [data-map=canyon], #lobby .mapsel [data-map=forestXL]').forEach(b => { b.hidden = duels; });
   $('#lobby [data-map=forestB1] small').textContent = duels ? 'symétrique' : 'symétrique, de 2 à 12';
   $('#lobby [data-map=forestB2] small').textContent = duels ? 'troncs égaux' : 'troncs égaux, de 2 à 12';
-  if (duels && !BIG3[baseMap(menuMap(mapKey))] && !isOG(mapKey)) applyMap('forestB1');
+  if (duels && !BIG3[baseMap(menuMap(mapKey))] && !isOG(mapKey) && !isDesert(mapKey)) applyMap('forestB1');
   document.querySelectorAll('#lobby .wpnrow').forEach(r => { r.hidden = gameMode !== 'classic' || map.lateral; });
   refreshVariants();
 }
@@ -4650,7 +4720,7 @@ function evaluateReady() {
     const lead = toks[0] === net.tok ? { mapK: mapKey, wpn: weapon, gm: gameMode, tm: teamMode } : ps.find(p => p.tok === toks[0]);
     if (lead.gm !== 'classic' && toks.length < 4) return startTour(toks.join('|'), lead.gm === 'roul' ? 'roul' : 'tour', lead.mapK); // à 4 : pas de tournante
     const m = menuMap(lead.mapK);
-    const n = toks.length, k = n === 2 && (m === 'canyon' || isOG(m)) ? m : n === 3 && m === 'forestXL' ? m : BIGN[n][BIG3[baseMap(m)] ? m : 'forestB1']; // forêt classique ou petits troncs en version à n joueurs ; canyon à 2 ; forêt géante à 3
+    const n = toks.length, k = isDesert(m) ? desertFor(n) : n === 2 && (m === 'canyon' || isOG(m)) ? m : n === 3 && m === 'forestXL' ? m : BIGN[n][BIG3[baseMap(m)] ? m : 'forestB1']; // forêt classique ou petits troncs en version à n joueurs ; canyon à 2 ; forêt géante à 3
     startOnline(toks.join('|') + (TEAM[lead.tm] && TEAM[lead.tm][0] === toks.length ? '|' + lead.tm : ''), k, wpnKey(lead.wpn));
   }
 }
@@ -4690,7 +4760,7 @@ function startTour(base, gm, k) {
   // participants dans l'ordre des jetons (même ordre partout)
   const ids = base.split('|').map(tk => tk === net.tok ? myId : (peersNow.find(x => x.presence.tok === tk) || {}).peer).filter(Boolean);
   if (ids.length < 2) return;
-  Object.assign(TOUR, { on: true, mode: gm === 'roul' ? 'roul' : 'tour', map: ids.length === 2 && isOG(k) ? k : BIG3[baseMap(menuMap(k))] ? BIG2[menuMap(k)] : 'forestA1', picked: {}, base, ids, n: ids.length, round: 0, champ: null, wins: 0, sc: {}, title: '', big: false });
+  Object.assign(TOUR, { on: true, mode: gm === 'roul' ? 'roul' : 'tour', map: isDesert(k) ? desertFor(ids.length) : ids.length === 2 && isOG(k) ? k : BIG3[baseMap(menuMap(k))] ? BIG2[menuMap(k)] : 'forestA1', picked: {}, base, ids, n: ids.length, round: 0, champ: null, wins: 0, sc: {}, title: '', big: false });
   // ordre du salon : il départage ceux qui n'ont pas encore choisi l'arme (voir tourChooser)
   TOUR.order = lobbyPlayers().map(x => x.id).filter(id => ids.includes(id));
   TOUR.cur = tourPair(); TOUR.cur.w = tourWeapon(); TOUR.cur.by = tourChooser(TOUR.cur);
@@ -4902,8 +4972,8 @@ function renderLobby() {
   // à 4 : seulement le classique (chacun pour soi ou 2 contre 2), dans les forêts 1 et 2
   document.querySelectorAll('#lobby .modesel [data-gm=tour], #lobby .modesel [data-gm=roul]').forEach(b => { b.disabled = n >= 3; });
   if (n >= 3 && gameMode !== 'classic') setGameMode('classic');
-  if (((n >= 3 && !BIG3[baseMap(menuMap(mapKey))]) || (n >= 2 && isOG(mapKey))) && (phase === 'idle' || phase === 'over')) applyMap('forestB1');
-  document.querySelectorAll('#lobby .mapsel [data-map=forestV2], #over .mapsel [data-map=forestV2], #lobby .mapsel [data-map=forestV3], #over .mapsel [data-map=forestV3], #lobby .mapsel [data-map=desert], #over .mapsel [data-map=desert]').forEach(b => { b.disabled = n > 1; }); // les forêts OG : à 2 seulement
+  if (((n >= 3 && !BIG3[baseMap(menuMap(mapKey))] && !isDesert(mapKey)) || (n >= 2 && isOG(mapKey))) && (phase === 'idle' || phase === 'over')) applyMap('forestB1'); // le désert : de 2 à 12
+  document.querySelectorAll('#lobby .mapsel [data-map=forestV2], #over .mapsel [data-map=forestV2], #lobby .mapsel [data-map=forestV3], #over .mapsel [data-map=forestV3]').forEach(b => { b.disabled = n > 1; }); // les forêts OG : à 2 seulement
   showTeamsel('#lobby', n + 1);
   // qui est là : toi + les autres, et qui est prêt ; la partie part dès que tous ceux présents sont prêts
   const L = lobbyPlayers(), mine = L.find(x => x.me), esc = v => v.replace(/&/g, '&amp;').replace(/</g, '&lt;');
@@ -4976,15 +5046,15 @@ function refreshBotMenu() {
   t.hidden = botCount < 2; t.style.gridTemplateColumns = `repeat(${Math.min(3, bs.filter(b => !b.hidden).length)},1fr)`;
   document.querySelectorAll('.botcount button').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.n === botCount)));
   const cy = document.querySelector('[data-step=bot] [data-map=canyon]'); if (cy) cy.disabled = botCount > 1;
-  if (botCount > 1 && !BIG3[baseMap(menuMap(mapKey))]) applyMap('forestB1');
-  document.querySelectorAll('[data-step=bot] [data-map=forestV2], [data-step=bot] [data-map=forestV3], [data-step=bot] [data-map=desert]').forEach(b => { b.hidden = botCount > 1; }); // les forêts OG : en 1 contre 1 seulement
+  if (botCount > 1 && !BIG3[baseMap(menuMap(mapKey))] && !isDesert(mapKey)) applyMap('forestB1');
+  document.querySelectorAll('[data-step=bot] [data-map=forestV2], [data-step=bot] [data-map=forestV3]').forEach(b => { b.hidden = botCount > 1; }); // les forêts OG : en 1 contre 1 seulement
   try { localStorage.setItem('duelarc-botn', String(botCount)); localStorage.setItem('duelarc-botteam', botTeam); } catch (e) {}
 }
 document.querySelectorAll('.botcount button').forEach(b => b.addEventListener('click', () => { botCount = +b.dataset.n; sfx('tick', 0.6); refreshBotMenu(); }));
 document.querySelectorAll('.botteam button').forEach(b => b.addEventListener('click', () => { botTeam = b.dataset.tm; sfx('tick', 0.6); refreshBotMenu(); }));
 refreshBotMenu();
 const BOT_FAM = { 3: TRIO, 4: QUAD, 5: PENTA, 6: HEXA, 7: HEPTA, 8: OCTA, 9: FAM9, 10: FAM10, 11: FAM11, 12: FAM12 }; // forêt à 2 -> la même à n joueurs
-const botMapKey = () => botCount === 1 && (mapKey === 'canyon' || isOG(mapKey)) ? mapKey : BIGN[botCount + 1][BIG3[baseMap(menuMap(mapKey))] ? menuMap(mapKey) : 'forestB1']; // la forêt choisie, en version pour botCount + 1 joueurs
+const botMapKey = () => isDesert(mapKey) ? desertFor(botCount + 1) : botCount === 1 && (mapKey === 'canyon' || isOG(mapKey)) ? mapKey : BIGN[botCount + 1][BIG3[baseMap(menuMap(mapKey))] ? menuMap(mapKey) : 'forestB1']; // la forêt choisie, en version pour botCount + 1 joueurs
 const botLvlBtns = () => document.querySelectorAll('.botlvl button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.lvl === botLvl)));
 document.querySelectorAll('.botlvl button').forEach(b => b.addEventListener('click', () => { botLvl = b.dataset.lvl === 'hard' ? 'hard' : 'mid'; botLvlBtns(); sfx('tick', 0.6); try { localStorage.setItem('duelarc-botlvl', botLvl); } catch (e) {} }));
 botLvlBtns();
