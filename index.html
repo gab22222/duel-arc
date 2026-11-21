@@ -330,6 +330,7 @@ p{margin:0}
         <button data-map="jungle" aria-pressed="false">Jungle</button>
         <button data-map="wheat" aria-pressed="false">Champ de blé</button>
         <button data-map="western" aria-pressed="false">Western</button>
+        <button data-map="city" aria-pressed="false">Centre-ville</button>
       </div>
       <div class="opt wpnrow" hidden><span>Arme</span>
       <div class="seg wpnsel" role="group" aria-label="Arme en forêt">
@@ -501,6 +502,7 @@ p{margin:0}
       <button data-map="jungle" aria-pressed="false">Jungle</button>
       <button data-map="wheat" aria-pressed="false">Champ de blé</button>
       <button data-map="western" aria-pressed="false">Western</button>
+      <button data-map="city" aria-pressed="false">Centre-ville</button>
       <button data-map="forestXL" aria-pressed="false" disabled>Forêt géante<small>124 m, à 3</small></button>
     </div>
     <div class="opt wpnrow" hidden><span>Arme</span>
@@ -595,6 +597,7 @@ p{margin:0}
       <button data-map="jungle" aria-pressed="false">Jungle</button>
       <button data-map="wheat" aria-pressed="false">Champ de blé</button>
       <button data-map="western" aria-pressed="false">Western</button>
+      <button data-map="city" aria-pressed="false">Centre-ville</button>
       <button data-map="forestXL" aria-pressed="false" disabled>Forêt géante<small>124 m, à 3</small></button>
     </div>
     <div class="opt wpnrow" hidden><span>Arme</span>
@@ -914,7 +917,7 @@ const BIG2 = { forestB1: 'forestA1', forestB1s: 'forestA1s', forestB2: 'forestA2
 const BIGN = { 2: BIG2, 12: BIG12, 11: BIG11, 10: BIG10, 9: BIG9, 8: BIG8, 7: BIG7, 6: BIG6, 3: { forestB1: 'forestB1', forestB1s: 'forestB1s', forestB2: 'forestB2', forestB2s: 'forestB2s' }, 4: BIG4, 5: BIG5 }; // les boutons V1.2 / V2.2 -> la version pour n joueurs
 const isOG = k => !!MAP_FAMILY[baseMap(k)]; // les anciennes forêts (« OG ») : seulement à 2 joueurs
 // cartes « famille » de 2 à 12 joueurs (désert, île) : un bouton, et une version par nombre de joueurs (desert, desert3…desert12 ; island, island3…island12)
-const symFam = k => typeof k === 'string' ? ((/^(desert|island|jungle|wheat|western)(\d+)?$/.exec(k) || [])[1] || null) : null;
+const symFam = k => typeof k === 'string' ? ((/^(desert|island|jungle|wheat|western|city)(\d+)?$/.exec(k) || [])[1] || null) : null;
 const isSym = k => !!symFam(k);
 const famFor = (f, n) => n <= 2 ? f : f + Math.min(12, n);
 const bigFor = n => n >= 1 && n <= 12; // forêt classique et forêt petits troncs : de 2 à 12 joueurs (proposées aussi quand on attend seul dans le salon)
@@ -2246,10 +2249,189 @@ function buildWestern(N, F, O) {
   for (const [name, { geo, mat, m }] of parts) { const im = new T.InstancedMesh(geo, mat, m.length); m.forEach((x, i) => im.setMatrixAt(i, x)); im.instanceMatrix.needsUpdate = true; im.frustumCulled = false; G.add(im); }
   return G;
 }
+// ---------- centre-ville (carte originale) : un centre dense à vraie échelle. Immeubles de 2 à 5 étages (6 à 16 m) en brique, crépi ou pierre,
+// fenêtres sur toutes les façades, commerces au rez-de-chaussée (auvent, enseigne), toits plats à rebord ou toits en pente ; grande place au centre avec
+// une tour à horloge ; rues, ruelles, voitures garées, bennes, palissades de chantier, arbres, lampadaires. De 2 à 12 joueurs : une part de ville tirée
+// au sort (toujours la même) autour d'une rue qui mène de l'apparition à la place, recopiée par rotation ; palissades cache-vues entre les apparitions.
+const cityGs = {};
+for (let n = 2; n <= 12; n++) {
+  const key = n === 2 ? 'city' : 'city' + n;
+  MAPS[key] = n === 2 ? { ...MAPS.forestA1, key, snow: false } : { ...MAPS[BIGN[n].forestB1], key, snow: false }; OBST[key] = [];
+  SYM_BUILD[key] = () => { if (cityGs[key]) return; cityGs[key] = buildCity(n, MAPS[key], OBST[key]); };
+}
+SKY.city = skyTex([[0, '#2766c4'], [0.34, '#69a8e8'], [0.46, '#c9e2f5'], [0.5, '#e8f1f6'], [0.53, '#a7adb0'], [1, '#55595c']]);
+MAPLOOK.city = { fog: 0xc9dcea, near: 80, far: 400, hs: 0xf2f7ff, hg: 0x6d6a62, sun: 0xfff3dc, sunI: 1.05 };
+for (let n = 3; n <= 12; n++) { SKY['city' + n] = SKY.city; MAPLOOK['city' + n] = MAPLOOK.city; }
+const citySignTex = {};
+function citySign(text, bg, fg) {
+  const key = text + bg; if (citySignTex[key]) return citySignTex[key];
+  const c = document.createElement('canvas'); c.width = 512; c.height = 96; const g = c.getContext('2d');
+  g.fillStyle = bg; g.fillRect(0, 0, 512, 96); g.fillStyle = fg; g.font = `bold ${text.length > 10 ? 46 : 58}px "Alegreya Sans", Arial, sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(text, 256, 50);
+  const t = new T.CanvasTexture(c); t.anisotropy = 4; return (citySignTex[key] = t);
+}
+let clockTex = null;
+function clockFace() {
+  if (clockTex) return clockTex;
+  const c = document.createElement('canvas'); c.width = c.height = 256; const g = c.getContext('2d');
+  g.fillStyle = '#3b3f45'; g.fillRect(0, 0, 256, 256); g.fillStyle = '#f4efe2'; g.beginPath(); g.arc(128, 128, 112, 0, Math.PI * 2); g.fill();
+  g.strokeStyle = '#2a2d31'; g.lineWidth = 6; g.stroke();
+  for (let i = 0; i < 60; i++) { const a = i / 60 * Math.PI * 2, r0 = i % 5 ? 98 : 86; g.lineWidth = i % 5 ? 2 : 6; g.beginPath(); g.moveTo(128 + Math.sin(a) * r0, 128 - Math.cos(a) * r0); g.lineTo(128 + Math.sin(a) * 106, 128 - Math.cos(a) * 106); g.stroke(); }
+  g.lineCap = 'round'; g.lineWidth = 9; g.beginPath(); g.moveTo(128, 128); g.lineTo(128 + Math.sin(2.1) * 55, 128 - Math.cos(2.1) * 55); g.stroke();
+  g.lineWidth = 6; g.beginPath(); g.moveTo(128, 128); g.lineTo(128 + Math.sin(-0.4) * 88, 128 - Math.cos(-0.4) * 88); g.stroke();
+  g.fillStyle = '#2a2d31'; g.beginPath(); g.arc(128, 128, 9, 0, Math.PI * 2); g.fill();
+  clockTex = new T.CanvasTexture(c); return clockTex;
+}
+function buildCity(N, F, O) {
+  const G = new T.Group(); G.visible = false; scene.add(G);
+  const R = F.rlim, SR = F.spawnR || F.spawnZ, TW = 2 * Math.PI / N, HA = Math.PI / N;
+  let seed = 20261126 + N * 7919; const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
+  const rotP = (x, z, a) => [x * Math.cos(a) + z * Math.sin(a), -x * Math.sin(a) + z * Math.cos(a)];
+  const spawns = Array.from({ length: N }, (_, i) => rotP(0, SR, i * TW));
+  const W = 7, ROAD = 4.6, Rp = 15, TOWER = 3.2; // demi-largeur de la rue (trottoirs compris), demi-chaussée, rayon de la place, demi-côté de la tour
+  const inSec = (x, z, m) => { const d = Math.hypot(x, z), a = Math.atan2(x, z); return d < R - m && (N === 2 ? z > m : Math.abs(a) * d < HA * d - m && (HA - Math.abs(a)) * d > m); };
+  const part = [];
+  // immeubles : rangées le long de la rue, puis rangées derrière, séparées par des ruelles ; quelques places et parkings laissés vides
+  const rects = []; // en coordonnées de la part : [xmin, xmax, zmin, zmax]
+  const clearOf = (x0, x1, z0, z1, gap) => rects.every(r => x1 + gap <= r[0] || x0 >= r[1] + gap || z1 + gap <= r[2] || z0 >= r[3] + gap);
+  const okRect = (x0, x1, z0, z1) => [[x0, z0], [x1, z0], [x0, z1], [x1, z1]].every(([x, z]) => inSec(x, z, 1.5) && Math.hypot(x, z) > Rp + 2 && Math.hypot(x, z - SR) > 9)
+    && Math.hypot((x0 + x1) / 2, (z0 + z1) / 2 - SR) > 10 && !(x1 > -W && x0 < W && z0 < SR + 9);
+  const addB = (x0, x1, z0, z1, face) => { const h = (2 + Math.floor(rnd() * 4)) * 3.2 + (rnd() > 0.7 ? 1.2 : 0);
+    // face : côté de la façade principale (vers la rue ou la ruelle)
+    const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2, alongZ = face === 'x+' || face === 'x-', w = alongZ ? z1 - z0 : x1 - x0, d = alongZ ? x1 - x0 : z1 - z0;
+    const [ax, az] = face === 'x+' ? [0, -1] : face === 'x-' ? [0, 1] : face === 'z-' ? [-1, 0] : [1, 0]; // l'axe local x le long de la façade, l'avant = (-az, ax)
+    part.push({ t: 'bld', x: cx, z: cz, ax, az, hx: w / 2, hz: d / 2, h, v: rnd(), shop: face !== 'none' && rnd() > 0.25, pitched: rnd() > 0.72, st: rnd() });
+    rects.push([x0, x1, z0, z1]); };
+  for (const side of [1, -1]) {
+    for (let row = 0; row < 12; row++) {
+      const D = 9 + rnd() * 3, xin = W + row * 0 + (row ? rects.length && 0 : 0);
+      let x0 = side > 0 ? W + row * 13.5 : -(W + row * 13.5) - D; const x1 = x0 + D;
+      if (Math.min(Math.abs(x0), Math.abs(x1)) > R) break;
+      let z = (row === 0 ? Rp + 3 : 1.5) + rnd() * 2.5; // la première rangée borde la rue depuis la place ; les suivantes remplissent toute la part
+      while (z < R) {
+        if (rnd() < 0.09) { z += 9 + rnd() * 5; continue; } // une petite place ou un parking
+        const w = 8 + rnd() * 6, z0 = z, z1 = z + w;
+        if (okRect(x0, x1, z0, z1) && clearOf(x0, x1, z0, z1, 2.6)) addB(x0, x1, z0, z1, row === 0 ? (side > 0 ? 'x-' : 'x+') : rnd() > 0.5 ? (side > 0 ? 'x-' : 'x+') : 'none');
+        z += w + 2.6 + rnd() * 1.6;
+      }
+    }
+  }
+  // seconde passe : des immeubles tournés vers la place, posés dans les espaces encore libres (surtout sur les côtés de la part)
+  const circ = [];
+  const hitsRect = (x, z, rr) => rects.some(r => Math.hypot(Math.max(r[0] - x, 0, x - r[1]), Math.max(r[2] - z, 0, z - r[3])) < rr);
+  for (let tries = 0, made = 0; tries < 500 && made < 60; tries++) {
+    const a = (rnd() * 2 - 1) * HA, d0 = Rp + 7 + rnd() * (R - Rp - 9), x = d0 * Math.sin(a), z = d0 * Math.cos(a);
+    const w = 8 + rnd() * 5, dd = 8 + rnd() * 3, rr = Math.hypot(w, dd) / 2, ax = -Math.cos(a), az = Math.sin(a);
+    const cs = [[-1, -1], [1, -1], [-1, 1], [1, 1]].map(([sx, sz]) => [x + sx * w / 2 * ax + sz * dd / 2 * -az, z + sx * w / 2 * az + sz * dd / 2 * ax]);
+    if (!cs.every(([cx, cz]) => inSec(cx, cz, 1.5) && Math.hypot(cx, cz) > Rp + 2 && Math.hypot(cx, cz - SR) > 9 && !(Math.abs(cx) < W + 0.5 && cz < SR + 9))) continue;
+    if (hitsRect(x, z, rr + 2.6) || circ.some(c => Math.hypot(c.x - x, c.z - z) < c.r + rr + 2.6)) continue;
+    part.push({ t: 'bld', x, z, ax, az, hx: w / 2, hz: dd / 2, h: (2 + Math.floor(rnd() * 4)) * 3.2, v: rnd(), shop: rnd() > 0.5, pitched: rnd() > 0.65, st: rnd() });
+    circ.push({ x, z, r: rr }); made++;
+  }
+  // au bout de la rue, derrière l'apparition : une rangée d'immeubles face à la rue
+  for (let x = -W - 4; x < W + 4; x += 11) { const w = 9 + rnd() * 2, z0 = SR + 10, z1 = z0 + 10; if (okRect(x, x + w, z0, z1) && clearOf(x, x + w, z0, z1, 2.6)) addB(x, x + w, z0, z1, 'z-'); }
+  // dans les rues et sur les places : voitures garées, bennes, palissades de chantier, arbres, lampadaires, bancs
+  const reach = q => q.hx !== undefined ? Math.hypot(q.hx, q.hz) : q.r;
+  const freeS = (x, z, rr) => inSec(x, z, rr + 0.6) && Math.hypot(x, z - SR) > rr + 6 && Math.hypot(x, z) > TOWER + 4 + rr && circ.every(c => Math.hypot(c.x - x, c.z - z) > c.r + rr + 0.8) && rects.every(r => x + rr + 0.8 <= r[0] || x - rr - 0.8 >= r[1] || z + rr + 0.8 <= r[2] || z - rr - 0.8 >= r[3]) && part.every(q => q.t === 'bld' || Math.hypot(q.x - x, q.z - z) > reach(q) + rr + 1);
+  const place = (n, mk, where) => { for (let i = 0, tries = 0; i < n && tries < n * 80; tries++) { const [x, z] = where(); const q = mk(x, z); if (freeS(x, z, reach(q))) { part.push(q); i++; } } };
+  const L = SR - Rp, A = Math.PI * R * R / N;
+  const streetPos = () => [(rnd() > 0.5 ? 1 : -1) * (ROAD - 1.1), Rp + 3 + rnd() * (L - 8)], anyPos = () => { const a = (rnd() * 2 - 1) * HA, d = Math.sqrt(rnd()) * R; return [d * Math.sin(a), d * Math.cos(a)]; };
+  place(Math.max(1, Math.round(L / 15)), (x, z) => ({ t: 'car', x, z, ax: 0, az: 1, hx: 2.15, hz: 0.9, h: 1.45, v: rnd() }), streetPos);
+  place(Math.round(A * 0.0008), (x, z) => { const th = rnd() > 0.5 ? 0 : Math.PI / 2; return { t: 'car', x, z, ax: Math.cos(th), az: -Math.sin(th), hx: 2.15, hz: 0.9, h: 1.45, v: rnd() }; }, anyPos);
+  place(Math.round(A * 0.0008), (x, z) => ({ t: 'bin', x, z, ax: 1, az: 0, hx: 0.95, hz: 0.6, h: 1.3, v: rnd() }), anyPos);
+  place(Math.round(A * 0.0005), (x, z) => { const th = rnd() * Math.PI; return { t: 'hoard', x, z, ax: Math.cos(th), az: -Math.sin(th), hx: 2 + rnd() * 2, hz: 0.12, h: 2.4, v: rnd() }; }, anyPos);
+  place(Math.round(L / 10) + 2, (x, z) => ({ t: 'tree', x, z, r: 0.25, v: rnd() }), () => [(rnd() > 0.5 ? 1 : -1) * (W - 1.2), Rp + 2 + rnd() * (L - 6)]);
+  place(Math.round(L / 12) + 1, (x, z) => ({ t: 'lamp', x, z, r: 0.12, v: rnd() }), () => [(rnd() > 0.5 ? 1 : -1) * (W - 0.6), Rp + 2 + rnd() * (L - 6)]);
+  place(3, (x, z) => ({ t: 'tree', x, z, r: 0.25, v: rnd() }), () => { const a = (rnd() * 2 - 1) * HA * 0.8, d = TOWER + 5 + rnd() * (Rp - TOWER - 6); return [d * Math.sin(a), d * Math.cos(a)]; }); // arbres de la place
+  place(2, (x, z) => ({ t: 'bench', x, z, ax: 1, az: 0, hx: 0.9, hz: 0.3, h: 0.5, v: rnd() }), () => { const a = (rnd() * 2 - 1) * HA * 0.8, d = TOWER + 5 + rnd() * (Rp - TOWER - 6); return [d * Math.sin(a), d * Math.cos(a)]; });
+  let all = []; for (let k = 0; k < N; k++) for (const q of part) { const [x, z] = rotP(q.x, q.z, k * TW), o = { ...q, x, z }; if (q.ax !== undefined) [o.ax, o.az] = rotP(q.ax, q.az, k * TW); all.push(o); }
+  all.push({ t: 'tower', x: 0, z: 0, ax: 1, az: 0, hx: TOWER, hz: TOWER, h: 26 });
+  const boxT = { bld: 1, car: 1, bin: 1, hoard: 1, tower: 1, blk: 1, bench: 1 };
+  const asObst = q => boxT[q.t] ? { type: 'box', x: q.x, z: q.z, ax: q.ax, az: q.az, hx: q.hx, hz: q.hz, h: q.h, r: Math.hypot(q.hx, q.hz) } : q.t === 'tree' ? { type: 'trunk', x: q.x, z: q.z, r: 0.25, h: 6 } : q.t === 'lamp' ? { type: 'trunk', x: q.x, z: q.z, r: 0.12, h: 5 } : null;
+  const P = new T.Vector3(), sees = (a, b, list) => { const d = Math.hypot(b[0] - a[0], b[1] - a[1]), m = Math.ceil(d / 0.4); for (const y of [1.2, 1.62]) { let hid = false; for (let i = 1; i < m && !hid; i++) { const f = i / m; P.set(a[0] + (b[0] - a[0]) * f, y, a[1] + (b[1] - a[1]) * f); for (const o of list) if (Math.abs(o.x - P.x) < o.r + 0.1 && Math.abs(o.z - P.z) < o.r + 0.1 && hitObstacle(o, P, 0)) { hid = true; break; } } if (!hid) return true; } return false; };
+  for (let it = 0; it < 3; it++) { // cache-vues : conteneurs de chantier en travers des lignes de vue entre apparitions
+    const list = all.map(asObst).filter(Boolean); let added = false;
+    for (let j = 1; j < N; j++) if (sees(spawns[0], spawns[j], list)) {
+      const mx = (spawns[0][0] + spawns[j][0]) / 2, mz = (spawns[0][1] + spawns[j][1]) / 2, dx = spawns[j][0] - spawns[0][0], dz = spawns[j][1] - spawns[0][1], dl = Math.hypot(dx, dz), px = -dz / dl, pz = dx / dl;
+      for (let k = 0; k < N; k++) { const [x, z] = rotP(mx, mz, k * TW), [ax, az] = rotP(px, pz, k * TW); if (all.some(q => q.t === 'blk' && Math.hypot(q.x - x, q.z - z) < 1)) continue; all = all.filter(q => q.t === 'bld' || q.t === 'tower' || q.t === 'blk' || Math.hypot(q.x - x, q.z - z) > reach(q) + 3.5); all.push({ t: 'blk', x, z, ax, az, hx: 3, hz: 1.2, h: 2.6, v: 0.4 }); }
+      added = true;
+    }
+    if (!added) break;
+  }
+  for (const q of all) { const o = asObst(q); if (o) O.push(o); } gridObstacles(O);
+  // sol : chaussées d'asphalte, trottoirs, place pavée, cours et ruelles en béton ; au-delà, la ville continue
+  const zone = (x, z) => { const d = Math.hypot(x, z); if (d < Rp + 1) return 'plaza'; for (let k = 0; k < N; k++) { const [lx, lz] = rotP(x, z, -k * TW); if (lz > 0 && lz < SR + 9 && Math.abs(lx) < W) return Math.abs(lx) < ROAD ? 'road' : 'walk'; } return 'yard'; };
+  const S = R + 120, gGeo = new T.PlaneGeometry(S * 2, S * 2, 160, 160).rotateX(-Math.PI / 2), gp = gGeo.attributes.position, gc = [], sc = new T.Color();
+  for (let i = 0; i < gp.count; i++) { const x = gp.getX(i), z = gp.getZ(i), d = Math.hypot(x, z), zn = d < R ? zone(x, z) : 'yard';
+    if (zn === 'road') sc.setHSL(0.6, 0.04, 0.25 + 0.015 * Math.sin(x * 3 + z)); else if (zn === 'walk') sc.setHSL(0.1, 0.06, 0.58); else if (zn === 'plaza') sc.setHSL(0.09, 0.2, 0.62 + 0.03 * Math.sin(x * 2) * Math.sin(z * 2)); else sc.setHSL(0.1, 0.05, 0.5 + 0.02 * Math.sin(x * 0.8 + z));
+    gc.push(sc.r, sc.g, sc.b); }
+  gGeo.setAttribute('color', new T.Float32BufferAttribute(gc, 3)); gGeo.computeVertexNormals();
+  G.add(new T.Mesh(gGeo, new T.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 1 })));
+  // ---- instances
+  const parts = new Map(), D = new T.Object3D(), M = new T.Matrix4(), RX = new T.Matrix4();
+  const put = (name, geo, mat, m) => { if (!parts.has(name)) parts.set(name, { geo, mat, m: [] }); parts.get(name).m.push(m.clone()); };
+  const box = new T.BoxGeometry(1, 1, 1).translate(0, 0.5, 0), plane = new T.PlaneGeometry(1, 1).translate(0, 0.5, 0), cyl = new T.CylinderGeometry(1, 1, 1, 12).translate(0, 0.5, 0);
+  const pyr = new T.ConeGeometry(Math.SQRT1_2, 1, 4).rotateY(Math.PI / 4).translate(0, 0.5, 0); // toit en pyramide (base 1 × 1)
+  // une boîte (ou un plan) dans le repère d'un objet : x le long de la façade, z vers l'avant ; ry tourne la pièce elle-même
+  const B = (q, name, geo, mat, lx, ly, lz, w, h, d, ry = 0, rx = 0) => { const ax = q.ax, az = q.az, fx = -az, fz = ax; D.position.set(q.x + lx * ax + lz * fx, ly, q.z + lx * az + lz * fz); D.rotation.set(0, Math.atan2(-az, ax) + ry, 0); D.scale.set(1, 1, 1); D.updateMatrix(); M.copy(D.matrix); if (rx) M.multiply(RX.makeRotationX(rx)); M.multiply(RX.makeScale(w, h, d)); put(name, geo, mat, M); };
+  const FAC = [0x9a4a3a, 0x8c3f32, 0xe2d6bc, 0xcfb48a, 0x9a9a94, 0xbfc0bb, 0x5f8a8f, 0xc98f4a, 0x8fb0c8, 0xd9c7a8].map(c => std(c, { roughness: .9 }));
+  const trimM = std(0xece6da), glassM = new T.MeshStandardMaterial({ color: 0x3a5468, metalness: 0.55, roughness: 0.22 }), roofM = std(0x55575c), tileM = std(0x8a3c2e), slateM = std(0x4a4f57), darkM = std(0x2b2d31);
+  const AWN = [0xc0392b, 0x2e7d5b, 0x2f5d9c, 0xe0a030, 0x7a3b8c].map(c => std(c, { side: T.DoubleSide }));
+  const SHOPS = [['CAFÉ', '#2e2a26', '#f0d9a8'], ['BOULANGERIE', '#f3e6c8', '#7a3a1c'], ['PHARMACIE', '#e9f3ee', '#1f8a4c'], ['BAR', '#1d2430', '#f2c94c'], ['HÔTEL', '#2b2440', '#e8d8b0'], ['BOUTIQUE', '#f4f0ea', '#3a3a3a'], ['PIZZA', '#b0281e', '#fff3dc'], ['LIBRAIRIE', '#1f3b2e', '#efe4c8'], ['TABAC', '#9b1b1b', '#ffffff'], ['FLEURS', '#e8f0e0', '#c2416a']];
+  const shopMs = SHOPS.map(s => new T.MeshStandardMaterial({ map: citySign(...s), roughness: .7 }));
+  for (const q of all) {
+    if (q.t === 'bld') {
+      const w = q.hx * 2, d = q.hz * 2, h = q.h, fm = Math.floor(q.v * FAC.length) % FAC.length, floors = Math.floor(h / 3.2);
+      B(q, 'f' + fm, box, FAC[fm], 0, 0, 0, w, h, d);
+      // fenêtres sur les quatre côtés, un bandeau entre les étages
+      for (const [ry, len, off] of [[0, w, d / 2], [Math.PI, w, d / 2], [Math.PI / 2, d, w / 2], [-Math.PI / 2, d, w / 2]]) {
+        const cols = Math.max(1, Math.floor((len - 1.2) / 2.3)), sx = Math.sin(ry), cz = Math.cos(ry);
+        for (let f = (q.shop && ry === 0 ? 1 : 0); f < floors; f++) for (let c = 0; c < cols; c++) { const u = -len / 2 + (c + 0.5) * len / cols; const lx = u * cz + off * sx, lz = off * cz - u * sx; B(q, 'win', plane, glassM, lx * 1 + sx * 0.01, f * 3.2 + 0.95, lz + cz * 0.01, 1.15, 1.55, 1, ry); B(q, 'sill', box, trimM, lx + sx * 0.05, f * 3.2 + 0.85, lz + cz * 0.05, 1.35, 0.1, 0.12, ry); }
+        for (let f = 1; f < floors; f++) B(q, 'band', box, trimM, off * sx * 1.0 + 0, f * 3.2 - 0.12, off * cz, len + 0.06, 0.16, 0.06, ry);
+      }
+      if (q.shop) { // rez-de-chaussée commerçant : grande vitrine, porte, auvent, enseigne
+        B(q, 'win', plane, glassM, -w * 0.12, 0.35, d / 2 + 0.02, w * 0.55, 2.1, 1); B(q, 'door', box, darkM, w * 0.3, 0, d / 2 + 0.01, 1.1, 2.3, 0.06);
+        B(q, 'aw' + Math.floor(q.st * 5), box, AWN[Math.floor(q.st * 5)], 0, 2.6, d / 2 + 0.7, w * 0.92, 0.08, 1.5, 0, 0.32);
+        B(q, 'sh' + Math.floor(q.st * 10), plane, shopMs[Math.floor(q.st * 10)], 0, 2.95, d / 2 + 0.03, Math.min(w * 0.8, 6), 0.75, 1);
+      } else { B(q, 'door', box, darkM, 0, 0, d / 2 + 0.01, 1.2, 2.3, 0.06); B(q, 'band', box, trimM, 0, 2.3, d / 2 + 0.03, 1.6, 0.18, 0.08); }
+      if (q.pitched) { B(q, q.v > 0.5 ? 'tile' : 'slate', pyr, q.v > 0.5 ? tileM : slateM, 0, h, 0, w + 0.5, 2.6 + q.st * 1.5, d + 0.5); }
+      else { B(q, 'rf', box, roofM, 0, h, 0, w - 0.1, 0.1, d - 0.1); for (const [lx, lz, ww, dd] of [[0, d / 2 - 0.12, w, 0.24], [0, -d / 2 + 0.12, w, 0.24], [w / 2 - 0.12, 0, 0.24, d], [-w / 2 + 0.12, 0, 0.24, d]]) B(q, 'par', box, trimM, lx, h, lz, ww, 0.7, dd); // rebord du toit
+        if (q.st > 0.4) B(q, 'ac', box, std(0xa9adb2), (q.st - 0.5) * w * 0.5, h + 0.1, -d * 0.15, 1.6, 1.1, 1.2); if (q.st > 0.8) { D.position.set(q.x, h + 0.1, q.z); D.rotation.set(0, 0, 0); D.scale.set(1, 2.2, 1); D.updateMatrix(); put('tankc', cyl, std(0x7a6a58), D.matrix); } }
+    } else if (q.t === 'car') { const col = [0xc0392b, 0x2f5d9c, 0xf1f1ec, 0x2b2d31, 0x9aa3ab, 0xe0a030, 0x2e7d5b][Math.floor(q.v * 7)];
+      B(q, 'car' + Math.floor(q.v * 7), box, std(col, { metalness: .3, roughness: .45 }), 0, 0.32, 0, 4.2, 0.62, 1.75); B(q, 'cabin', box, glassM, -0.2, 0.92, 0, 2.2, 0.55, 1.6); B(q, 'car' + Math.floor(q.v * 7), box, std(col, { metalness: .3, roughness: .45 }), -0.2, 1.45, 0, 2.0, 0.08, 1.5);
+      for (const [wx, wz] of [[-1.35, -0.88], [1.35, -0.88], [-1.35, 0.88], [1.35, 0.88]]) B(q, 'tyre', cyl, darkM, wx, 0.36, wz, 0.36, 0.26, 0.36, 0, Math.PI / 2); }
+    else if (q.t === 'bin') { B(q, 'bin' + (q.v > 0.5 ? 1 : 0), box, std(q.v > 0.5 ? 0x2e6b4a : 0x2f4f7a), 0, 0, 0, 1.9, 1.2, 1.2); B(q, 'lid', box, darkM, 0, 1.2, -0.05, 1.95, 0.08, 1.25, 0, -0.15); }
+    else if (q.t === 'blk') { // conteneur de chantier : caisson à nervures, portes au bout
+      const cm = std(0x3f6f9c, { metalness: .2, roughness: .6 }); B(q, 'cont', box, cm, 0, 0, 0, q.hx * 2, q.h, q.hz * 2);
+      for (let i = 0; i < 14; i++) for (const sg of [-1, 1]) B(q, 'rib', box, std(0x34608a), -q.hx + 0.2 + i * (q.hx * 2 - 0.4) / 13, 0.05, sg * (q.hz + 0.02), 0.08, q.h - 0.1, 0.05);
+      for (const sg of [-1, 1]) B(q, 'cend', box, std(0x2b4a68), sg * (q.hx + 0.02), 0.05, 0, 0.05, q.h - 0.1, q.hz * 2 - 0.1, 0); }
+    else if (q.t === 'hoard') { const n = Math.max(1, Math.round(q.hx * 2 / 2)); for (let i = 0; i < n; i++) B(q, 'hd' + (i % 2), box, i % 2 ? std(0xe8e2d4) : std(0x3f6f9c), -q.hx + (i + 0.5) * q.hx * 2 / n, 0.15, 0, q.hx * 2 / n - 0.04, q.h - 0.15, 0.06); for (const sg of [-1, 1]) B(q, 'foot', box, std(0xe0a030), sg * (q.hx - 0.3), 0, 0, 0.3, 0.15, 0.7); }
+    else if (q.t === 'tree') { const p = { ...q, ax: 1, az: 0 }; B(p, 'trk', cyl, std(0x5a4330), 0, 0, 0, 0.16, 3.2, 0.16); B(p, 'pot', box, std(0x8f8a80), 0, 0, 0, 1.2, 0.35, 1.2); D.position.set(q.x, 4.4, q.z); D.rotation.set(0, q.v * 6, 0); D.scale.set(2.1, 1.9, 2.1); D.updateMatrix(); put('crown', new T.IcosahedronGeometry(1, 1), std(0x4d8a3a), D.matrix); }
+    else if (q.t === 'lamp') { const p = { ...q, ax: 1, az: 0 }; B(p, 'pole', cyl, darkM, 0, 0, 0, 0.07, 4.6, 0.07); B(p, 'lampH', box, darkM, 0.35, 4.5, 0, 0.8, 0.1, 0.12); B(p, 'bulb', box, new T.MeshStandardMaterial({ color: 0xfff1c0, emissive: 0xffe0a0, emissiveIntensity: 0.6 }), 0.65, 4.35, 0, 0.3, 0.15, 0.25); }
+    else if (q.t === 'bench') { B(q, 'seat', box, std(0x7a5a3c), 0, 0.42, 0, 1.8, 0.08, 0.5); B(q, 'seat', box, std(0x7a5a3c), 0, 0.5, -0.24, 1.8, 0.5, 0.06); for (const sg of [-1, 1]) B(q, 'foot2', box, darkM, sg * 0.75, 0, 0, 0.08, 0.45, 0.5); }
+    else if (q.t === 'tower') { // tour à horloge : socle en pierre, fût, chambre de l'horloge (un cadran sur chaque face), toit pointu, flèche
+      const st = std(0xb9b2a2), st2 = std(0x9a9384);
+      B(q, 'tw1', box, st2, 0, 0, 0, TOWER * 2 + 0.6, 1.2, TOWER * 2 + 0.6); B(q, 'tw2', box, st, 0, 0, 0, TOWER * 2, 18, TOWER * 2);
+      for (let f = 1; f < 6; f++) B(q, 'tw1', box, st2, 0, f * 3.2, 0, TOWER * 2 + 0.12, 0.18, TOWER * 2 + 0.12);
+      B(q, 'tw1', box, st2, 0, 18, 0, TOWER * 2 + 0.5, 0.5, TOWER * 2 + 0.5); B(q, 'tw2', box, st, 0, 18.5, 0, TOWER * 2 - 0.4, 5, TOWER * 2 - 0.4);
+      const cf = new T.MeshStandardMaterial({ map: clockFace(), roughness: .5 });
+      for (let i = 0; i < 4; i++) B(q, 'clock', plane, cf, Math.sin(i * Math.PI / 2) * (TOWER - 0.19), 19, Math.cos(i * Math.PI / 2) * (TOWER - 0.19), 3.6, 3.6, 1, i * Math.PI / 2);
+      B(q, 'tw1', box, st2, 0, 23.5, 0, TOWER * 2, 0.4, TOWER * 2); B(q, 'troof', pyr, slateM, 0, 23.9, 0, TOWER * 2 + 0.3, 6, TOWER * 2 + 0.3); B(q, 'spire', cyl, darkM, 0, 29.9, 0, 0.06, 2.2, 0.06);
+      for (let i = 0; i < 4; i++) B(q, 'win', plane, glassM, Math.sin(i * Math.PI / 2) * (TOWER + 0.01), 9, Math.cos(i * Math.PI / 2) * (TOWER + 0.01), 1.1, 2.4, 1, i * Math.PI / 2);
+      for (let i = 0; i < 4; i++) B(q, 'door', box, darkM, Math.sin(i * Math.PI / 2) * (TOWER + 0.01), 0, Math.cos(i * Math.PI / 2) * (TOWER + 0.01), 1.6, 2.8, 0.08, i * Math.PI / 2); }
+  }
+  // marquage au sol : tirets blancs au milieu des rues
+  for (let k = 0; k < N; k++) for (let z = Rp + 3; z < SR + 6; z += 4) { const [x2, z2] = rotP(0, z, k * TW); D.position.set(x2, 0.015, z2); D.rotation.set(0, -k * TW, 0); D.scale.set(0.15, 0.01, 2); D.updateMatrix(); put('mark', box, std(0xf2f2ea), D.matrix); }
+  // au-delà de la limite : la ville continue (un anneau d'immeubles en décor)
+  for (let i = 0, n = Math.round(2 * Math.PI * (R + 14) / 13); i < n; i++) { const a = i / n * Math.PI * 2, d = R + 9 + rnd() * 4, hh = 9 + Math.floor(rnd() * 5) * 3.2, fm = Math.floor(rnd() * FAC.length);
+    D.position.set(Math.sin(a) * d, 0, Math.cos(a) * d); D.rotation.set(0, a, 0); D.scale.set(12.5, hh, 10); D.updateMatrix(); put('f' + fm, box, FAC[fm], D.matrix);
+    const q = { x: Math.sin(a) * d, z: Math.cos(a) * d, ax: Math.cos(a), az: -Math.sin(a) }; for (let f = 0; f < Math.floor(hh / 3.2); f++) for (let c = 0; c < 4; c++) B(q, 'win', plane, glassM, -4.7 + c * 3.1, f * 3.2 + 0.95, -5.01, 1.15, 1.55, 1, Math.PI); }
+  for (const [name, { geo, mat, m }] of parts) { const im = new T.InstancedMesh(geo, mat, m.length); m.forEach((x, i) => im.setMatrixAt(i, x)); im.instanceMatrix.needsUpdate = true; im.frustumCulled = false; G.add(im); }
+  return G;
+}
 function applyMap(k) {
   if (SYM_BUILD[baseMap(k)]) SYM_BUILD[baseMap(k)]();
   mapKey = k; map = MAPS[k]; obstacles = OBST[k];
-  canyonG.visible = k === 'canyon'; desertG.visible = k === 'desert'; for (const [dk, dg] of Object.entries(desertGs)) dg.visible = dk === k; for (const [ik, ig] of Object.entries(islandGs)) ig.visible = ik === k; for (const [jk, jg] of Object.entries(jungleGs)) jg.visible = jk === k; for (const [wk, wg] of Object.entries(wheatGs)) wg.visible = wk === k; for (const [xk, xg] of Object.entries(westernGs)) xg.visible = xk === k; forestV2G.visible = baseMap(k) === 'forestV2'; forestV3G.visible = baseMap(k) === 'forestV3'; forestB1G.visible = baseMap(k) === 'forestB1'; forestB2G.visible = baseMap(k) === 'forestB2'; forestC1G.visible = baseMap(k) === 'forestC1'; forestC2G.visible = baseMap(k) === 'forestC2'; forestF1G.visible = baseMap(k) === 'forestF1'; forestF2G.visible = baseMap(k) === 'forestF2'; forestK1G.visible = baseMap(k) === 'forestK1'; forestK2G.visible = baseMap(k) === 'forestK2'; forestL1G.visible = baseMap(k) === 'forestL1'; forestL2G.visible = baseMap(k) === 'forestL2'; forestM1G.visible = baseMap(k) === 'forestM1'; forestM2G.visible = baseMap(k) === 'forestM2'; forestR1G.visible = baseMap(k) === 'forestR1'; forestR2G.visible = baseMap(k) === 'forestR2'; forestW1G.visible = baseMap(k) === 'forestW1'; forestW2G.visible = baseMap(k) === 'forestW2'; forestY1G.visible = baseMap(k) === 'forestY1'; forestY2G.visible = baseMap(k) === 'forestY2'; forestJ1G.visible = baseMap(k) === 'forestJ1'; forestJ2G.visible = baseMap(k) === 'forestJ2'; forestA1G.visible = baseMap(k) === 'forestA1'; forestA2G.visible = baseMap(k) === 'forestA2'; forestT1G.visible = baseMap(k) === 'forestT1'; forestT2G.visible = baseMap(k) === 'forestT2'; forestQ1G.visible = baseMap(k) === 'forestQ1'; forestQ2G.visible = baseMap(k) === 'forestQ2'; forestP1G.visible = baseMap(k) === 'forestP1'; forestP2G.visible = baseMap(k) === 'forestP2'; forestH1G.visible = baseMap(k) === 'forestH1'; forestH2G.visible = baseMap(k) === 'forestH2'; forestS1G.visible = baseMap(k) === 'forestS1'; forestS2G.visible = baseMap(k) === 'forestS2'; forestO1G.visible = baseMap(k) === 'forestO1'; forestO2G.visible = baseMap(k) === 'forestO2'; forestN1G.visible = baseMap(k) === 'forestN1'; forestN2G.visible = baseMap(k) === 'forestN2'; forestD1G.visible = baseMap(k) === 'forestD1'; forestD2G.visible = baseMap(k) === 'forestD2'; forestE1G.visible = baseMap(k) === 'forestE1'; forestE2G.visible = baseMap(k) === 'forestE2'; forestZ1G.visible = baseMap(k) === 'forestZ1'; forestZ2G.visible = baseMap(k) === 'forestZ2'; SNOW.set(isSnow(k)); snowFx.visible = isSnow(k); clearFeet(); bigForestG.visible = k === 'forestXL';
+  canyonG.visible = k === 'canyon'; desertG.visible = k === 'desert'; for (const [dk, dg] of Object.entries(desertGs)) dg.visible = dk === k; for (const [ik, ig] of Object.entries(islandGs)) ig.visible = ik === k; for (const [jk, jg] of Object.entries(jungleGs)) jg.visible = jk === k; for (const [wk, wg] of Object.entries(wheatGs)) wg.visible = wk === k; for (const [xk, xg] of Object.entries(westernGs)) xg.visible = xk === k; for (const [ck, cg] of Object.entries(cityGs)) cg.visible = ck === k; forestV2G.visible = baseMap(k) === 'forestV2'; forestV3G.visible = baseMap(k) === 'forestV3'; forestB1G.visible = baseMap(k) === 'forestB1'; forestB2G.visible = baseMap(k) === 'forestB2'; forestC1G.visible = baseMap(k) === 'forestC1'; forestC2G.visible = baseMap(k) === 'forestC2'; forestF1G.visible = baseMap(k) === 'forestF1'; forestF2G.visible = baseMap(k) === 'forestF2'; forestK1G.visible = baseMap(k) === 'forestK1'; forestK2G.visible = baseMap(k) === 'forestK2'; forestL1G.visible = baseMap(k) === 'forestL1'; forestL2G.visible = baseMap(k) === 'forestL2'; forestM1G.visible = baseMap(k) === 'forestM1'; forestM2G.visible = baseMap(k) === 'forestM2'; forestR1G.visible = baseMap(k) === 'forestR1'; forestR2G.visible = baseMap(k) === 'forestR2'; forestW1G.visible = baseMap(k) === 'forestW1'; forestW2G.visible = baseMap(k) === 'forestW2'; forestY1G.visible = baseMap(k) === 'forestY1'; forestY2G.visible = baseMap(k) === 'forestY2'; forestJ1G.visible = baseMap(k) === 'forestJ1'; forestJ2G.visible = baseMap(k) === 'forestJ2'; forestA1G.visible = baseMap(k) === 'forestA1'; forestA2G.visible = baseMap(k) === 'forestA2'; forestT1G.visible = baseMap(k) === 'forestT1'; forestT2G.visible = baseMap(k) === 'forestT2'; forestQ1G.visible = baseMap(k) === 'forestQ1'; forestQ2G.visible = baseMap(k) === 'forestQ2'; forestP1G.visible = baseMap(k) === 'forestP1'; forestP2G.visible = baseMap(k) === 'forestP2'; forestH1G.visible = baseMap(k) === 'forestH1'; forestH2G.visible = baseMap(k) === 'forestH2'; forestS1G.visible = baseMap(k) === 'forestS1'; forestS2G.visible = baseMap(k) === 'forestS2'; forestO1G.visible = baseMap(k) === 'forestO1'; forestO2G.visible = baseMap(k) === 'forestO2'; forestN1G.visible = baseMap(k) === 'forestN1'; forestN2G.visible = baseMap(k) === 'forestN2'; forestD1G.visible = baseMap(k) === 'forestD1'; forestD2G.visible = baseMap(k) === 'forestD2'; forestE1G.visible = baseMap(k) === 'forestE1'; forestE2G.visible = baseMap(k) === 'forestE2'; forestZ1G.visible = baseMap(k) === 'forestZ1'; forestZ2G.visible = baseMap(k) === 'forestZ2'; SNOW.set(isSnow(k)); snowFx.visible = isSnow(k); clearFeet(); bigForestG.visible = k === 'forestXL';
   skyMat.map = SKY[k]; skyMat.needsUpdate = true;
   const L = MAPLOOK[k];
   scene.fog.color.setHex(L.fog); scene.fog.near = L.near; scene.fog.far = L.far;
